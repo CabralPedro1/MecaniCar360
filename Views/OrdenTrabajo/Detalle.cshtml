@@ -1,0 +1,821 @@
+﻿@model MecaniCar360.Models.OrdenTrabajo
+
+@{
+    ViewData["Title"] = $"Orden de Trabajo #{Model.Id}";
+}
+
+<div class="container mt-4">
+
+    <h2 class="mb-3">
+        Orden de Trabajo #@Model.Id
+    </h2>
+
+
+    <!-- ===================================== -->
+    <!-- MENSAJES -->
+    <!-- ===================================== -->
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger">
+            @TempData["Error"]
+        </div>
+    }
+
+    @if (TempData["Ok"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["Ok"]
+        </div>
+    }
+
+
+    <!-- ===================================== -->
+    <!-- INFORMACIÓN GENERAL -->
+    <!-- ===================================== -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            <strong>Información general</strong>
+        </div>
+
+        <div class="card-body">
+
+            <div class="row">
+
+                <div class="col-md-6">
+
+                    <p>
+                        <strong>Cliente:</strong><br />
+
+                        @Model.Turno.Cliente.Nombre
+                        @Model.Turno.Cliente.Apellido
+                    </p>
+
+                    <p>
+                        <strong>Vehículo:</strong><br />
+
+                        @Model.Turno.Vehiculo.Marca
+                        @Model.Turno.Vehiculo.Modelo
+                    </p>
+
+                    <p>
+                        <strong>Patente:</strong><br />
+
+                        @Model.Turno.Vehiculo.Patente
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <p>
+                        <strong>Mecánico asignado:</strong><br />
+
+                        @if (Model.Mecanico != null)
+                        {
+                            @($"{Model.Mecanico.Nombre} {Model.Mecanico.Apellido}")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Sin asignar
+                            </span>
+                        }
+                    </p>
+
+                    <p>
+                        <strong>Estado:</strong><br />
+
+                        <span class="badge bg-primary">
+                            @Model.EstadoActual
+                        </span>
+                    </p>
+
+                    <p>
+                        <strong>Urgencia:</strong><br />
+
+                        @Model.Urgencia
+                    </p>
+
+                    <p>
+                        <strong>Fecha de inicio:</strong><br />
+
+                        @Model.FechaInicio.ToString(
+                        "dd/MM/yyyy HH:mm")
+                    </p>
+
+                    @if (Model.FechaFin.HasValue)
+                    {
+                        <p>
+                            <strong>Fecha de finalización:</strong><br />
+
+                            @Model.FechaFin.Value.ToString(
+                            "dd/MM/yyyy HH:mm")
+                    </p>
+                                        }
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- ACCIONES DE LA ORDEN -->
+    <!-- ===================================== -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            <strong>Acciones</strong>
+        </div>
+
+        <div class="card-body">
+
+            <div class="d-flex flex-wrap gap-2">
+
+
+                <!-- VOLVER -->
+
+                <a asp-action="Index"
+                   class="btn btn-secondary">
+                    Volver
+                </a>
+
+
+                <!-- TOMAR ORDEN -->
+                @if (Model.Mecanico == null &&
+                                Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Pendiente)
+                {
+                    <form asp-controller="OrdenTrabajo"
+                          asp-action="Tomar"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <button type="submit"
+                                class="btn btn-primary">
+                            Tomar orden
+                        </button>
+
+                    </form>
+                }
+
+
+                <!-- INICIAR DIAGNÓSTICO -->
+                @if (Model.EstadoActual ==
+                                MecaniCar360.Models.Enums.EstadoOrden.Pendiente &&
+                                Model.Mecanico != null)
+                {
+                    <form asp-controller="Diagnostico"
+                          asp-action="Iniciar"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <button type="submit"
+                                class="btn btn-info">
+                            Iniciar diagnóstico
+                        </button>
+
+                    </form>
+                }
+
+
+                <!-- INICIAR REPARACIÓN -->
+                @if (Model.EstadoActual ==
+                                MecaniCar360.Models.Enums.EstadoOrden.Aprobado)
+                {
+                    <form asp-controller="OrdenTrabajo"
+                          asp-action="IniciarReparacion"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <button type="submit"
+                                class="btn btn-success">
+                            Iniciar reparación
+                        </button>
+
+                    </form>
+                }
+
+
+                <!-- FINALIZAR REPARACIÓN -->
+                @if (Model.EstadoActual ==
+                                MecaniCar360.Models.Enums.EstadoOrden.EnReparacion)
+                {
+                    <form asp-controller="OrdenTrabajo"
+                          asp-action="Finalizar"
+                          method="post"
+                          class="d-flex align-items-center gap-2">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <input type="number"
+                               name="horasReales"
+                               class="form-control"
+                               placeholder="Horas reales"
+                               min="0"
+                               max="1000"
+                               style="width: 150px;" />
+
+                        <button type="submit"
+                                class="btn btn-warning">
+                            Finalizar reparación
+                        </button>
+
+                    </form>
+                }
+
+
+                <!-- VER PRESUPUESTO -->
+                @if (Model.Presupuesto != null)
+                {
+                    <a asp-controller="Presupuesto"
+                       asp-action="Detalle"
+                       asp-route-ordenTrabajoId="@Model.Id"
+                       class="btn btn-outline-warning">
+
+                        Ver presupuesto
+
+                    </a>
+                }
+
+
+                <!-- VER FACTURA -->
+                @if (Model.Factura != null)
+                {
+                    <a asp-controller="Factura"
+                       asp-action="Detalle"
+                       asp-route-ordenTrabajoId="@Model.Id"
+                       class="btn btn-outline-success">
+
+                        Ver factura
+
+                    </a>
+                }
+
+
+                <!-- ENTREGAR VEHÍCULO -->
+                @if (Model.EstadoActual ==
+                                MecaniCar360.Models.Enums.EstadoOrden.Finalizado ||
+                                Model.EstadoActual ==
+                                MecaniCar360.Models.Enums.EstadoOrden.Rechazado)
+                {
+                    <form asp-controller="OrdenTrabajo"
+                          asp-action="Entregar"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <button type="submit"
+                                class="btn btn-dark">
+
+                            Entregar vehículo
+
+                        </button>
+
+                    </form>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- DIAGNÓSTICO -->
+    <!-- ===================================== -->
+    @if (Model.EstadoActual ==
+        MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
+        Model.Diagnosticos.Any())
+    {
+        <div class="card mb-4">
+
+            <div class="card-header">
+                <strong>Diagnóstico</strong>
+            </div>
+
+            <div class="card-body">
+
+
+                <!-- GUARDAR DIAGNÓSTICO -->
+                @if (Model.EstadoActual ==
+                            MecaniCar360.Models.Enums.EstadoOrden.Diagnostico)
+                {
+                    <form asp-controller="Diagnostico"
+                          asp-action="Guardar"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+                                Descripción del diagnóstico
+                            </label>
+
+                            <textarea name="descripcion"
+                              class="form-control"
+                              rows="5"
+                              required></textarea>
+
+                        </div>
+
+                        <div class="d-flex gap-2">
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+                                Guardar diagnóstico
+                            </button>
+
+                        </div>
+
+                    </form>
+                }
+
+
+                <!-- DIAGNÓSTICOS EXISTENTES -->
+                @if (Model.Diagnosticos.Any())
+                {
+                    <hr class="my-4" />
+
+                    @foreach (var diagnostico in
+                                Model.Diagnosticos
+                                .OrderByDescending(
+                                d => d.FechaUltimaModificacion))
+                    {
+
+                        <div class="card mb-3">
+
+                            <div class="card-header">
+
+                                <strong>
+                                    Última modificación:
+                                </strong>
+
+                                @diagnostico.FechaUltimaModificacion
+                                .ToString(
+                                "dd/MM/yyyy HH:mm")
+
+                            </div>
+
+
+                            <div class="card-body">
+
+                                <h6>
+                                    Diagnóstico actual
+                                </h6>
+
+                                <p>
+                                    @diagnostico.DescripcionActual
+                                </p>
+
+
+                                <!-- HISTORIAL -->
+
+                                <h6 class="mt-4">
+                                    Historial
+                                </h6>
+
+                                @if (diagnostico.Historial.Any())
+                                {
+                                    <ul class="list-group">
+
+                                        @foreach (
+                                                                var historial in
+                                                                diagnostico.Historial
+                                                                .OrderByDescending(
+                                                                h => h.Fecha))
+                                        {
+                                            <li class="list-group-item">
+
+                                                <strong>
+                                                    @historial.Fecha.ToString(
+                                                    "dd/MM/yyyy HH:mm")
+                            </strong>
+
+                            @if (
+                                                        historial.Mecanico != null)
+                                                {
+                                                    <span class="text-muted">
+                                                        -
+                                                        @historial.Mecanico.Nombre
+                                                        @historial.Mecanico.Apellido
+                                                    </span>
+                                                }
+
+                                                <br />
+
+                                                @historial.Descripcion
+
+                                            </li>
+                                        }
+
+                                    </ul>
+                                }
+                                else
+                                {
+                                    <div class="alert alert-light">
+                                        No hay historial.
+                                    </div>
+                                }
+
+                            </div>
+
+                        </div>
+                    }
+                }
+
+
+                <!-- FINALIZAR DIAGNÓSTICO -->
+                @if (Model.EstadoActual ==
+                            MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
+                            Model.Diagnosticos.Any())
+                {
+                    <form asp-controller="Diagnostico"
+                          asp-action="Finalizar"
+                          method="post"
+                          class="mt-3">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <button type="submit"
+                                class="btn btn-success">
+
+                            Finalizar diagnóstico
+
+                        </button>
+
+                    </form>
+                }
+
+            </div>
+
+        </div>
+    }
+
+
+    <!-- ===================================== -->
+    <!-- CREAR PRESUPUESTO -->
+    <!-- ===================================== -->
+    @if (Model.Presupuesto == null &&
+        Model.EstadoActual ==
+        MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
+        Model.Diagnosticos.Any())
+    {
+        <div class="card mb-4">
+
+            <div class="card-header">
+                <strong>Presupuesto</strong>
+            </div>
+
+            <div class="card-body">
+
+                <p>
+                    El diagnóstico está registrado.
+                    Ya puede confeccionarse el presupuesto.
+                </p>
+
+                <form asp-controller="Presupuesto"
+                      asp-action="Crear"
+                      method="post">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="ordenTrabajoId"
+                           value="@Model.Id" />
+
+                    <button type="submit"
+                            class="btn btn-warning">
+
+                        Crear presupuesto
+
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+    }
+
+
+    <!-- ===================================== -->
+    <!-- PRESUPUESTO EXISTENTE -->
+    <!-- ===================================== -->
+    @if (Model.Presupuesto != null)
+    {
+        <div class="card mb-4">
+
+            <div class="card-header">
+                <strong>Presupuesto</strong>
+            </div>
+
+            <div class="card-body">
+
+                <div class="row">
+
+                    <div class="col-md-4">
+
+                        <strong>
+                            Estado
+                        </strong>
+
+                        <p>
+                            @Model.Presupuesto.Estado
+                        </p>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <strong>
+                            Total
+                        </strong>
+
+                        <p>
+                            $ @Model.Presupuesto.Total.ToString("N2")
+                        </p>
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <strong>
+                            Última modificación
+                        </strong>
+
+                        <p>
+                            @Model.Presupuesto
+                            .FechaUltimaModificacion
+                            .ToString(
+                            "dd/MM/yyyy HH:mm")
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                @if (!string.IsNullOrWhiteSpace(
+                            Model.Presupuesto.MotivoRechazo))
+                {
+                    <div class="alert alert-danger">
+
+                        <strong>
+                            Motivo del rechazo:
+                        </strong>
+
+                        <br />
+
+                        @Model.Presupuesto.MotivoRechazo
+
+                    </div>
+                }
+
+
+                <a asp-controller="Presupuesto"
+                   asp-action="Detalle"
+                   asp-route-ordenTrabajoId="@Model.Id"
+                   class="btn btn-warning">
+
+                    Administrar presupuesto
+
+                </a>
+
+            </div>
+
+        </div>
+    }
+
+
+    <!-- ===================================== -->
+    <!-- FACTURA -->
+    <!-- ===================================== -->
+    @if (Model.Factura != null)
+    {
+        <div class="card mb-4">
+
+            <div class="card-header">
+                <strong>Factura</strong>
+            </div>
+
+            <div class="card-body">
+
+                <p>
+                    <strong>Número:</strong>
+                    @Model.Factura.NumeroFactura
+                </p>
+
+                <p>
+                    <strong>Estado:</strong>
+                    @Model.Factura.Estado
+                </p>
+
+                <p>
+                    <strong>Total:</strong>
+                    $ @Model.Factura.Total.ToString("N2")
+                </p>
+
+                <a asp-controller="Factura"
+                   asp-action="Detalle"
+                   asp-route-ordenTrabajoId="@Model.Id"
+                   class="btn btn-success">
+
+                    Ver factura
+
+                </a>
+
+            </div>
+
+        </div>
+    }
+
+
+    <!-- ===================================== -->
+    <!-- OBSERVACIONES -->
+    <!-- ===================================== -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            <strong>Observaciones</strong>
+        </div>
+
+        <div class="card-body">
+
+            <p>
+                @if (string.IsNullOrWhiteSpace(
+                                Model.Observaciones))
+                {
+                    <span class="text-muted">
+                        No hay observaciones.
+                    </span>
+                }
+                else
+                {
+                    @Model.Observaciones
+                }
+            </p>
+
+
+            @if (Model.EstadoActual !=
+                        MecaniCar360.Models.Enums.EstadoOrden.Entregado)
+            {
+                <form asp-controller="OrdenTrabajo"
+                      asp-action="ActualizarObservaciones"
+                      method="post">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="id"
+                           value="@Model.Id" />
+
+                    <div class="mb-3">
+
+                        <label class="form-label">
+                            Actualizar observaciones
+                        </label>
+
+                        <textarea name="observaciones"
+                              class="form-control"
+                              rows="3">@Model.Observaciones</textarea>
+
+                    </div>
+
+                    <button type="submit"
+                            class="btn btn-outline-primary">
+
+                        Guardar observaciones
+
+                    </button>
+
+                </form>
+            }
+
+        </div>
+
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- HISTORIAL DE ESTADOS -->
+    <!-- ===================================== -->
+
+    <div class="card mb-4">
+
+        <div class="card-header">
+            <strong>Historial de estados</strong>
+        </div>
+
+        <div class="card-body">
+
+            @if (Model.HistorialEstados.Any())
+            {
+                <table class="table table-striped">
+
+                    <thead>
+
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Mecánico</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var estado in
+                                            Model.HistorialEstados
+                                            .OrderByDescending(
+                                            h => h.Fecha))
+                        {
+                            <tr>
+
+                                <td>
+                                    @estado.Fecha.ToString(
+                                    "dd/MM/yyyy HH:mm")
+                        </td>
+
+                        <td>
+                            @estado.Estado
+                        </td>
+
+                        <td>
+
+                            @if (estado.Mecanico != null)
+                                    {
+                                        @($"{estado.Mecanico.Nombre} {estado.Mecanico.Apellido}")
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">
+                                            —
+                                        </span>
+                                    }
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-info mb-0">
+
+                    No hay cambios de estado registrados.
+
+                </div>
+            }
+
+        </div>
+
+    </div>
+
+</div>

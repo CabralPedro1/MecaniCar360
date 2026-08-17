@@ -1,0 +1,576 @@
+﻿using MecaniCar360.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace MecaniCar360.Data
+{
+    public class MecaniCarContext : DbContext
+    {
+        public MecaniCarContext(DbContextOptions<MecaniCarContext> options)
+            : base(options)
+        {
+        }
+
+        // =============================
+        // PERSONAS Y SEGURIDAD
+        // =============================
+
+        public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<Persona> Personas { get; set; }
+        public DbSet<Rol> Roles { get; set; }
+        public DbSet<PersonaRol> PersonaRoles { get; set; }
+
+        // =============================
+        // VEHÍCULOS
+        // =============================
+
+        public DbSet<Vehiculo> Vehiculos { get; set; }
+        public DbSet<DominioVehicular> DominiosVehiculares { get; set; }
+
+        // =============================
+        // MARCAS Y MODELOS
+        // =============================
+
+        public DbSet<Marca> Marcas { get; set; }
+        public DbSet<Modelo> Modelos { get; set; }
+
+        // =============================
+        // TURNOS Y AGENDA
+        // =============================
+
+        public DbSet<Turno> Turnos { get; set; }
+        public DbSet<TurnoEstadoHistorial> TurnoEstados { get; set; }
+
+        public DbSet<BoxTrabajo> BoxesTrabajo { get; set; }
+
+        public DbSet<IngresoVehiculo> IngresosVehiculo { get; set; }
+
+        // =============================
+        // ORDEN DE TRABAJO
+        // =============================
+
+        public DbSet<OrdenTrabajo> OrdenesTrabajo { get; set; }
+        public DbSet<OrdenTrabajoEstadoHistorial> OrdenTrabajoEstados { get; set; }
+
+        // =============================
+        // DIAGNÓSTICO
+        // =============================
+
+        public DbSet<Diagnostico> Diagnosticos { get; set; }
+        public DbSet<DiagnosticoHistorial> DiagnosticoHistoriales { get; set; }
+
+        // =============================
+        // PRESUPUESTOS
+        // =============================
+
+        public DbSet<Presupuesto> Presupuestos { get; set; }
+        public DbSet<PresupuestoItem> PresupuestoItems { get; set; }
+        public DbSet<PresupuestoHistorial> PresupuestoHistoriales { get; set; }
+
+        // =============================
+        // FACTURACIÓN Y PAGOS
+        // =============================
+
+        public DbSet<Factura> Facturas { get; set; }
+        public DbSet<FacturaItem> FacturaItems { get; set; }
+        public DbSet<Pago> Pagos { get; set; }
+
+        // =============================
+        // STOCK
+        // =============================
+
+        public DbSet<Repuesto> Repuestos { get; set; }
+        public DbSet<Proveedor> Proveedores { get; set; }
+        public DbSet<ProveedorRepuesto> ProveedorRepuestos { get; set; }
+        public DbSet<MovimientoStock> MovimientosStock { get; set; }
+
+        // =============================
+        // TRABAJO Y ESPECIALIDADES
+        // =============================
+
+        public DbSet<Especialidad> Especialidades { get; set; }
+        public DbSet<MecanicoEspecialidad> MecanicoEspecialidades { get; set; }
+
+        // =============================
+        // CALIFICACIONES Y EVIDENCIAS
+        // =============================
+
+        public DbSet<CalificacionTrabajo> Calificaciones { get; set; }
+        public DbSet<EvidenciaTrabajo> Evidencias { get; set; }
+
+        // =============================
+        // AUDITORÍA Y NOTIFICACIONES
+        // =============================
+
+        public DbSet<Auditoria> Auditorias { get; set; }
+        public DbSet<Notificacion> Notificaciones { get; set; }
+
+        // =============================
+        // GARANTÍAS
+        // =============================
+
+        public DbSet<Garantia> Garantias { get; set; }
+        public DbSet<GarantiaItem> GarantiaItems { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+            // =============================
+            // PERSONA - ROL
+            // =============================
+
+            modelBuilder.Entity<PersonaRol>()
+                .HasKey(pr => new
+                {
+                    pr.PersonaId,
+                    pr.RolId
+                });
+
+            modelBuilder.Entity<PersonaRol>()
+                .HasOne(pr => pr.Persona)
+                .WithMany(p => p.Roles)
+                .HasForeignKey(pr => pr.PersonaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<PersonaRol>()
+                .HasOne(pr => pr.Rol)
+                .WithMany(r => r.Personas)
+                .HasForeignKey(pr => pr.RolId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // USUARIO
+            // =============================
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.Username)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.EmailLogin)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => u.PersonaId)
+                .IsUnique();
+
+            modelBuilder.Entity<Usuario>()
+                .HasOne(u => u.Persona)
+                .WithOne(p => p.Usuario)
+                .HasForeignKey<Usuario>(u => u.PersonaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // VEHÍCULO
+            // =============================
+
+            modelBuilder.Entity<Vehiculo>()
+                .HasIndex(v => v.Vin)
+                .IsUnique();
+
+            modelBuilder.Entity<Vehiculo>()
+                .HasIndex(v => v.Patente)
+                .IsUnique();
+
+            modelBuilder.Entity<Vehiculo>()
+                .Property(v => v.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<Vehiculo>()
+                .HasOne(v => v.Marca)
+                .WithMany()
+                .HasForeignKey(v => v.MarcaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Vehiculo>()
+                .HasOne(v => v.Modelo)
+                .WithMany(m => m.Vehiculos)
+                .HasForeignKey(v => v.ModeloId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // MARCA
+            // =============================
+
+            modelBuilder.Entity<Marca>()
+                .HasIndex(m => m.Nombre)
+                .IsUnique();
+
+            modelBuilder.Entity<Marca>()
+                .Property(m => m.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // MODELO
+            // =============================
+
+            modelBuilder.Entity<Modelo>()
+                .HasOne(m => m.Marca)
+                .WithMany(m => m.Modelos)
+                .HasForeignKey(m => m.MarcaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Modelo>()
+                .HasIndex(m => new
+                {
+                    m.MarcaId,
+                    m.Nombre
+                })
+                .IsUnique();
+
+            modelBuilder.Entity<Modelo>()
+                .Property(m => m.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // TURNO
+            // =============================
+
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.Vehiculo)
+                .WithMany(v => v.Turnos)
+                .HasForeignKey(t => t.VehiculoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.Cliente)
+                .WithMany()
+                .HasForeignKey(t => t.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.CreadoPorUsuario)
+                .WithMany()
+                .HasForeignKey(t => t.CreadoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Turno>()
+                .Property(t => t.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // TURNO - INGRESO VEHÍCULO
+            // 1 : 1
+            // =============================
+
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.IngresoVehiculo)
+                .WithOne(i => i.Turno)
+                .HasForeignKey<IngresoVehiculo>(i => i.TurnoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .HasIndex(i => i.TurnoId)
+                .IsUnique();
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .Property(i => i.FechaIngreso)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // TURNO - ORDEN DE TRABAJO
+            // 1 : 1
+            // =============================
+
+            modelBuilder.Entity<Turno>()
+                .HasOne(t => t.OrdenTrabajo)
+                .WithOne(o => o.Turno)
+                .HasForeignKey<OrdenTrabajo>(o => o.TurnoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // BOX DE TRABAJO
+            // =============================
+
+            modelBuilder.Entity<BoxTrabajo>()
+                .HasIndex(b => b.Nombre)
+                .IsUnique();
+
+
+            // =============================
+            // ORDEN DE TRABAJO - MECÁNICO
+            // =============================
+
+            modelBuilder.Entity<OrdenTrabajo>()
+                .HasOne(o => o.Mecanico)
+                .WithMany()
+                .HasForeignKey(o => o.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdenTrabajo>()
+                .HasOne(o => o.CreadaPorUsuario)
+                .WithMany()
+                .HasForeignKey(o => o.CreadaPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // ORDEN DE TRABAJO - ESTADOS
+            // =============================
+
+            modelBuilder.Entity<OrdenTrabajoEstadoHistorial>()
+                .HasOne(h => h.OrdenTrabajo)
+                .WithMany(o => o.HistorialEstados)
+                .HasForeignKey(h => h.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrdenTrabajoEstadoHistorial>()
+                .HasOne(h => h.Mecanico)
+                .WithMany()
+                .HasForeignKey(h => h.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdenTrabajoEstadoHistorial>()
+                .Property(h => h.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // DIAGNÓSTICO
+            // =============================
+
+            modelBuilder.Entity<Diagnostico>()
+                .HasOne(d => d.OrdenTrabajo)
+                .WithMany(o => o.Diagnosticos)
+                .HasForeignKey(d => d.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Diagnostico>()
+                .Property(d => d.FechaUltimaModificacion)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<DiagnosticoHistorial>()
+                .HasOne(h => h.Diagnostico)
+                .WithMany(d => d.Historial)
+                .HasForeignKey(h => h.DiagnosticoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<DiagnosticoHistorial>()
+                .HasOne<Persona>()
+                .WithMany()
+                .HasForeignKey(h => h.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<DiagnosticoHistorial>()
+                .Property(h => h.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // PRESUPUESTO
+            // =============================
+
+            modelBuilder.Entity<Presupuesto>()
+                .HasOne(p => p.OrdenTrabajo)
+                .WithOne(o => o.Presupuesto)
+                .HasForeignKey<Presupuesto>(p => p.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            modelBuilder.Entity<Presupuesto>()
+                .HasOne(p => p.Mecanico)
+                .WithMany()
+                .HasForeignKey(p => p.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Presupuesto>()
+                .Property(p => p.FechaUltimaModificacion)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<PresupuestoHistorial>()
+                .Property(p => p.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<PresupuestoItem>()
+                .HasOne(i => i.Presupuesto)
+                .WithMany(p => p.Items)
+                .HasForeignKey(i => i.PresupuestoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PresupuestoHistorial>()
+                .HasOne(h => h.Presupuesto)
+                .WithMany(p => p.Historial)
+                .HasForeignKey(h => h.PresupuestoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<PresupuestoHistorial>()
+                .HasOne(h => h.Mecanico)
+                .WithMany()
+                .HasForeignKey(h => h.MecanicoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // CALIFICACIÓN
+            // =============================
+
+            modelBuilder.Entity<CalificacionTrabajo>()
+                .HasOne(c => c.OrdenTrabajo)
+                .WithOne(o => o.Calificacion)
+                .HasForeignKey<CalificacionTrabajo>(c => c.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<CalificacionTrabajo>()
+                .HasIndex(c => c.OrdenTrabajoId)
+                .IsUnique();
+
+            modelBuilder.Entity<CalificacionTrabajo>()
+                .Property(c => c.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // FACTURA
+            // =============================
+
+            modelBuilder.Entity<Factura>()
+                .HasOne(f => f.OrdenTrabajo)
+                .WithOne(o => o.Factura)
+                .HasForeignKey<Factura>(f => f.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Factura>()
+                .HasIndex(f => f.NumeroFactura)
+                .IsUnique();
+
+            modelBuilder.Entity<Factura>()
+                .Property(f => f.FechaEmision)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // PAGO
+            // =============================
+
+            modelBuilder.Entity<Pago>()
+                .Property(p => p.FechaPago)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // STOCK
+            // =============================
+
+            modelBuilder.Entity<MovimientoStock>()
+                .Property(m => m.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<Repuesto>()
+                .Property(r => r.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<Repuesto>()
+                .HasIndex(r => r.SKU)
+                .IsUnique();
+
+            modelBuilder.Entity<Proveedor>()
+                .Property(p => p.FechaCreacion)
+                .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<MovimientoStock>()
+                .HasOne(m => m.Repuesto)
+                .WithMany(r => r.Movimientos)
+                .HasForeignKey(m => m.RepuestoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProveedorRepuesto>()
+                .HasOne(pr => pr.Proveedor)
+                .WithMany(p => p.Repuestos)
+                .HasForeignKey(pr => pr.ProveedorId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProveedorRepuesto>()
+                .HasOne(pr => pr.Repuesto)
+                .WithMany(r => r.Proveedores)
+                .HasForeignKey(pr => pr.RepuestoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<MovimientoStock>()
+                .HasOne(m => m.ProveedorRepuesto)
+                .WithMany()
+                .HasForeignKey(m => m.ProveedorRepuestoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<ProveedorRepuesto>()
+                .HasIndex(pr => new
+                {
+                    pr.ProveedorId,
+                    pr.RepuestoId
+                })
+                .IsUnique();
+
+            modelBuilder.Entity<PresupuestoItem>()
+                .HasOne(i => i.Repuesto)
+                .WithMany(r => r.PresupuestoItems)
+                .HasForeignKey(i => i.RepuestoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =============================
+            // DOMINIO VEHICULAR
+            // =============================
+
+            modelBuilder.Entity<DominioVehicular>()
+                .Property(d => d.FechaDesde)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // EVIDENCIAS
+            // =============================
+
+            modelBuilder.Entity<EvidenciaTrabajo>()
+                .Property(e => e.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // AUDITORÍA
+            // =============================
+
+            modelBuilder.Entity<Auditoria>()
+                .Property(a => a.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // NOTIFICACIONES
+            // =============================
+
+            modelBuilder.Entity<Notificacion>()
+                .Property(n => n.Fecha)
+                .HasDefaultValueSql("GETDATE()");
+
+
+            // =============================
+            // GARANTÍA
+            // =============================
+
+            modelBuilder.Entity<Garantia>()
+                .HasOne(g => g.OrdenTrabajo)
+                .WithMany()
+                .HasForeignKey(g => g.OrdenTrabajoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<GarantiaItem>()
+                .HasOne(gi => gi.Garantia)
+                .WithMany(g => g.Items)
+                .HasForeignKey(gi => gi.GarantiaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GarantiaItem>()
+                .HasOne(gi => gi.PresupuestoItem)
+                .WithMany()
+                .HasForeignKey(gi => gi.PresupuestoItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
+    }
+}   

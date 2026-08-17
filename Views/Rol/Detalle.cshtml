@@ -1,0 +1,88 @@
+﻿@model MecaniCar360.Models.Rol
+
+@{
+    ViewData["Title"] = "Detalle del Rol";
+}
+
+<h2>Detalle del Rol</h2>
+
+<hr />
+
+<div class="card">
+
+    <div class="card-body">
+
+        <dl class="row">
+
+            <dt class="col-sm-3">
+                Nombre
+            </dt>
+
+            <dd class="col-sm-9">
+                @Model.Nombre
+            </dd>
+
+            <dt class="col-sm-3">
+                Tipo
+            </dt>
+
+            <dd class="col-sm-9">
+
+                @(Model.EsRolCliente ? "Cliente" : "Interno")
+
+            </dd>
+
+            <dt class="col-sm-3">
+                Estado
+            </dt>
+
+            <dd class="col-sm-9">
+
+                @(Model.Activo ? "Activo" : "Inactivo")
+
+            </dd>
+
+            <dt class="col-sm-3">
+                Fecha creación
+            </dt>
+
+            <dd class="col-sm-9">
+
+                @Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")
+
+            </dd>
+
+            <dt class="col-sm-3">
+                Personas asignadas
+            </dt>
+
+            <dd class="col-sm-9">
+
+                @Model.Personas.Count
+
+            </dd>
+
+        </dl>
+
+    </div>
+
+</div>
+
+<div class="mt-3">
+
+    <a asp-action="Editar"
+       asp-route-id="@Model.Id"
+       class="btn btn-warning">
+
+        Editar
+
+    </a>
+
+    <a asp-action="Index"
+       class="btn btn-secondary">
+
+        Volver
+
+    </a>
+
+</div>

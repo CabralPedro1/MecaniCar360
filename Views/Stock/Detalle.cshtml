@@ -1,0 +1,390 @@
+﻿@model MecaniCar360.Models.Repuesto
+
+@{
+    ViewData["Title"] = "Detalle del Repuesto";
+}
+
+<h2>Detalle del Repuesto</h2>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Ok"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Información del Repuesto
+    </div>
+
+    <div class="card-body">
+
+        <div class="row">
+
+            <div class="col-md-6">
+
+                <p><strong>SKU:</strong> @Model.SKU</p>
+
+                <p><strong>Nombre:</strong> @Model.Nombre</p>
+
+                <p><strong>Marca:</strong> @Model.Marca</p>
+
+                <p><strong>Modelo:</strong> @Model.Modelo</p>
+
+                <p><strong>Compatibilidad:</strong> @Model.Compatibilidad</p>
+
+                <p>
+                    <strong>Precio de venta:</strong>
+                    $ @Model.PrecioVenta.ToString("N2")
+                </p>
+
+            </div>
+
+            <div class="col-md-6">
+
+                <p>
+                    <strong>Stock actual:</strong>
+
+                    <span class="badge @(Model.StockActual <= Model.StockMinimo ? "bg-danger" : "bg-success")">
+                        @Model.StockActual
+                    </span>
+
+                </p>
+
+                <p>
+                    <strong>Stock mínimo:</strong>
+                    @Model.StockMinimo
+                </p>
+
+                <p>
+                    <strong>Fecha de alta:</strong>
+                    @Model.FechaCreacion.ToLocalTime().ToString("dd/MM/yyyy")
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Proveedores
+    </div>
+
+    <div class="card-body">
+
+        @if (Model.Proveedores.Any())
+        {
+            <table class="table table-bordered">
+
+                <thead>
+
+                    <tr>
+
+                        <th>Proveedor</th>
+
+                        <th>Precio Compra</th>
+
+                        <th>Código</th>
+
+                        <th>Principal</th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @foreach (var proveedor in Model.Proveedores)
+                    {
+                        <tr>
+
+                            <td>@proveedor.Proveedor.Nombre</td>
+
+                            <td>$ @proveedor.PrecioCompraActual.ToString("N2")</td>
+
+                            <td>@proveedor.CodigoProveedor</td>
+
+                            <td>
+                                @(proveedor.Principal ? "Sí" : "")
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-warning mb-0">
+                Este repuesto aún no tiene proveedores asociados.
+            </div>
+        }
+
+    </div>
+
+</div>
+
+<div class="row">
+
+    <div class="col-md-4">
+
+        <div class="card">
+
+            <div class="card-header bg-success text-white">
+                Registrar ingreso
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="RegistrarIngreso">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="repuestoId"
+                           value="@Model.Id" />
+
+                    <div class="mb-3">
+
+                        <label>Proveedor</label>
+
+                        <select name="proveedorRepuestoId"
+                                class="form-select">
+
+                            @foreach (var proveedor in Model.Proveedores)
+                            {
+                                <option value="@proveedor.Id">
+                                    @proveedor.Proveedor.Nombre -
+                                    $ @proveedor.PrecioCompraActual.ToString("N2")
+                                    @(proveedor.Principal ? "(Principal)" : "")
+                                </option>
+                            }
+
+                        </select>
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Cantidad</label>
+
+                        <input type="number"
+                               name="cantidad"
+                               min="1"
+                               class="form-control" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Observaciones</label>
+
+                        <textarea name="observaciones"
+                                  class="form-control"></textarea>
+
+                    </div>
+
+                    <button class="btn btn-success w-100">
+                        Registrar ingreso
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card">
+
+            <div class="card-header bg-warning">
+                Registrar salida
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="RegistrarSalida">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="repuestoId"
+                           value="@Model.Id" />
+
+                    <div class="mb-3">
+
+                        <label>Cantidad</label>
+
+                        <input type="number"
+                               name="cantidad"
+                               min="1"
+                               class="form-control" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Observaciones</label>
+
+                        <textarea name="observaciones"
+                                  class="form-control"></textarea>
+
+                    </div>
+
+                    <button class="btn btn-warning w-100">
+                        Registrar salida
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card">
+
+            <div class="card-header bg-primary text-white">
+                Ajuste manual
+            </div>
+
+            <div class="card-body">
+
+                <form asp-action="RegistrarAjuste">
+
+                    @Html.AntiForgeryToken()
+
+                    <input type="hidden"
+                           name="repuestoId"
+                           value="@Model.Id" />
+
+                    <div class="mb-3">
+
+                        <label>Diferencia (+/-)</label>
+
+                        <input type="number"
+                               name="diferencia"
+                               class="form-control" />
+
+                    </div>
+
+                    <div class="mb-3">
+
+                        <label>Motivo</label>
+
+                        <textarea name="observaciones"
+                                  class="form-control"></textarea>
+
+                    </div>
+
+                    <button class="btn btn-primary w-100">
+                        Registrar ajuste
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<hr />
+
+<h3>Últimos movimientos</h3>
+
+@if (Model.Movimientos.Any())
+{
+    <table class="table table-striped">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Fecha</th>
+
+                <th>Tipo</th>
+
+                <th>Cantidad</th>
+
+                <th>Observaciones</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var mov in Model.Movimientos
+                    .OrderByDescending(x => x.Fecha)
+                    .Take(10))
+            {
+                <tr>
+
+                    <td>@mov.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+
+                    <td>@mov.Tipo</td>
+
+                    <td>@mov.Cantidad</td>
+
+                    <td>@mov.Observaciones</td>
+
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+        Todavía no existen movimientos para este repuesto.
+    </div>
+}
+
+<div class="mt-4">
+
+    <a asp-action="Editar"
+       asp-route-id="@Model.Id"
+       class="btn btn-warning">
+        Editar
+    </a>
+
+    <a asp-action="AdministrarProveedores"
+       asp-route-id="@Model.Id"
+       class="btn btn-primary">
+
+        Administrar proveedores
+
+    </a>
+    <a asp-action="Index"
+       class="btn btn-secondary">
+        Volver
+    </a>
+
+</div>

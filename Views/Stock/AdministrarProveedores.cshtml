@@ -1,0 +1,319 @@
+﻿@model MecaniCar360.Models.ViewModels.AdministrarProveedoresViewModel
+
+@{
+    ViewData["Title"] = "Administrar proveedores";
+}
+
+<h2>Administrar proveedores</h2>
+
+<hr />
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Ok"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Repuesto
+    </div>
+
+    <div class="card-body">
+
+        <h4>@Model.Repuesto.Nombre</h4>
+
+        <p>
+            <strong>SKU:</strong>
+            @Model.Repuesto.SKU
+        </p>
+
+        <p>
+            <strong>Precio de venta:</strong>
+            $ @Model.Repuesto.PrecioVenta.ToString("N2")
+        </p>
+
+        <p>
+            <strong>Stock actual:</strong>
+            @Model.Repuesto.StockActual
+        </p>
+
+    </div>
+
+</div>
+
+<div class="card mb-4">
+
+    <div class="card-header">
+        Agregar proveedor
+    </div>
+
+    <div class="card-body">
+
+        @if (Model.ProveedoresDisponibles.Any())
+        {
+            <form asp-action="AgregarProveedor" method="post">
+
+                @Html.AntiForgeryToken()
+
+                <input asp-for="RepuestoId" type="hidden" />
+
+                <div class="mb-3">
+
+                    <label asp-for="ProveedorId" class="form-label">
+                        Proveedor
+                    </label>
+
+                    <select asp-for="ProveedorId"
+                            asp-items="Model.ProveedoresDisponibles"
+                            class="form-select">
+                    </select>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label asp-for="PrecioCompra" class="form-label"></label>
+
+                    <input asp-for="PrecioCompra"
+                           class="form-control" />
+
+                    <span asp-validation-for="PrecioCompra"
+                          class="text-danger"></span>
+
+                </div>
+
+                <div class="mb-3">
+
+                    <label asp-for="CodigoProveedor" class="form-label"></label>
+
+                    <input asp-for="CodigoProveedor"
+                           class="form-control" />
+
+                </div>
+
+                <div class="form-check mb-3">
+
+                    <input asp-for="Principal"
+                           class="form-check-input" />
+
+                    <label asp-for="Principal"
+                           class="form-check-label">
+                    </label>
+
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Agregar proveedor
+                </button>
+
+            </form>
+        }
+        else
+        {
+            <div class="alert alert-warning mb-0">
+                Todos los proveedores activos ya están asociados a este repuesto.
+            </div>
+        }
+
+    </div>
+
+</div>
+
+<div class="card">
+
+    <div class="card-header">
+        Proveedores asociados
+    </div>
+
+    <div class="card-body">
+
+        @if (Model.Proveedores.Any())
+        {
+            <table class="table table-striped align-middle">
+
+                <thead class="table-dark">
+
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>Precio compra</th>
+                        <th>Código</th>
+                        <th>Principal</th>
+                        <th>Acciones</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    @foreach (var item in Model.Proveedores)
+                    {
+                        <tr>
+
+                            <td>
+                                @item.Proveedor.Nombre @item.Proveedor.Apellido
+                            </td>
+
+                            <td>
+                                $ @item.PrecioCompraActual.ToString("N2")
+                            </td>
+
+                            <td>
+                                @item.CodigoProveedor
+                            </td>
+
+                            <td>
+
+                                @if (item.Principal)
+                                {
+                                    <span class="badge bg-success">
+                                        Principal
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        No
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                @if (!item.Principal)
+                                {
+                                    <form asp-action="CambiarProveedorPrincipal"
+                                          method="post"
+                                          class="d-inline">
+
+                                        @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="proveedorRepuestoId"
+                                               value="@item.Id" />
+
+                                        <button type="submit"
+                                                class="btn btn-warning btn-sm">
+                                            Principal
+                                        </button>
+
+                                    </form>
+                                }
+
+                                <button class="btn btn-info btn-sm"
+                                        type="button"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#editar-@item.Id">
+                                    Editar precio
+                                </button>
+
+                                <form asp-action="EliminarProveedor"
+                                      method="post"
+                                      class="d-inline">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="proveedorRepuestoId"
+                                           value="@item.Id" />
+
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm('¿Está seguro de quitar este proveedor del repuesto?');">
+                                        Eliminar
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+                        <tr class="collapse"
+                            id="editar-@item.Id">
+
+                            <td colspan="5">
+
+                                <form asp-action="ActualizarPrecio"
+                                      method="post">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="proveedorRepuestoId"
+                                           value="@item.Id" />
+
+                                    <div class="row align-items-end">
+
+                                        <div class="col-md-4">
+
+                                            <label class="form-label">
+                                                Nuevo precio de compra
+                                            </label>
+
+                                            <input name="precioCompra"
+                                                   class="form-control"
+                                                   type="number"
+                                                   step="0.01"
+                                                   min="0"
+                                                   value="@item.PrecioCompraActual" />
+
+                                        </div>
+
+                                        <div class="col-md-2">
+
+                                            <button type="submit"
+                                                    class="btn btn-primary">
+                                                Guardar
+                                            </button>
+
+                                        </div>
+
+                                    </div>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-info mb-0">
+                Este repuesto todavía no tiene proveedores asociados.
+            </div>
+        }
+
+    </div>
+
+</div>
+
+<div class="mt-3">
+
+    <a asp-action="Detalle"
+       asp-route-id="@Model.Repuesto.Id"
+       class="btn btn-secondary">
+        Volver
+    </a>
+
+</div>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

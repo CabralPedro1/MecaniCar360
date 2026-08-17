@@ -1,0 +1,178 @@
+﻿@model IEnumerable<MecaniCar360.Models.OrdenTrabajo>
+
+@{
+    ViewData["Title"] = "Órdenes de Trabajo";
+}
+
+<h2>Órdenes de Trabajo</h2>
+
+<hr />
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Ok"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (Model.Any())
+{
+    <table class="table table-hover table-striped align-middle">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>#</th>
+
+                <th>Cliente</th>
+
+                <th>Vehículo</th>
+
+                <th>Patente</th>
+
+                <th>Mecánico</th>
+
+                <th>Estado</th>
+
+                <th>Urgencia</th>
+
+                <th>Inicio</th>
+
+                <th></th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var item in Model)
+            {
+                <tr>
+
+                    <td>
+                        @item.Id
+                    </td>
+
+                    <td>
+                        @item.Turno.Cliente.Nombre
+                        @item.Turno.Cliente.Apellido
+                    </td>
+
+                    <td>
+                        @item.Turno.Vehiculo.Marca
+                        @item.Turno.Vehiculo.Modelo
+                    </td>
+
+                    <td>
+                        @item.Turno.Vehiculo.Patente
+                    </td>
+
+                    <td>
+
+                        @if (item.Mecanico != null)
+                        {
+                            @($"{item.Mecanico.Nombre} {item.Mecanico.Apellido}")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Sin asignar
+                            </span>
+                        }
+
+                    </td>
+
+                    <td>
+
+                        @switch (item.EstadoActual)
+                        {
+                            case MecaniCar360.Models.Enums.EstadoOrden.Pendiente:
+                                <span class="badge bg-secondary">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.Diagnostico:
+                                <span class="badge bg-info">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion:
+                                <span class="badge bg-warning text-dark">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.Aprobado:
+                                <span class="badge bg-primary">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.EnReparacion:
+                                <span class="badge bg-primary">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.Finalizado:
+                                <span class="badge bg-success">@item.EstadoActual</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.EstadoOrden.Entregado:
+                                <span class="badge bg-dark">@item.EstadoActual</span>
+                                break;
+                        }
+
+                    </td>
+
+                    <td>
+
+                        @switch (item.Urgencia)
+                        {
+                            case MecaniCar360.Models.Enums.NivelUrgencia.Baja:
+                                <span class="badge bg-success">Baja</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.NivelUrgencia.Media:
+                                <span class="badge bg-warning text-dark">Media</span>
+                                break;
+
+                            case MecaniCar360.Models.Enums.NivelUrgencia.Alta:
+                                <span class="badge bg-danger">Alta</span>
+                                break;
+                        }
+
+                    </td>
+
+                    <td>
+                        @item.FechaInicio.ToString("dd/MM/yyyy")
+                    </td>
+
+                    <td>
+
+                        <a asp-action="Detalle"
+                           asp-route-id="@item.Id"
+                           class="btn btn-primary btn-sm">
+
+                            Detalle
+
+                        </a>
+
+                    </td>
+
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+
+        No existen órdenes de trabajo.
+
+    </div>
+}

@@ -1,0 +1,64 @@
+﻿@model MecaniCar360.Models.Proveedor
+
+@{
+    ViewData["Title"] = "Editar proveedor";
+}
+
+<h2>Editar proveedor</h2>
+
+<hr />
+
+<form asp-action="Editar">
+
+    <input asp-for="Id" type="hidden" />
+
+    <div class="mb-3">
+
+        <label asp-for="Nombre"></label>
+
+        <input asp-for="Nombre"
+               class="form-control" />
+
+    </div>
+
+    <div class="mb-3">
+
+        <label asp-for="Apellido"></label>
+
+        <input asp-for="Apellido"
+               class="form-control" />
+
+    </div>
+
+    <div class="mb-3">
+
+        <label asp-for="Telefono"></label>
+
+        <input asp-for="Telefono"
+               class="form-control" />
+
+    </div>
+
+    <div class="mb-3">
+
+        <label asp-for="Email"></label>
+
+        <input asp-for="Email"
+               class="form-control" />
+
+    </div>
+
+    <button class="btn btn-success">
+        Guardar cambios
+    </button>
+
+    <a asp-action="Index"
+       class="btn btn-secondary">
+        Volver
+    </a>
+
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

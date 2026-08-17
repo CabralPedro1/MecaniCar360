@@ -1,0 +1,50 @@
+﻿@model MecaniCar360.Models.ViewModels.CompletarDatosViewModel
+
+<h2 class="text-center mb-4">Completar datos personales</h2>
+
+<form method="post" class="container" style="max-width:600px;">
+    @Html.AntiForgeryToken()
+
+    <div class="mb-3">
+        <label>Usuario</label>
+        <input class="form-control" value="@Model.Username" readonly />
+    </div>
+
+    <div class="mb-3">
+        <label>Email</label>
+        <input class="form-control" value="@Model.Email" readonly />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Nombre"></label>
+        <input asp-for="Nombre" class="form-control" />
+        <span asp-validation-for="Nombre" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Apellido"></label>
+        <input asp-for="Apellido" class="form-control" />
+        <span asp-validation-for="Apellido" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Dni"></label>
+        <input asp-for="Dni" class="form-control" />
+        <span asp-validation-for="Dni" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Telefono"></label>
+        <input asp-for="Telefono" class="form-control" />
+    </div>
+
+    <hr />
+
+    <div class="mb-3">
+        <label asp-for="Password"></label>
+        <input asp-for="Password" type="password" class="form-control" />
+        <span asp-validation-for="Password" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-primary w-100">Guardar</button>
+</form>
