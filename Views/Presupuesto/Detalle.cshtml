@@ -1,0 +1,356 @@
+﻿@model MecaniCar360.Models.Presupuesto
+
+@{
+    ViewData["Title"] = "Presupuesto";
+}
+
+<h2>Presupuesto #@Model.Id</h2>
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Ok"]
+    </div>
+}
+
+<hr />
+
+<div class="row">
+
+    <div class="col-md-6">
+
+        <h5>Cliente</h5>
+
+        <p>
+            @Model.OrdenTrabajo.Turno.Cliente.Nombre
+        </p>
+
+    </div>
+
+    <div class="col-md-6">
+
+        <h5>Vehículo</h5>
+
+        <p>
+            @Model.OrdenTrabajo.Turno.Vehiculo.Patente
+        </p>
+
+    </div>
+
+</div>
+
+<hr />
+
+<div class="row">
+
+    <div class="col-md-4">
+
+        <strong>Estado</strong>
+
+        <p>
+            @Model.Estado
+        </p>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <strong>Total</strong>
+
+        <h3>
+            $ @Model.Total.ToString("N2")
+        </h3>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <strong>Última modificación</strong>
+
+        <p>
+            @Model.FechaUltimaModificacion.ToString("dd/MM/yyyy HH:mm")
+        </p>
+
+    </div>
+
+</div>
+
+<hr />
+
+<h4>Agregar Item</h4>
+
+<form asp-action="AgregarItem" method="post">
+
+    @Html.AntiForgeryToken()
+
+    <input type="hidden"
+           name="presupuestoId"
+           value="@Model.Id" />
+
+    <div class="row">
+
+        <div class="col-md-5">
+
+            <label>Descripción</label>
+
+            <input name="descripcion"
+                   class="form-control"
+                   required />
+
+        </div>
+
+        <div class="col-md-2">
+
+            <label>Cantidad</label>
+
+            <input type="number"
+                   min="1"
+                   value="1"
+                   name="cantidad"
+                   class="form-control"
+                   required />
+
+        </div>
+
+        <div class="col-md-3">
+
+            <label>Precio Unitario</label>
+
+            <input type="number"
+                   min="0"
+                   step="0.01"
+                   value="0"
+                   name="precioUnitario"
+                   class="form-control"
+                   required />
+
+        </div>
+
+        <div class="col-md-2 d-flex align-items-end">
+
+            <button class="btn btn-success w-100">
+                Agregar
+            </button>
+
+        </div>
+
+    </div>
+
+</form>
+
+<hr />
+
+<h4>Items del presupuesto</h4>
+
+@if (Model.Items.Any())
+{
+    <table class="table table-striped">
+
+        <thead>
+
+            <tr>
+
+                <th>Descripción</th>
+
+                <th>Cantidad</th>
+
+                <th>Precio</th>
+
+                <th>Subtotal</th>
+
+                <th></th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+
+                    <td>@item.Descripcion</td>
+
+                    <td>@item.Cantidad</td>
+
+                    <td>$ @item.PrecioUnitario.ToString("N2")</td>
+
+                    <td>$ @item.Subtotal.ToString("N2")</td>
+
+                    <td>
+
+                        <form asp-action="EliminarItem"
+                              method="post">
+
+                            @Html.AntiForgeryToken()
+
+                            <input type="hidden"
+                                   name="itemId"
+                                   value="@item.Id" />
+
+                            <input type="hidden"
+                                   name="presupuestoId"
+                                   value="@Model.Id" />
+
+                            <button class="btn btn-danger btn-sm">
+                                Eliminar
+                            </button>
+
+                        </form>
+
+                    </td>
+
+                </tr>
+            }
+
+        </tbody>
+
+        <tfoot>
+
+            <tr>
+
+                <th colspan="3" class="text-end">
+
+                    TOTAL
+
+                </th>
+
+                <th>
+
+                    $ @Model.Total.ToString("N2")
+
+                </th>
+
+                <th></th>
+
+            </tr>
+
+        </tfoot>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+
+        Este presupuesto todavía no posee ítems.
+
+    </div>
+}
+
+<hr />
+
+<div class="d-flex gap-2">
+
+    @if (Model.Estado != MecaniCar360.Models.Enums.EstadoPresupuesto.Aprobado)
+    {
+        <form asp-action="Aprobar"
+              method="post">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden"
+                   name="presupuestoId"
+                   value="@Model.Id" />
+
+            <button class="btn btn-primary">
+                Aprobar Presupuesto
+            </button>
+
+        </form>
+
+        <form asp-action="Rechazar"
+              method="post">
+
+            @Html.AntiForgeryToken()
+
+            <input type="hidden"
+                   name="presupuestoId"
+                   value="@Model.Id" />
+
+            <input name="motivo"
+                   class="form-control mb-2"
+                   placeholder="Motivo del rechazo"
+                   required />
+
+            <button class="btn btn-warning">
+                Rechazar
+            </button>
+
+        </form>
+    }
+
+    <a asp-controller="OrdenTrabajo"
+       asp-action="Detalle"
+       asp-route-id="@Model.OrdenTrabajo.Id"
+       class="btn btn-secondary">
+
+        Volver a la Orden
+
+    </a>
+
+</div>
+
+<hr />
+
+<h4>Historial</h4>
+
+@if (Model.Historial.Any())
+{
+    <table class="table table-bordered">
+
+        <thead>
+
+            <tr>
+
+                <th>Fecha</th>
+
+                <th>Total anterior</th>
+
+                <th>Motivo</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var h in Model.Historial.OrderByDescending(x => x.Fecha))
+            {
+                <tr>
+
+                    <td>
+                        @h.Fecha.ToString("dd/MM/yyyy HH:mm")
+                    </td>
+
+                    <td>
+                        $ @h.TotalAnterior.ToString("N2")
+                    </td>
+
+                    <td>
+                        @h.Motivo
+                    </td>
+
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-secondary">
+
+        No hay historial de modificaciones.
+
+    </div>
+}

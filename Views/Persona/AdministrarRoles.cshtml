@@ -1,0 +1,237 @@
+﻿@model MecaniCar360.ViewModels.AdministrarRolesViewModel
+
+@{
+    ViewData["Title"] = "Administrar Roles";
+}
+
+<h2>Administrar Roles</h2>
+
+<hr />
+
+<div class="card mb-4">
+
+    <div class="card-header bg-primary text-white">
+
+        Persona
+
+    </div>
+
+    <div class="card-body">
+
+        <h5>
+
+            @Model.Persona.Apellido, @Model.Persona.Nombre
+
+        </h5>
+
+        <p class="mb-1">
+
+            <strong>DNI:</strong> @Model.Persona.Dni
+
+        </p>
+
+        <p class="mb-0">
+
+            <strong>Email:</strong> @Model.Persona.Email
+
+        </p>
+
+    </div>
+
+</div>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+
+        @TempData["Ok"]
+
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+
+        @TempData["Error"]
+
+    </div>
+}
+
+<div class="row">
+
+    <div class="col-md-6">
+
+        <div class="card">
+
+            <div class="card-header bg-success text-white">
+
+                Roles Actuales
+
+            </div>
+
+            <div class="card-body">
+
+                @if (Model.RolesActuales.Any())
+                {
+                    <table class="table table-sm">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Rol</th>
+
+                                <th></th>
+
+                            </tr>
+
+                        </thead>
+
+                        <tbody>
+
+                            @foreach (var rol in Model.RolesActuales)
+                            {
+
+                                <tr>
+
+                                    <td>
+
+                                        @rol.Nombre
+
+                                    </td>
+
+                                    <td class="text-end">
+
+                                        <form asp-action="QuitarRol"
+                                              method="post">
+
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                   name="personaId"
+                                                   value="@Model.Persona.Id" />
+
+                                            <input type="hidden"
+                                                   name="rolId"
+                                                   value="@rol.Id" />
+
+                                            <button class="btn btn-danger btn-sm"
+                                                    onclick="return confirm('¿Quitar este rol?')">
+
+                                                Quitar
+
+                                            </button>
+
+                                        </form>
+
+                                    </td>
+
+                                </tr>
+
+                            }
+
+                        </tbody>
+
+                    </table>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0">
+
+                        No posee roles.
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-6">
+
+        <div class="card">
+
+            <div class="card-header bg-info text-white">
+
+                Asignar Nuevo Rol
+
+            </div>
+
+            <div class="card-body">
+
+                @if (Model.RolesDisponibles.Any())
+                {
+
+                    <form asp-action="AsignarRol"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="personaId"
+                               value="@Model.Persona.Id" />
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+
+                                Rol
+
+                            </label>
+
+                            <select name="rolId"
+                                    class="form-select">
+
+                                @foreach (var rol in Model.RolesDisponibles)
+                                {
+                                    <option value="@rol.Id">
+
+                                        @rol.Nombre
+
+                                    </option>
+                                }
+
+                            </select>
+
+                        </div>
+
+                        <button class="btn btn-primary">
+
+                            Asignar Rol
+
+                        </button>
+
+                    </form>
+
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">
+
+                        Todos los roles disponibles ya fueron asignados.
+
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="mt-4">
+
+    <a asp-action="Detalle"
+       asp-route-id="@Model.Persona.Id"
+       class="btn btn-secondary">
+
+        Volver al detalle
+
+    </a>
+
+</div>

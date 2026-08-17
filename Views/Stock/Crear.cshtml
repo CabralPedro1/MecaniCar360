@@ -1,0 +1,64 @@
+﻿@model MecaniCar360.Models.Repuesto
+
+@{
+    ViewData["Title"] = "Nuevo Repuesto";
+}
+
+<h2>Nuevo Repuesto</h2>
+
+<hr />
+
+<form asp-action="Crear">
+
+    <div class="mb-3">
+        <label asp-for="SKU"></label>
+        <input asp-for="SKU" class="form-control" />
+        <span asp-validation-for="SKU" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Nombre"></label>
+        <input asp-for="Nombre" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Marca"></label>
+        <input asp-for="Marca" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Modelo"></label>
+        <input asp-for="Modelo" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Compatibilidad"></label>
+        <input asp-for="Compatibilidad" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="PrecioVenta"></label>
+        <input asp-for="PrecioVenta" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="StockActual"></label>
+        <input asp-for="StockActual" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="StockMinimo"></label>
+        <input asp-for="StockMinimo" class="form-control" />
+    </div>
+
+    <button class="btn btn-success">Guardar</button>
+
+    <a asp-action="Index" class="btn btn-secondary">
+        Volver
+    </a>
+
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

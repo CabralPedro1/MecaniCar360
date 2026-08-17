@@ -1,0 +1,135 @@
+﻿@model IEnumerable<MecaniCar360.Models.MovimientoStock>
+
+@{
+    ViewData["Title"] = "Movimientos de Stock";
+}
+
+<h2>Historial de Movimientos de Stock</h2>
+
+<div class="mb-3">
+
+    <a asp-action="Index"
+       class="btn btn-secondary">
+
+        Volver al Stock
+
+    </a>
+
+</div>
+
+<table class="table table-striped table-hover">
+
+    <thead class="table-dark">
+
+        <tr>
+
+            <th>Fecha</th>
+
+            <th>Repuesto</th>
+
+            <th>Proveedor</th>
+
+            <th>Tipo</th>
+
+            <th>Cantidad</th>
+
+            <th>Usuario</th>
+
+            <th>Orden</th>
+
+            <th>Observaciones</th>
+
+        </tr>
+
+    </thead>
+
+    <tbody>
+
+        @foreach (var movimiento in Model)
+        {
+            <tr>
+
+                <td>
+                    @movimiento.Fecha.ToLocalTime().ToString("dd/MM/yyyy HH:mm")
+                </td>
+
+                <td>
+                    @movimiento.Repuesto.Nombre
+                </td>
+
+                <td>
+
+                    @(movimiento.ProveedorRepuesto != null
+                                    ? movimiento.ProveedorRepuesto.Proveedor.Nombre
+                                    : "-")
+
+            </td>
+
+                <td>
+
+                @switch (movimiento.Tipo)
+                    {
+                        case MecaniCar360.Models.Enums.TipoMovimientoStock.IngresoCompra:
+                            <span class="badge bg-success">
+                                Ingreso
+                            </span>
+                            break;
+
+                        case MecaniCar360.Models.Enums.TipoMovimientoStock.EgresoOrdenTrabajo:
+                            <span class="badge bg-danger">
+                                Salida
+                            </span>
+                            break;
+
+                        case MecaniCar360.Models.Enums.TipoMovimientoStock.Ajuste:
+                            <span class="badge bg-primary">
+                                Ajuste
+                            </span>
+                            break;
+                    }
+
+                </td>
+
+                <td>
+
+                    @if (movimiento.Cantidad > 0)
+                    {
+                        <span class="text-success">
+                            +@movimiento.Cantidad
+                        </span>
+                    }
+                    else
+                    {
+                        <span class="text-danger">
+                            @movimiento.Cantidad
+                        </span>
+                    }
+
+            </td>
+
+            <td>
+
+                @(movimiento.RealizadoPorUsuario != null
+                                ? $"{movimiento.RealizadoPorUsuario.Persona.Nombre} {movimiento.RealizadoPorUsuario.Persona.Apellido}"
+                                : "-")
+
+            </td>
+
+                <td>
+
+                    @(movimiento.OrdenTrabajoId?.ToString() ?? "-")
+
+                </td>
+
+                <td>
+
+                    @movimiento.Observaciones
+
+                </td>
+
+            </tr>
+                }
+
+    </tbody>
+
+</table>

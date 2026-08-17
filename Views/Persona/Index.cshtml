@@ -1,0 +1,216 @@
+﻿@model IEnumerable<MecaniCar360.Models.Persona>
+
+@{
+    ViewData["Title"] = "Personas";
+}
+
+<h2>Personas</h2>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">
+        @TempData["Ok"]
+    </div>
+}
+
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">
+        @TempData["Error"]
+    </div>
+}
+
+<div class="mb-3">
+
+    <a asp-action="Crear" class="btn btn-primary">
+        Nueva Persona
+    </a>
+
+</div>
+
+@if (Model.Any())
+{
+    <table class="table table-striped table-hover align-middle">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>Apellido y Nombre</th>
+
+                <th>DNI</th>
+
+                <th>Teléfono</th>
+
+                <th>Email</th>
+
+                <th>Roles</th>
+
+                <th>Estado</th>
+
+                <th style="width:320px"></th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var persona in Model)
+            {
+
+                <tr>
+
+                    <td>
+
+                        <strong>
+
+                            @persona.Apellido, @persona.Nombre
+
+                        </strong>
+
+                    </td>
+
+                    <td>
+
+                        @persona.Dni
+
+                    </td>
+
+                    <td>
+
+                        @persona.Telefono
+
+                    </td>
+
+                    <td>
+
+                        @persona.Email
+
+                    </td>
+
+                    <td>
+
+                        @if (persona.Roles.Any(r => r.FechaBaja == null))
+                        {
+                            foreach (var rol in persona.Roles.Where(r => r.FechaBaja == null))
+                            {
+                                <span class="badge bg-primary me-1">
+
+                                    @rol.Rol.Nombre
+
+                                </span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+
+                                Sin roles
+
+                            </span>
+                        }
+
+                    </td>
+
+                    <td>
+
+                        @if (persona.Activo)
+                        {
+                            <span class="badge bg-success">
+
+                                Activo
+
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger">
+
+                                Inactivo
+
+                            </span>
+                        }
+
+                    </td>
+
+                    <td>
+
+                        <a asp-action="Detalle"
+                           asp-route-id="@persona.Id"
+                           class="btn btn-info btn-sm">
+
+                            Detalle
+
+                        </a>
+
+                        <a asp-action="Editar"
+                           asp-route-id="@persona.Id"
+                           class="btn btn-warning btn-sm">
+
+                            Editar
+
+                        </a>
+
+                        <a asp-action="AdministrarRoles"
+                           asp-route-id="@persona.Id"
+                           class="btn btn-secondary btn-sm">
+
+                            Roles
+
+                        </a>
+
+                        @if (persona.Activo)
+                        {
+                            <form asp-action="Desactivar"
+                                  asp-route-id="@persona.Id"
+                                  method="post"
+                                  class="d-inline">
+
+                                @Html.AntiForgeryToken()
+
+                                <button class="btn btn-danger btn-sm"
+                                        onclick="return confirm('¿Desea desactivar esta persona?')">
+
+                                    Desactivar
+
+                                </button>
+
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-action="Activar"
+                                  asp-route-id="@persona.Id"
+                                  method="post"
+                                  class="d-inline">
+
+                                @Html.AntiForgeryToken()
+
+                                <button class="btn btn-success btn-sm">
+
+                                    Activar
+
+                                </button>
+
+                            </form>
+                        }
+
+                    </td>
+
+                </tr>
+
+            }
+
+        </tbody>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+
+        No existen personas registradas.
+
+    </div>
+}

@@ -1,0 +1,125 @@
+﻿@model MecaniCar360.Models.Proveedor
+
+@{
+    ViewData["Title"] = "Detalle proveedor";
+}
+
+<h2>Proveedor</h2>
+
+<hr />
+
+<div class="card">
+
+    <div class="card-body">
+
+        <h4>
+            @Model.Nombre @Model.Apellido
+        </h4>
+
+        <p>
+            <strong>Teléfono:</strong>
+            @Model.Telefono
+        </p>
+
+        <p>
+            <strong>Email:</strong>
+            @Model.Email
+        </p>
+
+    </div>
+
+</div>
+
+<br />
+
+<h4>Repuestos asociados</h4>
+
+@if (Model.Repuestos.Any())
+{
+    <table class="table table-striped">
+
+        <thead class="table-dark">
+
+            <tr>
+
+                <th>SKU</th>
+
+                <th>Repuesto</th>
+
+                <th>Precio Compra</th>
+
+                <th>Precio Venta</th>
+
+                <th>Stock</th>
+
+                <th>Mínimo</th>
+
+                <th>Principal</th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            @foreach (var r in Model.Repuestos)
+            {
+                <tr>
+
+                    <td>
+                        @r.Repuesto.SKU
+                    </td>
+
+                    <td>
+                        @r.Repuesto.Nombre
+                    </td>
+
+                    <td>
+                        $ @r.PrecioCompraActual.ToString("N2")
+                    </td>
+
+                    <td>
+                        $ @r.Repuesto.PrecioVenta.ToString("N2")
+                    </td>
+
+                    <td>
+                        @r.Repuesto.StockActual
+                    </td>
+
+                    <td>
+                        @r.Repuesto.StockMinimo
+                    </td>
+
+                    <td>
+
+                        @if (r.Principal)
+                        {
+                            <span class="badge bg-success">
+                                Principal
+                            </span>
+                        }
+
+                    </td>
+
+                </tr>
+            }
+
+        </tbody>
+
+    </table>
+}
+else
+{
+    <div class="alert alert-info">
+
+        Este proveedor todavía no posee repuestos asociados.
+
+    </div>
+}
+
+<a asp-action="Index"
+   class="btn btn-secondary">
+
+    Volver
+
+</a>
