@@ -46,9 +46,10 @@ namespace MecaniCar360.Patterns.Facade
             // =====================================
 
             var ordenResultado =
-                await _ordenTrabajoService
-                    .ObtenerPorIdAsync(
-                        ordenTrabajoId);
+            await _ordenTrabajoService
+                .ObtenerPorIdAsync(
+                    ordenTrabajoId,
+                    mecanicoId);
 
             if (!ordenResultado.Exitoso)
             {
@@ -65,7 +66,8 @@ namespace MecaniCar360.Patterns.Facade
             var diagnosticoResultado =
                 await _diagnosticoService
                     .ObtenerAsync(
-                        ordenTrabajoId);
+                        ordenTrabajoId,
+                        mecanicoId);
 
             if (!diagnosticoResultado.Exitoso)
             {

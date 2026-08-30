@@ -19,6 +19,14 @@ namespace MecaniCar360.Data
         public DbSet<Rol> Roles { get; set; }
         public DbSet<PersonaRol> PersonaRoles { get; set; }
 
+        public DbSet<Familia> Familias { get; set; }
+
+        public DbSet<Patente> Patentes { get; set; }
+
+        public DbSet<FamiliaPatente> FamiliaPatentes { get; set; }
+
+        public DbSet<RolFamilia> RolFamilias { get; set; }
+
         // =============================
         // VEHÍCULOS
         // =============================
@@ -139,6 +147,66 @@ namespace MecaniCar360.Data
                 .HasForeignKey(pr => pr.RolId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
+            // =====================================
+            // FAMILIA
+            // =====================================
+
+            modelBuilder.Entity<Familia>()
+                .HasOne(f => f.FamiliaPadre)
+                .WithMany(f => f.FamiliasHijas)
+                .HasForeignKey(f => f.FamiliaPadreId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+
+            // =====================================
+            // FAMILIA - PATENTE
+            // =====================================
+
+            modelBuilder.Entity<FamiliaPatente>()
+                .HasKey(fp =>
+                    new
+                    {
+                        fp.FamiliaId,
+                        fp.PatenteId
+                    });
+
+            modelBuilder.Entity<FamiliaPatente>()
+                .HasOne(fp => fp.Familia)
+                .WithMany(f => f.Patentes)
+                .HasForeignKey(fp => fp.FamiliaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<FamiliaPatente>()
+                .HasOne(fp => fp.Patente)
+                .WithMany(p => p.Familias)
+                .HasForeignKey(fp => fp.PatenteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
+            // =====================================
+            // ROL - FAMILIA
+            // =====================================
+
+            modelBuilder.Entity<RolFamilia>()
+                .HasKey(rf =>
+                    new
+                    {
+                        rf.RolId,
+                        rf.FamiliaId
+                    });
+
+            modelBuilder.Entity<RolFamilia>()
+                .HasOne(rf => rf.Rol)
+                .WithMany(r => r.Familias)
+                .HasForeignKey(rf => rf.RolId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<RolFamilia>()
+                .HasOne(rf => rf.Familia)
+                .WithMany(f => f.Roles)
+                .HasForeignKey(rf => rf.FamiliaId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // =============================
             // USUARIO

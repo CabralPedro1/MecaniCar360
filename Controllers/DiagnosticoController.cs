@@ -1,7 +1,9 @@
-﻿using MecaniCar360.Models;
+﻿using MecaniCar360.Attributes;
+using MecaniCar360.Helpers;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MecaniCar360.Controllers
 {
@@ -20,15 +22,23 @@ namespace MecaniCar360.Controllers
 
         // =====================================
         // OBTENER DIAGNÓSTICO
+        //
+        // ADMIN / MECÁNICO ASIGNADO
         // =====================================
 
         [HttpGet]
+        [Permiso("DIAGNOSTICO_VER")]
         public async Task<JsonResult> Obtener(
             int id)
         {
+            var personaId =
+                ObtenerUsuarioPersonaId();
+
             var resultado =
                 await _diagnosticoService
-                    .ObtenerAsync(id);
+                    .ObtenerAsync(
+                        id,
+                        personaId);
 
             if (!resultado.Exitoso)
             {
@@ -45,10 +55,12 @@ namespace MecaniCar360.Controllers
 
                 diagnostico = new
                 {
-                    id = resultado.Data!.Id,
+                    id =
+                        resultado.Data!.Id,
 
                     descripcion =
-                        resultado.Data.DescripcionActual,
+                        resultado.Data
+                            .DescripcionActual,
 
                     fecha =
                         resultado.Data
@@ -57,7 +69,8 @@ namespace MecaniCar360.Controllers
 
                 historial =
                     resultado.Data.Historial
-                        .OrderByDescending(h => h.Fecha)
+                        .OrderByDescending(
+                            h => h.Fecha)
                         .Select(h => new
                         {
                             descripcion =
@@ -78,10 +91,13 @@ namespace MecaniCar360.Controllers
 
         // =====================================
         // INICIAR DIAGNÓSTICO
+        //
+        // MECÁNICO
         // =====================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("DIAGNOSTICO_CREAR")]
         public async Task<IActionResult> Iniciar(
             int id)
         {
@@ -112,10 +128,13 @@ namespace MecaniCar360.Controllers
 
         // =====================================
         // GUARDAR DIAGNÓSTICO
+        //
+        // MECÁNICO
         // =====================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("DIAGNOSTICO_MODIFICAR")]
         public async Task<IActionResult> Guardar(
             int id,
             string descripcion)
@@ -148,10 +167,13 @@ namespace MecaniCar360.Controllers
 
         // =====================================
         // FINALIZAR DIAGNÓSTICO
+        //
+        // MECÁNICO
         // =====================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("DIAGNOSTICO_FINALIZAR")]
         public async Task<IActionResult> Finalizar(
             int id)
         {
@@ -182,15 +204,23 @@ namespace MecaniCar360.Controllers
 
         // =====================================
         // HISTORIAL
+        //
+        // ADMIN / MECÁNICO ASIGNADO
         // =====================================
 
         [HttpGet]
+        [Permiso("DIAGNOSTICO_HISTORIAL")]
         public async Task<JsonResult> Historial(
             int id)
         {
+            var personaId =
+                ObtenerUsuarioPersonaId();
+
             var resultado =
                 await _diagnosticoService
-                    .ObtenerHistorialAsync(id);
+                    .ObtenerHistorialAsync(
+                        id,
+                        personaId);
 
             if (!resultado.Exitoso)
             {
@@ -232,7 +262,8 @@ namespace MecaniCar360.Controllers
         private int ObtenerUsuarioPersonaId()
         {
             var claim =
-                User.FindFirst("PersonaId");
+                User.FindFirst(
+                    "PersonaId");
 
             if (claim == null)
             {
@@ -240,8 +271,15 @@ namespace MecaniCar360.Controllers
                     "No se encontró el PersonaId en la sesión.");
             }
 
-            return int.Parse(
-                claim.Value);
+            if (!int.TryParse(
+                    claim.Value,
+                    out int personaId))
+            {
+                throw new InvalidOperationException(
+                    "El PersonaId de la sesión no es válido.");
+            }
+
+            return personaId;
         }
     }
 }

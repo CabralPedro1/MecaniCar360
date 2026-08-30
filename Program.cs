@@ -114,6 +114,9 @@ namespace MecaniCar360
                 AccountService>();
 
             builder.Services.AddScoped<
+                PermisoService>();
+
+            builder.Services.AddScoped<
                 EmailService>();
 
             builder.Services.AddScoped<
@@ -121,6 +124,9 @@ namespace MecaniCar360
 
             builder.Services.AddScoped<
                 DiagnosticoService>();
+
+            builder.Services.AddScoped<
+                GarantiaService>();
 
 
             // =====================================
