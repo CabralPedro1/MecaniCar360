@@ -1,8 +1,10 @@
-﻿using MecaniCar360.Models;
+﻿using MecaniCar360.Attributes;
+using MecaniCar360.Helpers;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MecaniCar360.Controllers
 {
@@ -14,45 +16,129 @@ namespace MecaniCar360.Controllers
         public OrdenTrabajoController(
             OrdenTrabajoService ordenTrabajoService)
         {
-            _ordenTrabajoService =
-                ordenTrabajoService;
+            _ordenTrabajoService = ordenTrabajoService;
         }
 
 
-        // =====================================
+        // =====================================================
         // INDEX
-        // =====================================
+        // =====================================================
 
+        [Permiso("ORDEN_VER")]
         public async Task<IActionResult> Index()
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
-                    .ObtenerTodasAsync();
+                    .ObtenerTodasAsync(
+                        personaId.Value);
 
             if (!resultado.Exitoso)
             {
                 TempData["Error"] =
                     resultado.Mensaje;
 
-                return View(
-                    new List<OrdenTrabajo>());
+                return RedirectToAction(
+                    "Index",
+                    "Dashboard");
             }
 
-            return View(
-                resultado.Data);
+            return View(resultado.Data);
         }
 
 
-        // =====================================
+        // =====================================================
         // DETALLE
-        // =====================================
+        // =====================================================
 
+        [Permiso("ORDEN_VER_DETALLE")]
         public async Task<IActionResult> Detalle(
             int id)
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
-                    .ObtenerPorIdAsync(id);
+                    .ObtenerPorIdAsync(
+                        id,
+                        personaId.Value);
+
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Index));
+            }
+
+            return View(resultado.Data);
+        }
+
+
+        // =====================================================
+        // ÓRDENES PENDIENTES
+        // =====================================================
+
+        [Permiso("ORDEN_VER")]
+        public async Task<IActionResult> Pendientes()
+        {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
+            var resultado =
+                await _ordenTrabajoService
+                    .ObtenerPendientesAsync(
+                        personaId.Value);
+
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Index));
+            }
+
+            return View(resultado.Data);
+        }
+
+
+        // =====================================================
+        // ÓRDENES DEL MECÁNICO
+        // =====================================================
+
+        [Permiso("ORDEN_VER")]
+        public async Task<IActionResult> DeMecanico(
+            int mecanicoId)
+        {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
+            var resultado =
+                await _ordenTrabajoService
+                    .ObtenerDeMecanicoAsync(
+                        mecanicoId,
+                        personaId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -64,350 +150,435 @@ namespace MecaniCar360.Controllers
             }
 
             return View(
+                "DeMecanico",
                 resultado.Data);
         }
 
 
-        // =====================================
-        // PENDIENTES
-        // =====================================
-
-        public async Task<IActionResult> Pendientes()
-        {
-            var resultado =
-                await _ordenTrabajoService
-                    .ObtenerPendientesAsync();
-
-            if (!resultado.Exitoso)
-            {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return View(
-                    new List<OrdenTrabajo>());
-            }
-
-            return View(
-                resultado.Data);
-        }
-
-
-        // =====================================
-        // ÓRDENES DE UN MECÁNICO
-        // =====================================
-
-        public async Task<IActionResult> DeMecanico(
-            int mecanicoId)
-        {
-            var resultado =
-                await _ordenTrabajoService
-                    .ObtenerDeMecanicoAsync(
-                        mecanicoId);
-
-            if (!resultado.Exitoso)
-            {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return View(
-                    new List<OrdenTrabajo>());
-            }
-
-            return View(
-                resultado.Data);
-        }
-
-
-        // =====================================
+        // =====================================================
         // MECÁNICOS DISPONIBLES
-        // =====================================
+        //
+        // SOLO ADMIN
+        // =====================================================
 
-        [HttpGet]
-        public async Task<JsonResult>
+        [Permiso("ORDEN_ASIGNAR_MECANICO")]
+        public async Task<IActionResult>
             MecanicosDisponibles()
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
-                    .ObtenerMecanicosDisponiblesAsync();
+                    .ObtenerMecanicosDisponiblesAsync(
+                        personaId.Value);
 
             if (!resultado.Exitoso)
             {
-                return Json(new
-                {
-                    exitoso = false,
+                TempData["Error"] =
+                    resultado.Mensaje;
 
-                    mensaje =
-                        resultado.Mensaje,
-
-                    mecanicos =
-                        new List<object>()
-                });
+                return RedirectToAction(
+                    nameof(Index));
             }
 
-            return Json(new
-            {
-                exitoso = true,
-
-                mecanicos =
-                    resultado.Data!
-                        .Select(m => new
-                        {
-                            id =
-                                m.Id,
-
-                            nombre =
-                                $"{m.Apellido}, {m.Nombre}"
-                        })
-                        .ToList()
-            });
+            return View(resultado.Data);
         }
 
 
-        // =====================================
+        // =====================================================
         // ASIGNAR MECÁNICO
-        // =====================================
+        //
+        // SOLO ADMIN
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_ASIGNAR_MECANICO")]
         public async Task<IActionResult>
             AsignarMecanico(
-                int id,
+                int ordenTrabajoId,
                 int mecanicoId)
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
                     .AsignarMecanicoAsync(
-                        id,
-                        mecanicoId);
+                        ordenTrabajoId,
+                        mecanicoId,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
+        // =====================================================
         // TOMAR ORDEN
-        // =====================================
+        //
+        // MECÁNICO
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Tomar(
-            int id)
+        [Permiso("ORDEN_VER")]
+        public async Task<IActionResult>
+            TomarOrden(
+                int ordenTrabajoId)
         {
-            var mecanicoId =
-                ObtenerUsuarioPersonaId();
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
 
             var resultado =
                 await _ordenTrabajoService
                     .TomarOrdenAsync(
-                        id,
-                        mecanicoId);
+                        ordenTrabajoId,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
+        // =====================================================
         // INICIAR REPARACIÓN
-        // =====================================
+        //
+        // MECÁNICO
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_CAMBIAR_ESTADO")]
         public async Task<IActionResult>
             IniciarReparacion(
-                int id)
+                int ordenTrabajoId)
         {
-            var mecanicoId =
-                ObtenerUsuarioPersonaId();
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
 
             var resultado =
                 await _ordenTrabajoService
                     .IniciarReparacionAsync(
-                        id,
-                        mecanicoId);
+                        ordenTrabajoId,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
-        // FINALIZAR REPARACIÓN
-        // =====================================
+        // =====================================================
+        // FINALIZAR
+        //
+        // MECÁNICO
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_FINALIZAR")]
         public async Task<IActionResult>
             Finalizar(
-                int id,
+                int ordenTrabajoId,
                 int? horasReales)
         {
-            var mecanicoId =
-                ObtenerUsuarioPersonaId();
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
 
             var resultado =
                 await _ordenTrabajoService
                     .FinalizarAsync(
-                        id,
-                        mecanicoId,
+                        ordenTrabajoId,
+                        personaId.Value,
                         horasReales);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
+        // =====================================================
         // ENTREGAR VEHÍCULO
-        // =====================================
+        //
+        // ADMIN / CAJA
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_ENTREGAR")]
         public async Task<IActionResult>
             Entregar(
-                int id)
+                int ordenTrabajoId)
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
-                    .EntregarAsync(id);
+                    .EntregarAsync(
+                        ordenTrabajoId,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
+        // =====================================================
         // CAMBIAR URGENCIA
-        // =====================================
+        //
+        // ADMIN / MECÁNICO ASIGNADO
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_MODIFICAR")]
         public async Task<IActionResult>
             CambiarUrgencia(
-                int id,
+                int ordenTrabajoId,
                 NivelUrgencia urgencia)
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
                     .CambiarUrgenciaAsync(
-                        id,
-                        urgencia);
+                        ordenTrabajoId,
+                        urgencia,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
+        // =====================================================
         // OBSERVACIONES
-        // =====================================
+        //
+        // ADMIN / MECÁNICO ASIGNADO
+        // =====================================================
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_MODIFICAR")]
         public async Task<IActionResult>
             ActualizarObservaciones(
-                int id,
+                int ordenTrabajoId,
                 string? observaciones)
         {
+            var personaId = ObtenerPersonaId();
+
+            if (personaId == null)
+                return RedirectToAction(
+                    "Login",
+                    "Account");
+
             var resultado =
                 await _ordenTrabajoService
                     .ActualizarObservacionesAsync(
-                        id,
-                        observaciones);
+                        ordenTrabajoId,
+                        observaciones,
+                        personaId.Value);
 
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] =
+                    resultado.Mensaje;
+
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = ordenTrabajoId
+                    });
+            }
+
+            TempData["Ok"] =
+                resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
                 new
                 {
-                    id
+                    id = ordenTrabajoId
                 });
         }
 
 
-        // =====================================
-        // MÉTODOS PRIVADOS
-        // =====================================
+        // =====================================================
+        // HELPER
+        // =====================================================
 
-        private int ObtenerUsuarioPersonaId()
+        private int? ObtenerPersonaId()
         {
             var claim =
-                User.FindFirst("PersonaId");
+                User.FindFirstValue(
+                    "PersonaId");
 
-            if (claim == null)
+            if (string.IsNullOrWhiteSpace(
+                    claim))
             {
-                throw new InvalidOperationException(
-                    "No se encontró el PersonaId en la sesión.");
+                return null;
             }
 
-            return int.Parse(
-                claim.Value);
+            if (int.TryParse(
+                    claim,
+                    out int personaId))
+            {
+                return personaId;
+            }
+
+            return null;
         }
     }
 }

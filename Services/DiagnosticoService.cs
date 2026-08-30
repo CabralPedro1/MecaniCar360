@@ -24,12 +24,19 @@ namespace MecaniCar360.Services
 
         // =====================================
         // INICIAR DIAGNÓSTICO
+        // MECÁNICO
         // =====================================
 
         public async Task<ServiceResult> IniciarAsync(
             int ordenTrabajoId,
             int mecanicoId)
         {
+            if (!await EsMecanicoActivoAsync(mecanicoId))
+            {
+                return ServiceResult.Error(
+                    "El mecánico no está activo.");
+            }
+
             var orden =
                 await _context.OrdenesTrabajo
                     .FirstOrDefaultAsync(o =>
@@ -91,15 +98,48 @@ namespace MecaniCar360.Services
 
         // =====================================
         // OBTENER DIAGNÓSTICO
+        //
+        // ADMIN:
+        // puede consultar cualquiera.
+        //
+        // MECÁNICO:
+        // solamente el de sus órdenes.
         // =====================================
 
-        public async Task<ServiceResult<Diagnostico>>
-            ObtenerAsync(int ordenTrabajoId)
+        public async Task<
+            ServiceResult<Diagnostico>>
+            ObtenerAsync(
+                int ordenTrabajoId,
+                int personaId)
         {
+            var orden =
+                await _context.OrdenesTrabajo
+                    .FirstOrDefaultAsync(o =>
+                        o.Id == ordenTrabajoId);
+
+            if (orden == null)
+            {
+                return ServiceResult<Diagnostico>.Error(
+                    "Orden de trabajo no encontrada.");
+            }
+
+            var acceso =
+                await ValidarAccesoAsync(
+                    orden,
+                    personaId);
+
+            if (!acceso.Exitoso)
+            {
+                return ServiceResult<Diagnostico>.Error(
+                    acceso.Mensaje);
+            }
+
             var diagnostico =
                 await _context.Diagnosticos
+
                     .Include(d => d.Historial)
                         .ThenInclude(h => h.Mecanico)
+
                     .FirstOrDefaultAsync(d =>
                         d.OrdenTrabajoId ==
                         ordenTrabajoId);
@@ -117,6 +157,8 @@ namespace MecaniCar360.Services
 
         // =====================================
         // GUARDAR / ACTUALIZAR DIAGNÓSTICO
+        //
+        // SOLO MECÁNICO ASIGNADO
         // =====================================
 
         public async Task<ServiceResult> GuardarAsync(
@@ -124,11 +166,27 @@ namespace MecaniCar360.Services
             int mecanicoId,
             string descripcion)
         {
-            if (string.IsNullOrWhiteSpace(descripcion))
+            if (!await EsMecanicoActivoAsync(
+                    mecanicoId))
+            {
+                return ServiceResult.Error(
+                    "El mecánico no está activo.");
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                    descripcion))
             {
                 return ServiceResult.Error(
                     "Debe ingresar una descripción del diagnóstico.");
             }
+
+            // Evitamos descripciones excesivamente grandes.
+            if (descripcion.Length > 5000)
+            {
+                return ServiceResult.Error(
+                    "La descripción del diagnóstico no puede superar los 5000 caracteres.");
+            }
+
 
             await using var transaction =
                 await _context.Database
@@ -153,7 +211,8 @@ namespace MecaniCar360.Services
                         "La orden ya fue finalizada.");
                 }
 
-                if (orden.MecanicoId != mecanicoId)
+                if (orden.MecanicoId !=
+                    mecanicoId)
                 {
                     return ServiceResult.Error(
                         "La orden no está asignada a este mecánico.");
@@ -185,17 +244,18 @@ namespace MecaniCar360.Services
 
                 if (diagnostico == null)
                 {
-                    diagnostico = new Diagnostico
-                    {
-                        OrdenTrabajoId =
-                            ordenTrabajoId,
+                    diagnostico =
+                        new Diagnostico
+                        {
+                            OrdenTrabajoId =
+                                ordenTrabajoId,
 
-                        DescripcionActual =
-                            texto,
+                            DescripcionActual =
+                                texto,
 
-                        FechaUltimaModificacion =
-                            ahora
-                    };
+                            FechaUltimaModificacion =
+                                ahora
+                        };
 
                     _context.Diagnosticos.Add(
                         diagnostico);
@@ -236,13 +296,15 @@ namespace MecaniCar360.Services
 
                     var originator =
                         new DiagnosticoOriginator(
-                            diagnostico.DescripcionActual);
+                            diagnostico
+                                .DescripcionActual);
 
                     var caretaker =
                         new DiagnosticoCaretaker();
 
                     var memento =
-                        originator.CrearMemento();
+                        originator
+                            .CrearMemento();
 
                     caretaker.Guardar(
                         memento);
@@ -253,25 +315,30 @@ namespace MecaniCar360.Services
                     // =================================
 
                     var estadoAnterior =
-                        caretaker.ObtenerAnterior();
+                        caretaker
+                            .ObtenerAnterior();
 
                     if (estadoAnterior != null)
                     {
-                        _context.DiagnosticoHistoriales.Add(
-                            new DiagnosticoHistorial
-                            {
-                                DiagnosticoId =
-                                    diagnostico.Id,
+                        _context
+                            .DiagnosticoHistoriales
+                            .Add(
+                                new DiagnosticoHistorial
+                                {
+                                    DiagnosticoId =
+                                        diagnostico.Id,
 
-                                Descripcion =
-                                    estadoAnterior.Descripcion,
+                                    Descripcion =
+                                        estadoAnterior
+                                            .Descripcion,
 
-                                Fecha =
-                                    estadoAnterior.Fecha,
+                                    Fecha =
+                                        estadoAnterior
+                                            .Fecha,
 
-                                MecanicoId =
-                                    mecanicoId
-                            });
+                                    MecanicoId =
+                                        mecanicoId
+                                });
                     }
 
 
@@ -287,10 +354,13 @@ namespace MecaniCar360.Services
                     // ACTUALIZAR ESTADO ACTUAL
                     // =================================
 
-                    diagnostico.DescripcionActual =
-                        originator.Descripcion;
+                    diagnostico
+                        .DescripcionActual =
+                        originator
+                            .Descripcion;
 
-                    diagnostico.FechaUltimaModificacion =
+                    diagnostico
+                        .FechaUltimaModificacion =
                         ahora;
                 }
 
@@ -312,12 +382,21 @@ namespace MecaniCar360.Services
 
         // =====================================
         // FINALIZAR DIAGNÓSTICO
+        //
+        // SOLO MECÁNICO ASIGNADO
         // =====================================
 
         public async Task<ServiceResult> FinalizarAsync(
             int ordenTrabajoId,
             int mecanicoId)
         {
+            if (!await EsMecanicoActivoAsync(
+                    mecanicoId))
+            {
+                return ServiceResult.Error(
+                    "El mecánico no está activo.");
+            }
+
             await using var transaction =
                 await _context.Database
                     .BeginTransactionAsync();
@@ -341,7 +420,8 @@ namespace MecaniCar360.Services
                         "La orden ya fue finalizada.");
                 }
 
-                if (orden.MecanicoId != mecanicoId)
+                if (orden.MecanicoId !=
+                    mecanicoId)
                 {
                     return ServiceResult.Error(
                         "La orden no está asignada a este mecánico.");
@@ -362,11 +442,13 @@ namespace MecaniCar360.Services
 
                 if (diagnostico == null ||
                     string.IsNullOrWhiteSpace(
-                        diagnostico.DescripcionActual))
+                        diagnostico
+                            .DescripcionActual))
                 {
                     return ServiceResult.Error(
                         "Debe registrar un diagnóstico antes de finalizarlo.");
                 }
+
 
                 /*
                  * El diagnóstico termina acá.
@@ -399,13 +481,44 @@ namespace MecaniCar360.Services
 
         // =====================================
         // HISTORIAL
+        //
+        // ADMIN:
+        // puede consultar cualquiera.
+        //
+        // MECÁNICO:
+        // solamente el de sus órdenes.
         // =====================================
 
         public async Task<
             ServiceResult<List<DiagnosticoHistorial>>>
             ObtenerHistorialAsync(
-                int ordenTrabajoId)
+                int ordenTrabajoId,
+                int personaId)
         {
+            var orden =
+                await _context.OrdenesTrabajo
+                    .FirstOrDefaultAsync(o =>
+                        o.Id == ordenTrabajoId);
+
+            if (orden == null)
+            {
+                return ServiceResult<
+                    List<DiagnosticoHistorial>>.Error(
+                    "Orden de trabajo no encontrada.");
+            }
+
+            var acceso =
+                await ValidarAccesoAsync(
+                    orden,
+                    personaId);
+
+            if (!acceso.Exitoso)
+            {
+                return ServiceResult<
+                    List<DiagnosticoHistorial>>.Error(
+                    acceso.Mensaje);
+            }
+
             var diagnostico =
                 await _context.Diagnosticos
                     .FirstOrDefaultAsync(d =>
@@ -420,18 +533,122 @@ namespace MecaniCar360.Services
             }
 
             var historial =
-                await _context.DiagnosticoHistoriales
-                    .Include(h => h.Mecanico)
+                await _context
+                    .DiagnosticoHistoriales
+
+                    .Include(h =>
+                        h.Mecanico)
+
                     .Where(h =>
                         h.DiagnosticoId ==
                         diagnostico.Id)
+
                     .OrderByDescending(h =>
                         h.Fecha)
+
                     .ToListAsync();
 
             return ServiceResult<
                 List<DiagnosticoHistorial>>.Ok(
                 historial);
+        }
+
+
+        // =====================================
+        // VALIDAR ACCESO
+        // =====================================
+
+        private async Task<ServiceResult>
+            ValidarAccesoAsync(
+                OrdenTrabajo orden,
+                int personaId)
+        {
+            // -------------------------------------
+            // ADMIN
+            // -------------------------------------
+
+            if (await EsAdministradorAsync(
+                    personaId))
+            {
+                return ServiceResult.Ok();
+            }
+
+
+            // -------------------------------------
+            // MECÁNICO
+            // -------------------------------------
+
+            if (await EsMecanicoActivoAsync(
+                    personaId))
+            {
+                if (orden.MecanicoId ==
+                    personaId)
+                {
+                    return ServiceResult.Ok();
+                }
+
+                return ServiceResult.Error(
+                    "No tiene acceso al diagnóstico de esta orden.");
+            }
+
+
+            // -------------------------------------
+            // OTROS ROLES
+            // -------------------------------------
+
+            return ServiceResult.Error(
+                "No tiene permisos para consultar este diagnóstico.");
+        }
+
+
+        // =====================================
+        // VERIFICAR ADMIN
+        // =====================================
+
+        private async Task<bool>
+            EsAdministradorAsync(
+                int personaId)
+        {
+            return await _context.PersonaRoles
+                .Include(pr => pr.Rol)
+                .AnyAsync(pr =>
+                    pr.PersonaId ==
+                        personaId &&
+
+                    pr.Rol.Nombre ==
+                        "ADMIN" &&
+
+                    pr.Rol.Activo &&
+
+                    pr.FechaBaja == null);
+        }
+
+
+        // =====================================
+        // VERIFICAR MECÁNICO
+        // =====================================
+
+        private async Task<bool>
+            EsMecanicoActivoAsync(
+                int personaId)
+        {
+            return await _context.PersonaRoles
+
+                .Include(pr => pr.Rol)
+                .Include(pr => pr.Persona)
+
+                .AnyAsync(pr =>
+                    pr.PersonaId ==
+                        personaId &&
+
+                    pr.Persona.Activo &&
+
+                    pr.Rol.Nombre ==
+                        "MECANICO" &&
+
+                    pr.Rol.Activo &&
+
+                    pr.FechaBaja == null);
         }
     }
 }

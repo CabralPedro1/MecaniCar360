@@ -19,6 +19,13 @@ namespace MecaniCar360.Models
 
         // Personas que poseen este rol.
         public List<PersonaRol> Personas { get; set; } = new();
+
+        // =====================================
+        // FAMILIAS DE PERMISOS
+        // =====================================
+
+        public List<RolFamilia> Familias { get; set; }
+            = new();
     }
 
 
