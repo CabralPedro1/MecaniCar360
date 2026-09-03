@@ -22,12 +22,16 @@ namespace MecaniCar360.Patterns.Observer
                 return;
             }
 
+            var titulo =
+                $"Orden de trabajo #{orden.Id}";
+
             var mensaje =
-                $"Orden de trabajo #{orden.Id}: {evento}";
+                evento;
 
             await _notificacionService
                 .NotificarAsync(
                     orden.Turno.ClienteId,
+                    titulo,
                     mensaje);
         }
     }

@@ -257,20 +257,12 @@ namespace MecaniCar360.Controllers
 
         [HttpGet]
         public async Task<JsonResult> HorariosDisponibles(
-            DateTime fecha,
-            TipoTurno tipo)
+     DateTime fecha)
         {
-            var duracion =
-                _turnoService.ObtenerDuracion(tipo);
-
             var resultado =
                 await _agendaService
                     .ObtenerHorariosDisponiblesAsync(
-                        fecha,
-                        duracion,
-                        TimeSpan.FromHours(8),
-                        TimeSpan.FromHours(18),
-                        TimeSpan.FromMinutes(30));
+                        fecha);
 
             if (!resultado.Exitoso)
             {

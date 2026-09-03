@@ -1,0 +1,312 @@
+﻿using MecaniCar360.Data;
+using MecaniCar360.Models;
+using MecaniCar360.Models.DTOs;
+using MecaniCar360.Models.Enums;
+using Microsoft.EntityFrameworkCore;
+
+namespace MecaniCar360.Services
+{
+    public class EvidenciaTrabajoService
+    {
+        private readonly MecaniCarContext _context;
+
+        public EvidenciaTrabajoService(
+            MecaniCarContext context)
+        {
+            _context = context;
+        }
+
+        // =====================================================
+        // CONSULTAS
+        // =====================================================
+
+        public async Task<ServiceResult<List<EvidenciaTrabajo>>>
+            ObtenerPorOrdenTrabajoAsync(
+                int ordenTrabajoId,
+                int personaSolicitanteId)
+        {
+            var orden =
+                await _context.OrdenesTrabajo
+                    .FirstOrDefaultAsync(o =>
+                        o.Id == ordenTrabajoId);
+
+            if (orden == null)
+            {
+                return ServiceResult<List<EvidenciaTrabajo>>
+                    .Error(
+                        "Orden de trabajo no encontrada.");
+            }
+
+            var puedeConsultar =
+                await PuedeAccederOrdenAsync(
+                    orden,
+                    personaSolicitanteId);
+
+            if (!puedeConsultar)
+            {
+                return ServiceResult<List<EvidenciaTrabajo>>
+                    .Error(
+                        "No tiene permisos para consultar las evidencias de esta orden.");
+            }
+
+            var evidencias =
+                await _context.Evidencias
+
+                    .Include(e => e.SubidaPorUsuario)
+                        .ThenInclude(u => u.Persona)
+
+                    .Where(e =>
+                        e.OrdenTrabajoId ==
+                        ordenTrabajoId)
+
+                    .OrderByDescending(e => e.Fecha)
+
+                    .ToListAsync();
+
+            return ServiceResult<List<EvidenciaTrabajo>>
+                .Ok(evidencias);
+        }
+
+
+        // =====================================================
+        // ABM
+        // =====================================================
+
+        public async Task<ServiceResult> CrearAsync(
+            int ordenTrabajoId,
+            int usuarioId,
+            string descripcion,
+            string rutaArchivo)
+        {
+            // =====================================
+            // VALIDACIONES BÁSICAS
+            // =====================================
+
+            if (string.IsNullOrWhiteSpace(
+                descripcion))
+            {
+                return ServiceResult.Error(
+                    "La descripción de la evidencia es obligatoria.");
+            }
+
+            if (descripcion.Trim().Length > 500)
+            {
+                return ServiceResult.Error(
+                    "La descripción no puede superar los 500 caracteres.");
+            }
+
+            if (string.IsNullOrWhiteSpace(
+                rutaArchivo))
+            {
+                return ServiceResult.Error(
+                    "Debe indicar el archivo de evidencia.");
+            }
+
+            if (rutaArchivo.Trim().Length > 500)
+            {
+                return ServiceResult.Error(
+                    "La ruta del archivo no puede superar los 500 caracteres.");
+            }
+
+            // =====================================
+            // USUARIO
+            // =====================================
+
+            var usuario =
+                await _context.Usuarios
+
+                    .Include(u => u.Persona)
+
+                    .FirstOrDefaultAsync(u =>
+                        u.Id == usuarioId &&
+                        u.Activo);
+
+            if (usuario == null)
+            {
+                return ServiceResult.Error(
+                    "Usuario no encontrado o inactivo.");
+            }
+
+            if (!usuario.Persona.Activo)
+            {
+                return ServiceResult.Error(
+                    "La persona asociada al usuario está inactiva.");
+            }
+
+            // =====================================
+            // ORDEN
+            // =====================================
+
+            var orden =
+                await _context.OrdenesTrabajo
+                    .FirstOrDefaultAsync(o =>
+                        o.Id == ordenTrabajoId);
+
+            if (orden == null)
+            {
+                return ServiceResult.Error(
+                    "Orden de trabajo no encontrada.");
+            }
+
+            // =====================================
+            // PERMISOS
+            // =====================================
+
+            var puedeModificar =
+                await PuedeAgregarEvidenciaAsync(
+                    orden,
+                    usuario.PersonaId);
+
+            if (!puedeModificar)
+            {
+                return ServiceResult.Error(
+                    "No tiene permisos para agregar evidencias a esta orden.");
+            }
+
+            // =====================================
+            // ESTADO
+            // =====================================
+
+            if (orden.EstadoActual ==
+                EstadoOrden.Entregado)
+            {
+                return ServiceResult.Error(
+                    "No se pueden agregar evidencias a una orden entregada.");
+            }
+
+            // =====================================
+            // CREAR EVIDENCIA
+            // =====================================
+
+            var evidencia =
+                new EvidenciaTrabajo
+                {
+                    OrdenTrabajoId =
+                        ordenTrabajoId,
+
+                    Descripcion =
+                        descripcion.Trim(),
+
+                    RutaArchivo =
+                        rutaArchivo.Trim(),
+
+                    Fecha =
+                        DateTime.Now,
+
+                    SubidaPorUsuarioId =
+                        usuarioId
+                };
+
+            _context.Evidencias.Add(
+                evidencia);
+
+            await _context.SaveChangesAsync();
+
+            return ServiceResult.Ok(
+                "Evidencia agregada correctamente.");
+        }
+
+
+        // =====================================================
+        // MÉTODOS PRIVADOS
+        // =====================================================
+
+        private async Task<bool>
+            PuedeAgregarEvidenciaAsync(
+                OrdenTrabajo orden,
+                int personaId)
+        {
+            if (await EsAdministradorAsync(
+                personaId))
+            {
+                return true;
+            }
+
+            var esMecanico =
+                await EsMecanicoActivoAsync(
+                    personaId);
+
+            if (!esMecanico)
+            {
+                return false;
+            }
+
+            return orden.MecanicoId ==
+                personaId;
+        }
+
+
+        private async Task<bool>
+            PuedeAccederOrdenAsync(
+                OrdenTrabajo orden,
+                int personaId)
+        {
+            if (await EsAdministradorAsync(
+                personaId))
+            {
+                return true;
+            }
+
+            if (await EsMecanicoActivoAsync(
+                personaId))
+            {
+                return orden.MecanicoId ==
+                    personaId;
+            }
+
+            // El cliente puede consultar evidencias
+            // de sus propias órdenes.
+            return await _context.Turnos
+                .AnyAsync(t =>
+                    t.Id == orden.TurnoId &&
+                    t.ClienteId == personaId);
+        }
+
+
+        private async Task<bool>
+            EsAdministradorAsync(
+                int personaId)
+        {
+            return await _context.PersonaRoles
+
+                .Include(pr => pr.Rol)
+
+                .AnyAsync(pr =>
+                    pr.PersonaId ==
+                        personaId &&
+
+                    pr.Rol.Nombre ==
+                        "ADMIN" &&
+
+                    pr.Rol.Activo &&
+
+                    pr.FechaBaja ==
+                        null);
+        }
+
+
+        private async Task<bool>
+            EsMecanicoActivoAsync(
+                int personaId)
+        {
+            return await _context.PersonaRoles
+
+                .Include(pr => pr.Rol)
+                .Include(pr => pr.Persona)
+
+                .AnyAsync(pr =>
+                    pr.PersonaId ==
+                        personaId &&
+
+                    pr.Persona.Activo &&
+
+                    pr.Rol.Nombre ==
+                        "MECANICO" &&
+
+                    pr.Rol.Activo &&
+
+                    pr.FechaBaja ==
+                        null);
+        }
+    }
+}
