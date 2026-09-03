@@ -19,6 +19,7 @@ namespace MecaniCar360.Services
             _agendaService = agendaService;
         }
 
+
         // =====================================
         // CONSULTAS
         // =====================================
@@ -51,8 +52,10 @@ namespace MecaniCar360.Services
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (turno == null)
+            {
                 return ServiceResult<Turno>.Error(
                     "Turno no encontrado.");
+            }
 
             return ServiceResult<Turno>.Ok(turno);
         }
@@ -94,26 +97,6 @@ namespace MecaniCar360.Services
 
 
         // =====================================
-        // DURACIÓN
-        // =====================================
-
-        public TimeSpan ObtenerDuracion(TipoTurno tipo)
-        {
-            return tipo switch
-            {
-                TipoTurno.Diagnostico =>
-                    TimeSpan.FromHours(2),
-
-                TipoTurno.Servicio =>
-                    TimeSpan.FromHours(2),
-
-                _ =>
-                    TimeSpan.FromHours(2)
-            };
-        }
-
-
-        // =====================================
         // CREAR TURNO
         // =====================================
 
@@ -131,8 +114,16 @@ namespace MecaniCar360.Services
             // ---------------------------------
 
             if (string.IsNullOrWhiteSpace(motivo))
+            {
                 return ServiceResult.Error(
                     "Debe indicar el motivo del turno.");
+            }
+
+            if (fechaInicio <= DateTime.Now)
+            {
+                return ServiceResult.Error(
+                    "La fecha del turno debe ser futura.");
+            }
 
             var cliente = await _context.Personas
                 .FirstOrDefaultAsync(p =>
@@ -140,8 +131,10 @@ namespace MecaniCar360.Services
                     p.Activo);
 
             if (cliente == null)
+            {
                 return ServiceResult.Error(
                     "El cliente no existe o está inactivo.");
+            }
 
             var vehiculo = await _context.Vehiculos
                 .FirstOrDefaultAsync(v =>
@@ -149,8 +142,11 @@ namespace MecaniCar360.Services
                     v.Activo);
 
             if (vehiculo == null)
+            {
                 return ServiceResult.Error(
                     "El vehículo no existe o está inactivo.");
+            }
+
 
             // ---------------------------------
             // VERIFICAR TITULARIDAD
@@ -163,14 +159,30 @@ namespace MecaniCar360.Services
                     d.FechaHasta == null);
 
             if (!esTitular)
+            {
                 return ServiceResult.Error(
                     "El cliente no es el titular actual del vehículo.");
+            }
+
 
             // ---------------------------------
-            // DURACIÓN
+            // EVITAR TURNO DUPLICADO
             // ---------------------------------
 
-            var duracion = ObtenerDuracion(tipo);
+            var tieneTurnoActivo = await _context.Turnos
+                .AnyAsync(t =>
+                    t.VehiculoId == vehiculoId &&
+                    t.Estado != EstadoTurno.Cancelado &&
+                    t.Estado != EstadoTurno.ClienteAusente &&
+                    t.Estado != EstadoTurno.Finalizado &&
+                    t.FechaInicio >= DateTime.Now);
+
+            if (tieneTurnoActivo)
+            {
+                return ServiceResult.Error(
+                    "El vehículo ya posee un turno activo.");
+            }
+
 
             // ---------------------------------
             // DISPONIBILIDAD
@@ -178,11 +190,13 @@ namespace MecaniCar360.Services
 
             var disponibilidad =
                 await _agendaService.ValidarDisponibilidadAsync(
-                    fechaInicio,
-                    duracion);
+                    fechaInicio);
 
             if (!disponibilidad.Exitoso)
+            {
                 return disponibilidad;
+            }
+
 
             // ---------------------------------
             // CREAR TURNO
@@ -195,29 +209,33 @@ namespace MecaniCar360.Services
                 Tipo = tipo,
                 Motivo = motivo.Trim(),
                 FechaInicio = fechaInicio,
-                DuracionEstimada = duracion,
                 Estado = EstadoTurno.Pendiente,
                 FechaCreacion = DateTime.Now,
                 CreadoPorUsuarioId = usuarioId,
-                Observaciones = observaciones
+                Observaciones =
+                    string.IsNullOrWhiteSpace(observaciones)
+                        ? null
+                        : observaciones.Trim()
             };
 
             _context.Turnos.Add(turno);
 
             await _context.SaveChangesAsync();
 
+
             // ---------------------------------
             // HISTORIAL
             // ---------------------------------
 
-            _context.TurnoEstados.Add(new TurnoEstadoHistorial
-            {
-                TurnoId = turno.Id,
-                Estado = EstadoTurno.Pendiente,
-                FechaCambio = DateTime.Now,
-                UsuarioId = usuarioId,
-                Observaciones = "Turno creado."
-            });
+            _context.TurnoEstados.Add(
+                new TurnoEstadoHistorial
+                {
+                    TurnoId = turno.Id,
+                    Estado = EstadoTurno.Pendiente,
+                    FechaCambio = DateTime.Now,
+                    UsuarioId = usuarioId,
+                    Observaciones = "Turno creado."
+                });
 
             await _context.SaveChangesAsync();
 
@@ -238,12 +256,16 @@ namespace MecaniCar360.Services
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
+            {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
+            }
 
             if (turno.Estado != EstadoTurno.Pendiente)
+            {
                 return ServiceResult.Error(
                     "Solo se pueden confirmar turnos pendientes.");
+            }
 
             turno.Estado = EstadoTurno.Confirmado;
 
@@ -277,16 +299,28 @@ namespace MecaniCar360.Services
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
+            {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
+            }
 
             if (turno.Estado == EstadoTurno.Cancelado)
+            {
                 return ServiceResult.Error(
                     "El turno ya está cancelado.");
+            }
 
             if (turno.Estado == EstadoTurno.Finalizado)
+            {
                 return ServiceResult.Error(
                     "No se puede cancelar un turno finalizado.");
+            }
+
+            if (turno.IngresoVehiculo != null)
+            {
+                return ServiceResult.Error(
+                    "No se puede cancelar un turno cuyo vehículo ya ingresó al taller.");
+            }
 
             turno.Estado = EstadoTurno.Cancelado;
 
@@ -297,7 +331,10 @@ namespace MecaniCar360.Services
                     Estado = EstadoTurno.Cancelado,
                     FechaCambio = DateTime.Now,
                     UsuarioId = usuarioId,
-                    Observaciones = motivo
+                    Observaciones =
+                        string.IsNullOrWhiteSpace(motivo)
+                            ? "Turno cancelado."
+                            : motivo.Trim()
                 });
 
             await _context.SaveChangesAsync();
@@ -319,12 +356,22 @@ namespace MecaniCar360.Services
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
+            {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
+            }
 
             if (turno.Estado != EstadoTurno.Confirmado)
+            {
                 return ServiceResult.Error(
                     "El turno debe estar confirmado.");
+            }
+
+            if (turno.FechaInicio > DateTime.Now)
+            {
+                return ServiceResult.Error(
+                    "No se puede marcar como ausente antes del horario del turno.");
+            }
 
             turno.Estado = EstadoTurno.ClienteAusente;
 
@@ -355,19 +402,45 @@ namespace MecaniCar360.Services
             int usuarioId)
         {
             var turno = await _context.Turnos
+                .Include(t => t.IngresoVehiculo)
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
+            {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
+            }
 
             if (turno.Estado == EstadoTurno.Cancelado)
+            {
                 return ServiceResult.Error(
                     "No se puede reprogramar un turno cancelado.");
+            }
 
             if (turno.Estado == EstadoTurno.Finalizado)
+            {
                 return ServiceResult.Error(
                     "No se puede reprogramar un turno finalizado.");
+            }
+
+            if (turno.Estado == EstadoTurno.ClienteAusente)
+            {
+                return ServiceResult.Error(
+                    "No se puede reprogramar un turno marcado como cliente ausente.");
+            }
+
+            if (turno.IngresoVehiculo != null)
+            {
+                return ServiceResult.Error(
+                    "No se puede reprogramar un turno cuyo vehículo ya ingresó al taller.");
+            }
+
+            if (nuevaFechaInicio <= DateTime.Now)
+            {
+                return ServiceResult.Error(
+                    "La nueva fecha del turno debe ser futura.");
+            }
+
 
             // ---------------------------------
             // VALIDAR NUEVO HORARIO
@@ -376,10 +449,13 @@ namespace MecaniCar360.Services
             var disponibilidad =
                 await _agendaService.ValidarDisponibilidadAsync(
                     nuevaFechaInicio,
-                    turno.DuracionEstimada);
+                    turno.Id);
 
             if (!disponibilidad.Exitoso)
+            {
                 return disponibilidad;
+            }
+
 
             // ---------------------------------
             // GUARDAR CAMBIO

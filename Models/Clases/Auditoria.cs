@@ -1,19 +1,27 @@
-﻿using MecaniCar360.Models;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class Auditoria
+namespace MecaniCar360.Models
 {
-    public int Id { get; set; }
+    public class Auditoria
+    {
+        public int Id { get; set; }
 
-    public int UsuarioId { get; set; }
-    public Usuario Usuario { get; set; }
+        public int UsuarioId { get; set; }
+        public Usuario Usuario { get; set; } = null!;
 
-    public string Accion { get; set; }   // Crear, Modificar, Eliminar
+        [Required]
+        [MaxLength(100)]
+        public string Accion { get; set; } = string.Empty;
 
-    public string Entidad { get; set; }  // Turno, Presupuesto, Pago
+        [Required]
+        [MaxLength(100)]
+        public string Entidad { get; set; } = string.Empty;
 
-    public int? EntidadId { get; set; }
+        public int? EntidadId { get; set; }
 
-    public string? Descripcion { get; set; }
+        [MaxLength(2000)]
+        public string? Descripcion { get; set; }
 
-    public DateTime Fecha { get; set; }
+        public DateTime Fecha { get; set; } = DateTime.Now;
+    }
 }

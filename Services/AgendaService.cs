@@ -9,20 +9,76 @@ namespace MecaniCar360.Services
     public class AgendaService
     {
         private readonly MecaniCarContext _context;
+        private readonly IConfiguration _configuration;
 
-        public AgendaService(MecaniCarContext context)
+        public AgendaService(
+            MecaniCarContext context,
+            IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
+
         // =====================================
-        // BOXES
+        // CONFIGURACIÓN
         // =====================================
 
-        private async Task<int> ObtenerCantidadBoxesActivosAsync()
+        private int ObtenerTurnosPorFranja()
         {
-            return await _context.BoxesTrabajo
-                .CountAsync(b => b.Activo);
+            return _configuration
+                .GetValue<int?>(
+                    "ConfiguracionTaller:TurnosPorFranja")
+                ?? 2;
+        }
+
+
+        private int ObtenerDuracionFranjaMinutos()
+        {
+            return _configuration
+                .GetValue<int?>(
+                    "ConfiguracionTaller:DuracionFranjaTurnoMinutos")
+                ?? 30;
+        }
+
+
+        private TimeSpan ObtenerHoraApertura()
+        {
+            var valor =
+                _configuration[
+                    "ConfiguracionTaller:HoraApertura"];
+
+            if (TimeSpan.TryParse(
+                    valor,
+                    out var hora))
+            {
+                return hora;
+            }
+
+            return new TimeSpan(
+                8,
+                0,
+                0);
+        }
+
+
+        private TimeSpan ObtenerHoraCierre()
+        {
+            var valor =
+                _configuration[
+                    "ConfiguracionTaller:HoraCierre"];
+
+            if (TimeSpan.TryParse(
+                    valor,
+                    out var hora))
+            {
+                return hora;
+            }
+
+            return new TimeSpan(
+                18,
+                0,
+                0);
         }
 
 
@@ -30,22 +86,30 @@ namespace MecaniCar360.Services
         // TURNOS DEL PERÍODO
         // =====================================
 
-        public async Task<ServiceResult<List<Turno>>> ObtenerTurnosDelPeriodoAsync(
-            DateTime desde,
-            DateTime hasta)
+        public async Task<ServiceResult<List<Turno>>>
+            ObtenerTurnosDelPeriodoAsync(
+                DateTime desde,
+                DateTime hasta)
         {
+            if (desde >= hasta)
+            {
+                return ServiceResult<List<Turno>>.Error(
+                    "La fecha de inicio debe ser anterior a la fecha de fin.");
+            }
+
             var turnos = await _context.Turnos
                 .Include(t => t.Vehiculo)
                 .Include(t => t.Cliente)
                 .Where(t =>
+                    t.FechaInicio >= desde &&
                     t.FechaInicio < hasta &&
-                    t.FechaInicio.Add(t.DuracionEstimada) > desde &&
                     t.Estado != EstadoTurno.Cancelado &&
                     t.Estado != EstadoTurno.ClienteAusente)
                 .OrderBy(t => t.FechaInicio)
                 .ToListAsync();
 
-            return ServiceResult<List<Turno>>.Ok(turnos);
+            return ServiceResult<List<Turno>>
+                .Ok(turnos);
         }
 
 
@@ -53,38 +117,150 @@ namespace MecaniCar360.Services
         // VALIDAR DISPONIBILIDAD
         // =====================================
 
-        public async Task<ServiceResult> ValidarDisponibilidadAsync(
-            DateTime fechaInicio,
-            TimeSpan duracion)
+        public async Task<ServiceResult>
+            ValidarDisponibilidadAsync(
+                DateTime fechaInicio)
         {
-            if (duracion <= TimeSpan.Zero)
-                return ServiceResult.Error(
-                    "La duración del turno debe ser mayor a cero.");
+            return await ValidarDisponibilidadAsync(
+                fechaInicio,
+                null);
+        }
 
-            var cantidadBoxes = await ObtenerCantidadBoxesActivosAsync();
 
-            if (cantidadBoxes <= 0)
-                return ServiceResult.Error(
-                    "No existen boxes de trabajo activos.");
+        public async Task<ServiceResult>
+            ValidarDisponibilidadAsync(
+                DateTime fechaInicio,
+                int turnoIdExcluir)
+        {
+            return await ValidarDisponibilidadAsync(
+                fechaInicio,
+                (int?)turnoIdExcluir);
+        }
 
-            var fechaFin = fechaInicio.Add(duracion);
 
-            var turnos = await _context.Turnos
-                .Where(t =>
-                    t.FechaInicio < fechaFin &&
-                    t.FechaInicio.Add(t.DuracionEstimada) > fechaInicio &&
-                    t.Estado != EstadoTurno.Cancelado &&
-                    t.Estado != EstadoTurno.ClienteAusente)
-                .ToListAsync();
+        private async Task<ServiceResult>
+            ValidarDisponibilidadAsync(
+                DateTime fechaInicio,
+                int? turnoIdExcluir)
+        {
+            // ---------------------------------
+            // FECHA FUTURA
+            // ---------------------------------
 
-            if (turnos.Count >= cantidadBoxes)
+            if (fechaInicio <= DateTime.Now)
             {
                 return ServiceResult.Error(
-                    "No hay capacidad disponible para ese horario.");
+                    "El turno debe corresponder a una fecha futura.");
+            }
+
+
+            // ---------------------------------
+            // CONFIGURACIÓN
+            // ---------------------------------
+
+            var turnosPorFranja =
+                ObtenerTurnosPorFranja();
+
+            var duracionFranja =
+                ObtenerDuracionFranjaMinutos();
+
+            var horaApertura =
+                ObtenerHoraApertura();
+
+            var horaCierre =
+                ObtenerHoraCierre();
+
+            if (turnosPorFranja <= 0)
+            {
+                return ServiceResult.Error(
+                    "La cantidad de turnos por franja no está configurada correctamente.");
+            }
+
+            if (duracionFranja <= 0)
+            {
+                return ServiceResult.Error(
+                    "La duración de la franja de turnos no está configurada correctamente.");
+            }
+
+            if (horaApertura >= horaCierre)
+            {
+                return ServiceResult.Error(
+                    "El horario del taller no está configurado correctamente.");
+            }
+
+
+            // ---------------------------------
+            // HORARIO DEL TALLER
+            // ---------------------------------
+
+            var apertura =
+                fechaInicio.Date.Add(
+                    horaApertura);
+
+            var cierre =
+                fechaInicio.Date.Add(
+                    horaCierre);
+
+            if (fechaInicio < apertura ||
+                fechaInicio >= cierre)
+            {
+                return ServiceResult.Error(
+                    $"El horario del taller es de " +
+                    $"{apertura:HH:mm} a " +
+                    $"{cierre:HH:mm}.");
+            }
+
+
+            // ---------------------------------
+            // VALIDAR QUE RESPETE LA FRANJA
+            // ---------------------------------
+
+            var minutosDesdeApertura =
+                (fechaInicio - apertura)
+                .TotalMinutes;
+
+            if (minutosDesdeApertura %
+                duracionFranja != 0)
+            {
+                return ServiceResult.Error(
+                    $"Los turnos deben asignarse cada " +
+                    $"{duracionFranja} minutos.");
+            }
+
+
+            // ---------------------------------
+            // CONTAR TURNOS DE ESA FRANJA
+            // ---------------------------------
+
+            var query =
+                _context.Turnos
+                    .Where(t =>
+                        t.FechaInicio ==
+                            fechaInicio &&
+                        t.Estado !=
+                            EstadoTurno.Cancelado &&
+                        t.Estado !=
+                            EstadoTurno.ClienteAusente);
+
+            if (turnoIdExcluir.HasValue)
+            {
+                query = query.Where(t =>
+                    t.Id !=
+                    turnoIdExcluir.Value);
+            }
+
+            var cantidadTurnos =
+                await query.CountAsync();
+
+            if (cantidadTurnos >=
+                turnosPorFranja)
+            {
+                return ServiceResult.Error(
+                    "No hay disponibilidad para ese horario.");
             }
 
             return ServiceResult.Ok(
-                "Hay capacidad disponible.");
+                "Hay disponibilidad para ese horario.");
         }
 
 
@@ -92,63 +268,106 @@ namespace MecaniCar360.Services
         // HORARIOS DISPONIBLES
         // =====================================
 
-        public async Task<ServiceResult<List<DateTime>>> ObtenerHorariosDisponiblesAsync(
-            DateTime fecha,
-            TimeSpan duracion,
-            TimeSpan apertura,
-            TimeSpan cierre,
-            TimeSpan intervalo)
+        public async Task<ServiceResult<List<DateTime>>>
+            ObtenerHorariosDisponiblesAsync(
+                DateTime fecha)
         {
-            if (duracion <= TimeSpan.Zero)
-                return ServiceResult<List<DateTime>>.Error(
-                    "La duración debe ser mayor a cero.");
+            var turnosPorFranja =
+                ObtenerTurnosPorFranja();
 
-            if (intervalo <= TimeSpan.Zero)
-                return ServiceResult<List<DateTime>>.Error(
-                    "El intervalo debe ser mayor a cero.");
+            var duracionFranja =
+                ObtenerDuracionFranjaMinutos();
 
-            if (apertura >= cierre)
-                return ServiceResult<List<DateTime>>.Error(
-                    "El horario de apertura debe ser anterior al cierre.");
+            var horaApertura =
+                ObtenerHoraApertura();
 
-            var cantidadBoxes = await ObtenerCantidadBoxesActivosAsync();
+            var horaCierre =
+                ObtenerHoraCierre();
 
-            if (cantidadBoxes <= 0)
-                return ServiceResult<List<DateTime>>.Error(
-                    "No existen boxes de trabajo activos.");
+            if (turnosPorFranja <= 0)
+            {
+                return ServiceResult<List<DateTime>>
+                    .Error(
+                        "La cantidad de turnos por franja no está configurada correctamente.");
+            }
 
-            var inicio = fecha.Date.Add(apertura);
-            var limite = fecha.Date.Add(cierre);
+            if (duracionFranja <= 0)
+            {
+                return ServiceResult<List<DateTime>>
+                    .Error(
+                        "La duración de la franja no está configurada correctamente.");
+            }
+
+            if (horaApertura >= horaCierre)
+            {
+                return ServiceResult<List<DateTime>>
+                    .Error(
+                        "El horario del taller no está configurado correctamente.");
+            }
+
+
+            var apertura =
+                fecha.Date.Add(
+                    horaApertura);
+
+            var cierre =
+                fecha.Date.Add(
+                    horaCierre);
+
+
+            // ---------------------------------
+            // TURNOS DEL DÍA
+            // ---------------------------------
 
             var turnos = await _context.Turnos
                 .Where(t =>
-                    t.FechaInicio < limite &&
-                    t.FechaInicio.Add(t.DuracionEstimada) > inicio &&
-                    t.Estado != EstadoTurno.Cancelado &&
-                    t.Estado != EstadoTurno.ClienteAusente)
+                    t.FechaInicio >= apertura &&
+                    t.FechaInicio < cierre &&
+                    t.Estado !=
+                        EstadoTurno.Cancelado &&
+                    t.Estado !=
+                        EstadoTurno.ClienteAusente)
                 .ToListAsync();
 
-            var horariosDisponibles = new List<DateTime>();
+
+            // ---------------------------------
+            // GENERAR FRANJAS
+            // ---------------------------------
+
+            var horarios =
+                new List<DateTime>();
 
             for (
-                var horario = inicio;
-                horario.Add(duracion) <= limite;
-                horario = horario.Add(intervalo))
+                var horario = apertura;
+                horario < cierre;
+                horario =
+                    horario.AddMinutes(
+                        duracionFranja))
             {
-                var fin = horario.Add(duracion);
+                // No ofrecer horarios
+                // que ya pasaron.
 
-                var cantidadSuperpuesta = turnos.Count(t =>
-                    t.FechaInicio < fin &&
-                    t.FechaInicio.Add(t.DuracionEstimada) > horario);
-
-                if (cantidadSuperpuesta < cantidadBoxes)
+                if (horario <= DateTime.Now)
                 {
-                    horariosDisponibles.Add(horario);
+                    continue;
+                }
+
+
+                var cantidad =
+                    turnos.Count(t =>
+                        t.FechaInicio ==
+                        horario);
+
+                if (cantidad <
+                    turnosPorFranja)
+                {
+                    horarios.Add(
+                        horario);
                 }
             }
 
-            return ServiceResult<List<DateTime>>.Ok(
-                horariosDisponibles);
+            return ServiceResult<List<DateTime>>
+                .Ok(horarios);
         }
 
 
@@ -156,15 +375,20 @@ namespace MecaniCar360.Services
         // AGENDA DEL DÍA
         // =====================================
 
-        public async Task<ServiceResult<List<Turno>>> ObtenerAgendaDelDiaAsync(
-            DateTime fecha)
+        public async Task<ServiceResult<List<Turno>>>
+            ObtenerAgendaDelDiaAsync(
+                DateTime fecha)
         {
-            var desde = fecha.Date;
-            var hasta = desde.AddDays(1);
+            var desde =
+                fecha.Date;
 
-            return await ObtenerTurnosDelPeriodoAsync(
-                desde,
-                hasta);
+            var hasta =
+                desde.AddDays(1);
+
+            return await
+                ObtenerTurnosDelPeriodoAsync(
+                    desde,
+                    hasta);
         }
     }
 }

@@ -83,23 +83,11 @@ namespace MecaniCar360.Models
 
         public Factura? Factura { get; set; }
 
-        public List<OrdenTrabajoEspecialidad> Especialidades { get; set; } = new();
+        public Garantia? Garantia { get; set; }
 
         public List<EvidenciaTrabajo> Evidencias { get; set; } = new();
     }
 
-
-    public class OrdenTrabajoEspecialidad
-    {
-        public int OrdenTrabajoId { get; set; }
-        public OrdenTrabajo OrdenTrabajo { get; set; } = null!;
-
-        public int EspecialidadId { get; set; }
-        public Especialidad Especialidad { get; set; } = null!;
-
-        public int? MecanicoResponsableId { get; set; }
-        public Persona? MecanicoResponsable { get; set; }
-    }
 
 
     public class OrdenTrabajoEstadoHistorial

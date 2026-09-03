@@ -895,9 +895,6 @@ namespace MecaniCar360.Services
                 .Include(o => o.HistorialEstados)
                     .ThenInclude(h => h.Mecanico)
 
-                .Include(o => o.Especialidades)
-                    .ThenInclude(e => e.Especialidad)
-
                 .Include(o => o.Evidencias)
 
                 .FirstOrDefaultAsync(o =>

@@ -1,15 +1,24 @@
-﻿using MecaniCar360.Models;
+﻿using System.ComponentModel.DataAnnotations;
 
-public class Notificacion
+namespace MecaniCar360.Models
 {
-    public int Id { get; set; }
+    public class Notificacion
+    {
+        public int Id { get; set; }
 
-    public int PersonaId { get; set; }
-    public Persona Persona { get; set; }
+        public int PersonaId { get; set; }
+        public Persona Persona { get; set; } = null!;
 
-    public string Mensaje { get; set; }
+        [Required]
+        [MaxLength(200)]
+        public string Titulo { get; set; } = string.Empty;
 
-    public bool Leida { get; set; }
+        [Required]
+        [MaxLength(1000)]
+        public string Mensaje { get; set; } = string.Empty;
 
-    public DateTime Fecha { get; set; }
+        public bool Leida { get; set; } = false;
+
+        public DateTime Fecha { get; set; } = DateTime.Now;
+    }
 }

@@ -48,7 +48,6 @@ namespace MecaniCar360.Data
         public DbSet<Turno> Turnos { get; set; }
         public DbSet<TurnoEstadoHistorial> TurnoEstados { get; set; }
 
-        public DbSet<BoxTrabajo> BoxesTrabajo { get; set; }
 
         public DbSet<IngresoVehiculo> IngresosVehiculo { get; set; }
 
@@ -91,12 +90,6 @@ namespace MecaniCar360.Data
         public DbSet<ProveedorRepuesto> ProveedorRepuestos { get; set; }
         public DbSet<MovimientoStock> MovimientosStock { get; set; }
 
-        // =============================
-        // TRABAJO Y ESPECIALIDADES
-        // =============================
-
-        public DbSet<Especialidad> Especialidades { get; set; }
-        public DbSet<MecanicoEspecialidad> MecanicoEspecialidades { get; set; }
 
         // =============================
         // CALIFICACIONES Y EVIDENCIAS
@@ -353,15 +346,6 @@ namespace MecaniCar360.Data
                 .WithOne(o => o.Turno)
                 .HasForeignKey<OrdenTrabajo>(o => o.TurnoId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-
-            // =============================
-            // BOX DE TRABAJO
-            // =============================
-
-            modelBuilder.Entity<BoxTrabajo>()
-                .HasIndex(b => b.Nombre)
-                .IsUnique();
 
 
             // =============================
@@ -624,9 +608,13 @@ namespace MecaniCar360.Data
 
             modelBuilder.Entity<Garantia>()
                 .HasOne(g => g.OrdenTrabajo)
-                .WithMany()
-                .HasForeignKey(g => g.OrdenTrabajoId)
+                .WithOne(o => o.Garantia)
+                .HasForeignKey<Garantia>(g => g.OrdenTrabajoId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Garantia>()
+                .HasIndex(g => g.OrdenTrabajoId)
+                .IsUnique();
 
             modelBuilder.Entity<GarantiaItem>()
                 .HasOne(gi => gi.Garantia)
