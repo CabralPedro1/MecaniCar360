@@ -8,18 +8,32 @@ namespace MecaniCar360.Services
     public class PersonaService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisoService;
 
-        public PersonaService(MecaniCarContext context)
+        public PersonaService(
+            MecaniCarContext context,
+            PermisoService permisoService)
         {
             _context = context;
+            _permisoService = permisoService;
         }
+
 
         // =============================
         // CONSULTAS
         // =============================
 
-        public async Task<ServiceResult<List<Persona>>> ObtenerTodasAsync()
+        public async Task<ServiceResult<List<Persona>>> ObtenerTodasAsync(
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_VER"))
+            {
+                return ServiceResult<List<Persona>>.Error(
+                    "No posee permisos para consultar personas.");
+            }
+
             var personas = await _context.Personas
                 .Include(p => p.Roles)
                     .ThenInclude(pr => pr.Rol)
@@ -29,6 +43,7 @@ namespace MecaniCar360.Services
 
             return ServiceResult<List<Persona>>.Ok(personas);
         }
+
 
         public async Task<ServiceResult<List<Persona>>> ObtenerActivasAsync()
         {
@@ -43,27 +58,44 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Persona>>.Ok(personas);
         }
 
-        public async Task<ServiceResult<Persona>> ObtenerPorIdAsync(int id)
+
+        public async Task<ServiceResult<Persona>> ObtenerPorIdAsync(
+            int id,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_VER"))
+            {
+                return ServiceResult<Persona>.Error(
+                    "No posee permisos para consultar personas.");
+            }
+
             var persona = await ObtenerPersonaCompletaAsync(id);
 
             if (persona == null)
-                return ServiceResult<Persona>.Error("Persona no encontrada.");
+                return ServiceResult<Persona>.Error(
+                    "Persona no encontrada.");
 
             return ServiceResult<Persona>.Ok(persona);
         }
 
-        public async Task<ServiceResult<Persona>> ObtenerPorDniAsync(string dni)
+
+        public async Task<ServiceResult<Persona>> ObtenerPorDniAsync(
+            string dni)
         {
             var persona = await ObtenerPersonaPorDniAsync(dni);
 
             if (persona == null)
-                return ServiceResult<Persona>.Error("Persona no encontrada.");
+                return ServiceResult<Persona>.Error(
+                    "Persona no encontrada.");
 
             return ServiceResult<Persona>.Ok(persona);
         }
 
-        public async Task<ServiceResult<List<Persona>>> ObtenerPorRolAsync(string nombreRol)
+
+        public async Task<ServiceResult<List<Persona>>> ObtenerPorRolAsync(
+            string nombreRol)
         {
             nombreRol = nombreRol.Trim().ToUpper();
 
@@ -83,25 +115,38 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Persona>>.Ok(personas);
         }
 
+
         public Task<ServiceResult<List<Persona>>> ObtenerMecanicosAsync()
-            => ObtenerPorRolAsync("MECANICO");
+            => ObtenerPorRolAsync(RolesSistema.MECANICO);
+
 
         public Task<ServiceResult<List<Persona>>> ObtenerClientesAsync()
-            => ObtenerPorRolAsync("CLIENTE");
+            => ObtenerPorRolAsync(RolesSistema.CLIENTE);
+
 
         public Task<ServiceResult<List<Persona>>> ObtenerAdministrativosAsync()
-            => ObtenerPorRolAsync("ADMIN");
+            => ObtenerPorRolAsync(RolesSistema.ADMIN);
 
 
         // =============================
         // ABM
         // =============================
 
-
-        public async Task<ServiceResult> CrearAsync(Persona persona)
+        public async Task<ServiceResult> CrearAsync(
+            Persona persona,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_CREAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para crear personas.");
+            }
+
             if (await ExisteDniAsync(persona.Dni))
-                return ServiceResult.Error("Ya existe una persona con ese DNI.");
+                return ServiceResult.Error(
+                    "Ya existe una persona con ese DNI.");
 
             persona.Dni = persona.Dni.Trim();
 
@@ -109,69 +154,123 @@ namespace MecaniCar360.Services
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Persona creada correctamente.");
+            return ServiceResult.Ok(
+                "Persona creada correctamente.");
         }
 
-        public async Task<ServiceResult> EditarAsync(Persona persona)
+
+        public async Task<ServiceResult> EditarAsync(
+            Persona persona,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar personas.");
+            }
+
             var existente = await ObtenerPersonaAsync(persona.Id);
 
             if (existente == null)
-                return ServiceResult.Error("Persona no encontrada.");
+                return ServiceResult.Error(
+                    "Persona no encontrada.");
 
-            if (await ExisteDniAsync(persona.Dni, persona.Id))
-                return ServiceResult.Error("Ya existe una persona con ese DNI.");
+            if (await ExisteDniAsync(
+                persona.Dni,
+                persona.Id))
+            {
+                return ServiceResult.Error(
+                    "Ya existe una persona con ese DNI.");
+            }
 
             existente.Nombre = persona.Nombre;
             existente.Apellido = persona.Apellido;
             existente.Dni = persona.Dni.Trim();
             existente.Telefono = persona.Telefono;
             existente.Email = persona.Email;
-            existente.Activo = persona.Activo;
+
+            // El estado se administra mediante
+            // ActivarAsync / DesactivarAsync.
+            // No lo modificamos desde la edición general.
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Persona actualizada correctamente.");
+            return ServiceResult.Ok(
+                "Persona actualizada correctamente.");
         }
 
-        public async Task<ServiceResult> ActivarAsync(int id)
+
+        public async Task<ServiceResult> ActivarAsync(
+            int id,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_DESACTIVAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar el estado de una persona.");
+            }
+
             var persona = await ObtenerPersonaAsync(id);
 
             if (persona == null)
-                return ServiceResult.Error("Persona no encontrada.");
+                return ServiceResult.Error(
+                    "Persona no encontrada.");
 
             if (persona.Activo)
-                return ServiceResult.Error("La persona ya se encuentra activa.");
+                return ServiceResult.Error(
+                    "La persona ya se encuentra activa.");
 
             persona.Activo = true;
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Persona activada correctamente.");
+            return ServiceResult.Ok(
+                "Persona activada correctamente.");
         }
 
-        public async Task<ServiceResult> DesactivarAsync(int id)
+
+        public async Task<ServiceResult> DesactivarAsync(
+            int id,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_DESACTIVAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar el estado de una persona.");
+            }
+
             var persona = await ObtenerPersonaAsync(id);
 
             if (persona == null)
-                return ServiceResult.Error("Persona no encontrada.");
+                return ServiceResult.Error(
+                    "Persona no encontrada.");
 
             if (!persona.Activo)
-                return ServiceResult.Error("La persona ya se encuentra desactivada.");
+                return ServiceResult.Error(
+                    "La persona ya se encuentra desactivada.");
 
             persona.Activo = false;
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Persona desactivada correctamente.");
+            return ServiceResult.Ok(
+                "Persona desactivada correctamente.");
         }
+
+
         // =============================
         // ROLES
         // =============================
 
-        public async Task<bool> TieneRolAsync(int personaId, string nombreRol)
+        public async Task<bool> TieneRolAsync(
+            int personaId,
+            string nombreRol)
         {
             nombreRol = nombreRol.Trim().ToUpper();
 
@@ -182,20 +281,36 @@ namespace MecaniCar360.Services
                 pr.Rol.Nombre == nombreRol);
         }
 
+
         public async Task<ServiceResult> AsignarRolAsync(
             int personaId,
             int rolId,
             int usuarioOtorgaId)
         {
-            var persona = await _context.Personas.FindAsync(personaId);
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioOtorgaId,
+                "ROL_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para asignar roles.");
+            }
+
+            var persona = await _context.Personas
+                .FirstOrDefaultAsync(p =>
+                    p.Id == personaId);
 
             if (persona == null)
-                return ServiceResult.Error("Persona no encontrada.");
+                return ServiceResult.Error(
+                    "Persona no encontrada.");
 
-            var rol = await _context.Roles.FindAsync(rolId);
+            var rol = await _context.Roles
+                .FirstOrDefaultAsync(r =>
+                    r.Id == rolId &&
+                    r.Activo);
 
             if (rol == null)
-                return ServiceResult.Error("Rol no encontrado.");
+                return ServiceResult.Error(
+                    "Rol no encontrado o inactivo.");
 
             bool yaExiste = await _context.PersonaRoles.AnyAsync(pr =>
                 pr.PersonaId == personaId &&
@@ -203,25 +318,38 @@ namespace MecaniCar360.Services
                 pr.FechaBaja == null);
 
             if (yaExiste)
-                return ServiceResult.Error("La persona ya posee ese rol.");
+                return ServiceResult.Error(
+                    "La persona ya posee ese rol.");
 
-            _context.PersonaRoles.Add(new PersonaRol
-            {
-                PersonaId = personaId,
-                RolId = rolId,
-                FechaAlta = DateTime.Now,
-                OtorgadoPorUsuarioId = usuarioOtorgaId
-            });
+            _context.PersonaRoles.Add(
+                new PersonaRol
+                {
+                    PersonaId = personaId,
+                    RolId = rolId,
+                    FechaAlta = DateTime.Now,
+                    OtorgadoPorUsuarioId = usuarioOtorgaId
+                });
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Rol asignado correctamente.");
+            return ServiceResult.Ok(
+                "Rol asignado correctamente.");
         }
+
 
         public async Task<ServiceResult> QuitarRolAsync(
             int personaId,
-            int rolId)
+            int rolId,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "ROL_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para quitar roles.");
+            }
+
             var relacion = await _context.PersonaRoles
                 .FirstOrDefaultAsync(pr =>
                     pr.PersonaId == personaId &&
@@ -229,17 +357,31 @@ namespace MecaniCar360.Services
                     pr.FechaBaja == null);
 
             if (relacion == null)
-                return ServiceResult.Error("La persona no posee ese rol.");
+                return ServiceResult.Error(
+                    "La persona no posee ese rol.");
 
             relacion.FechaBaja = DateTime.Now;
 
             await _context.SaveChangesAsync();
 
-            return ServiceResult.Ok("Rol removido correctamente.");
+            return ServiceResult.Ok(
+                "Rol removido correctamente.");
         }
 
-        public async Task<ServiceResult<List<Rol>>> ObtenerRolesDisponiblesAsync(int personaId)
+
+        public async Task<ServiceResult<List<Rol>>>
+            ObtenerRolesDisponiblesAsync(
+                int personaId,
+                int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "ROL_VER"))
+            {
+                return ServiceResult<List<Rol>>.Error(
+                    "No posee permisos para consultar roles.");
+            }
+
             var asignados = await _context.PersonaRoles
                 .Where(pr =>
                     pr.PersonaId == personaId &&
@@ -257,8 +399,20 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Rol>>.Ok(roles);
         }
 
-        public async Task<ServiceResult<List<Rol>>> ObtenerRolesPersonaAsync(int personaId)
+
+        public async Task<ServiceResult<List<Rol>>>
+            ObtenerRolesPersonaAsync(
+                int personaId,
+                int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "ROL_VER"))
+            {
+                return ServiceResult<List<Rol>>.Error(
+                    "No posee permisos para consultar roles.");
+            }
+
             var roles = await _context.PersonaRoles
                 .Where(pr =>
                     pr.PersonaId == personaId &&
@@ -270,26 +424,34 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Rol>>.Ok(roles);
         }
 
+
         // =============================
         // MÉTODOS PRIVADOS
         // =============================
 
-        private async Task<Persona?> ObtenerPersonaAsync(int id)
+        private async Task<Persona?> ObtenerPersonaAsync(
+            int id)
         {
             return await _context.Personas
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p =>
+                    p.Id == id);
         }
 
-        private async Task<Persona?> ObtenerPersonaCompletaAsync(int id)
+
+        private async Task<Persona?> ObtenerPersonaCompletaAsync(
+            int id)
         {
             return await _context.Personas
                 .Include(p => p.Usuario)
                 .Include(p => p.Roles)
                     .ThenInclude(pr => pr.Rol)
-                .FirstOrDefaultAsync(p => p.Id == id);
+                .FirstOrDefaultAsync(p =>
+                    p.Id == id);
         }
 
-        private async Task<Persona?> ObtenerPersonaPorDniAsync(string dni)
+
+        private async Task<Persona?> ObtenerPersonaPorDniAsync(
+            string dni)
         {
             dni = dni.Trim();
 
@@ -297,18 +459,21 @@ namespace MecaniCar360.Services
                 .Include(p => p.Usuario)
                 .Include(p => p.Roles)
                     .ThenInclude(pr => pr.Rol)
-                .FirstOrDefaultAsync(p => p.Dni == dni);
+                .FirstOrDefaultAsync(p =>
+                    p.Dni == dni);
         }
 
-        private async Task<bool> ExisteDniAsync(string dni, int? excluirId = null)
+
+        private async Task<bool> ExisteDniAsync(
+            string dni,
+            int? excluirId = null)
         {
             dni = dni.Trim();
 
             return await _context.Personas.AnyAsync(p =>
                 p.Dni == dni &&
-                (!excluirId.HasValue || p.Id != excluirId.Value));
+                (!excluirId.HasValue ||
+                 p.Id != excluirId.Value));
         }
-
-
     }
 }
