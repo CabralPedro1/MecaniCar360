@@ -1,10 +1,10 @@
 ﻿using System.Security.Claims;
+using MecaniCar360.Attributes;
 using MecaniCar360.Models;
 using MecaniCar360.Services;
 using MecaniCar360.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
 
 namespace MecaniCar360.Controllers
 {
@@ -13,29 +13,53 @@ namespace MecaniCar360.Controllers
     {
         private readonly PersonaService _personaService;
 
-        public PersonaController(PersonaService personaService)
+        public PersonaController(
+            PersonaService personaService)
         {
             _personaService = personaService;
         }
 
-        //=====================================
-        // INDEX
-        //=====================================
 
+        // =====================================
+        // INDEX
+        // =====================================
+
+        [Permiso("PERSONA_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _personaService.ObtenerTodasAsync();
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado =
+                await _personaService.ObtenerTodasAsync(
+                    usuarioId.Value);
+
+            if (!resultado.Exitoso)
+                return Forbid();
 
             return View(resultado.Data);
         }
 
-        //=====================================
-        // DETALLE
-        //=====================================
 
-        public async Task<IActionResult> Detalle(int id)
+        // =====================================
+        // DETALLE
+        // =====================================
+
+        [Permiso("PERSONA_VER")]
+        public async Task<IActionResult> Detalle(
+            int id)
         {
-            var resultado = await _personaService.ObtenerPorIdAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado =
+                await _personaService.ObtenerPorIdAsync(
+                    id,
+                    usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -43,23 +67,33 @@ namespace MecaniCar360.Controllers
             return View(resultado.Data);
         }
 
-        //=====================================
-        // CREAR
-        //=====================================
 
-        [Authorize(Roles = "ADMIN")]
+        // =====================================
+        // CREAR
+        // =====================================
+
+        [Permiso("PERSONA_CREAR")]
         public IActionResult Crear()
         {
-            return View(new PersonaFormViewModel());
+            return View(
+                new PersonaFormViewModel());
         }
 
-        [Authorize(Roles = "ADMIN")]
+
+        [Permiso("PERSONA_CREAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Crear(PersonaFormViewModel vm)
+        public async Task<IActionResult> Crear(
+            PersonaFormViewModel vm)
         {
             if (!ModelState.IsValid)
                 return View(vm);
+
+            var usuarioId =
+                ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
 
             var persona = new Persona
             {
@@ -68,57 +102,86 @@ namespace MecaniCar360.Controllers
                 Dni = vm.Dni,
                 Telefono = vm.Telefono,
                 Email = vm.Email,
-                Activo = vm.Activo
+                Activo = true
             };
 
-            var resultado = await _personaService.CrearAsync(persona);
+            var resultado =
+                await _personaService.CrearAsync(
+                    persona,
+                    usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
-                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                ModelState.AddModelError(
+                    string.Empty,
+                    resultado.Mensaje);
+
                 return View(vm);
             }
 
-            TempData["Ok"] = resultado.Mensaje;
+            TempData["Ok"] =
+                resultado.Mensaje;
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(
+                nameof(Index));
         }
 
-        //=====================================
-        // EDITAR
-        //=====================================
 
-        [Authorize(Roles = "ADMIN")]
-        public async Task<IActionResult> Editar(int id)
+        // =====================================
+        // EDITAR
+        // =====================================
+
+        [Permiso("PERSONA_MODIFICAR")]
+        public async Task<IActionResult> Editar(
+            int id)
         {
-            var resultado = await _personaService.ObtenerPorIdAsync(id);
+            var usuarioId =
+                ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado =
+                await _personaService.ObtenerPorIdAsync(
+                    id,
+                    usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
 
-            var persona = resultado.Data!;
+            var persona =
+                resultado.Data!;
 
-            var vm = new PersonaFormViewModel
-            {
-                Id = persona.Id,
-                Nombre = persona.Nombre,
-                Apellido = persona.Apellido,
-                Dni = persona.Dni,
-                Telefono = persona.Telefono,
-                Email = persona.Email,
-                Activo = persona.Activo
-            };
+            var vm =
+                new PersonaFormViewModel
+                {
+                    Id = persona.Id,
+                    Nombre = persona.Nombre,
+                    Apellido = persona.Apellido,
+                    Dni = persona.Dni,
+                    Telefono = persona.Telefono,
+                    Email = persona.Email,
+                    Activo = persona.Activo
+                };
 
             return View(vm);
         }
 
-        [Authorize(Roles = "ADMIN")]
+
+        [Permiso("PERSONA_MODIFICAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Editar(PersonaFormViewModel vm)
+        public async Task<IActionResult> Editar(
+            PersonaFormViewModel vm)
         {
             if (!ModelState.IsValid)
                 return View(vm);
+
+            var usuarioId =
+                ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
 
             var persona = new Persona
             {
@@ -127,121 +190,243 @@ namespace MecaniCar360.Controllers
                 Apellido = vm.Apellido,
                 Dni = vm.Dni,
                 Telefono = vm.Telefono,
-                Email = vm.Email,
-                Activo = vm.Activo
+                Email = vm.Email
             };
 
-            var resultado = await _personaService.EditarAsync(persona);
+            var resultado =
+                await _personaService.EditarAsync(
+                    persona,
+                    usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
-                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                ModelState.AddModelError(
+                    string.Empty,
+                    resultado.Mensaje);
+
                 return View(vm);
             }
 
-            TempData["Ok"] = resultado.Mensaje;
+            TempData["Ok"] =
+                resultado.Mensaje;
 
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(
+                nameof(Index));
         }
 
-        //=====================================
+
+        // =====================================
         // ACTIVAR
-        //=====================================
+        // =====================================
 
-        [Authorize(Roles = "ADMIN")]
+        [Permiso("PERSONA_DESACTIVAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Activar(int id)
+        public async Task<IActionResult> Activar(
+            int id)
         {
-            var resultado = await _personaService.ActivarAsync(id);
+            var usuarioId =
+                ObtenerUsuarioActualId();
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!usuarioId.HasValue)
+                return Unauthorized();
 
-            return RedirectToAction(nameof(Index));
+            var resultado =
+                await _personaService.ActivarAsync(
+                    id,
+                    usuarioId.Value);
+
+            TempData[
+                resultado.Exitoso
+                    ? "Ok"
+                    : "Error"
+            ] = resultado.Mensaje;
+
+            return RedirectToAction(
+                nameof(Index));
         }
 
-        //=====================================
+
+        // =====================================
         // DESACTIVAR
-        //=====================================
+        // =====================================
 
-        [Authorize(Roles = "ADMIN")]
+        [Permiso("PERSONA_DESACTIVAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Desactivar(int id)
+        public async Task<IActionResult> Desactivar(
+            int id)
         {
-            var resultado = await _personaService.DesactivarAsync(id);
+            var usuarioId =
+                ObtenerUsuarioActualId();
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!usuarioId.HasValue)
+                return Unauthorized();
 
-            return RedirectToAction(nameof(Index));
+            var resultado =
+                await _personaService.DesactivarAsync(
+                    id,
+                    usuarioId.Value);
+
+            TempData[
+                resultado.Exitoso
+                    ? "Ok"
+                    : "Error"
+            ] = resultado.Mensaje;
+
+            return RedirectToAction(
+                nameof(Index));
         }
 
-        //=====================================
-        // ADMINISTRAR ROLES
-        //=====================================
 
-        [Authorize(Roles = "ADMIN")]
-        public async Task<IActionResult> AdministrarRoles(int id)
+        // =====================================
+        // ADMINISTRAR ROLES
+        // =====================================
+
+        [Permiso("ROL_VER")]
+        public async Task<IActionResult> AdministrarRoles(
+            int id)
         {
-            var personaResult = await _personaService.ObtenerPorIdAsync(id);
+            var usuarioId =
+                ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var personaResult =
+                await _personaService.ObtenerPorIdAsync(
+                    id,
+                    usuarioId.Value);
 
             if (!personaResult.Exitoso)
                 return NotFound();
 
-            var rolesActuales = await _personaService.ObtenerRolesPersonaAsync(id);
-            var rolesDisponibles = await _personaService.ObtenerRolesDisponiblesAsync(id);
+            var rolesActuales =
+                await _personaService
+                    .ObtenerRolesPersonaAsync(
+                        id,
+                        usuarioId.Value);
 
-            var vm = new AdministrarRolesViewModel
+            var rolesDisponibles =
+                await _personaService
+                    .ObtenerRolesDisponiblesAsync(
+                        id,
+                        usuarioId.Value);
+
+            if (!rolesActuales.Exitoso ||
+                !rolesDisponibles.Exitoso)
             {
-                Persona = personaResult.Data!,
-                RolesActuales = rolesActuales.Data!,
-                RolesDisponibles = rolesDisponibles.Data!
-            };
+                return Forbid();
+            }
+
+            var vm =
+                new AdministrarRolesViewModel
+                {
+                    Persona =
+                        personaResult.Data!,
+
+                    RolesActuales =
+                        rolesActuales.Data!,
+
+                    RolesDisponibles =
+                        rolesDisponibles.Data!
+                };
 
             return View(vm);
         }
 
-        //=====================================
-        // ASIGNAR ROL
-        //=====================================
 
-        [Authorize(Roles = "ADMIN")]
+        // =====================================
+        // ASIGNAR ROL
+        // =====================================
+
+        [Permiso("ROL_MODIFICAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AsignarRol(int personaId, int rolId)
+        public async Task<IActionResult> AsignarRol(
+            int personaId,
+            int rolId)
         {
-            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+            var usuarioId =
+                ObtenerUsuarioActualId();
 
-            if (claim == null)
+            if (!usuarioId.HasValue)
                 return Unauthorized();
 
-            if (!int.TryParse(claim.Value, out int usuarioActual))
-                return Unauthorized();
+            var resultado =
+                await _personaService.AsignarRolAsync(
+                    personaId,
+                    rolId,
+                    usuarioId.Value);
 
-            var resultado = await _personaService.AsignarRolAsync(
-                personaId,
-                rolId,
-                usuarioActual);
+            TempData[
+                resultado.Exitoso
+                    ? "Ok"
+                    : "Error"
+            ] = resultado.Mensaje;
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
-
-            return RedirectToAction(nameof(AdministrarRoles), new { id = personaId });
+            return RedirectToAction(
+                nameof(AdministrarRoles),
+                new { id = personaId });
         }
 
-        //=====================================
-        // QUITAR ROL
-        //=====================================
 
-        [Authorize(Roles = "ADMIN")]
+        // =====================================
+        // QUITAR ROL
+        // =====================================
+
+        [Permiso("ROL_MODIFICAR")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> QuitarRol(int personaId, int rolId)
+        public async Task<IActionResult> QuitarRol(
+            int personaId,
+            int rolId)
         {
-            var resultado = await _personaService.QuitarRolAsync(personaId, rolId);
+            var usuarioId =
+                ObtenerUsuarioActualId();
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!usuarioId.HasValue)
+                return Unauthorized();
 
-            return RedirectToAction(nameof(AdministrarRoles), new { id = personaId });
+            var resultado =
+                await _personaService.QuitarRolAsync(
+                    personaId,
+                    rolId,
+                    usuarioId.Value);
+
+            TempData[
+                resultado.Exitoso
+                    ? "Ok"
+                    : "Error"
+            ] = resultado.Mensaje;
+
+            return RedirectToAction(
+                nameof(AdministrarRoles),
+                new { id = personaId });
+        }
+
+
+        // =====================================
+        // USUARIO ACTUAL
+        // =====================================
+
+        private int? ObtenerUsuarioActualId()
+        {
+            var claim =
+                User.FindFirst(
+                    ClaimTypes.NameIdentifier);
+
+            if (claim == null)
+                return null;
+
+            if (!int.TryParse(
+                claim.Value,
+                out int usuarioId))
+            {
+                return null;
+            }
+
+            return usuarioId;
         }
     }
 }
