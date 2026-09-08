@@ -10,13 +10,19 @@ namespace MecaniCar360.Services
     {
         private readonly MecaniCarContext _context;
         private readonly AgendaService _agendaService;
+        private readonly PermisoService _permisoService;
+        private readonly DominioVehicularService _dominioVehicularService;
 
         public TurnoService(
             MecaniCarContext context,
-            AgendaService agendaService)
+            AgendaService agendaService,
+            PermisoService permisoService,
+            DominioVehicularService dominioVehicularService)
         {
             _context = context;
             _agendaService = agendaService;
+            _permisoService = permisoService;
+            _dominioVehicularService = dominioVehicularService;
         }
 
 
@@ -24,8 +30,17 @@ namespace MecaniCar360.Services
         // CONSULTAS
         // =====================================
 
-        public async Task<ServiceResult<List<Turno>>> ObtenerTodosAsync()
+        public async Task<ServiceResult<List<Turno>>> ObtenerTodosAsync(
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "TURNO_VER"))
+            {
+                return ServiceResult<List<Turno>>.Error(
+                    "No posee permisos para consultar turnos.");
+            }
+
             var turnos = await _context.Turnos
                 .Include(t => t.Vehiculo)
                     .ThenInclude(v => v.Marca)
@@ -39,7 +54,23 @@ namespace MecaniCar360.Services
         }
 
 
-        public async Task<ServiceResult<Turno>> ObtenerPorIdAsync(int id)
+        public async Task<ServiceResult<Turno>> ObtenerPorIdAsync(
+            int id,
+            int usuarioSolicitanteId)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "TURNO_VER"))
+            {
+                return ServiceResult<Turno>.Error(
+                    "No posee permisos para consultar turnos.");
+            }
+
+            return await ObtenerPorIdInternoAsync(id);
+        }
+
+        private async Task<ServiceResult<Turno>> ObtenerPorIdInternoAsync(
+            int id)
         {
             var turno = await _context.Turnos
                 .Include(t => t.Vehiculo)
@@ -61,10 +92,62 @@ namespace MecaniCar360.Services
         }
 
 
-        public async Task<ServiceResult<List<Turno>>> ObtenerTurnosDePersonaAsync(
+        public async Task<ServiceResult<List<Turno>>> ObtenerTurnosPropiosAsync(
+            int usuarioId)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "CLIENTE_TURNO_VER"))
+            {
+                return ServiceResult<List<Turno>>.Error(
+                    "No posee permisos para consultar sus turnos.");
+            }
+
+            var personaId = await ObtenerPersonaIdAsync(usuarioId);
+
+            if (!personaId.HasValue)
+            {
+                return ServiceResult<List<Turno>>.Error(
+                    "Usuario no encontrado o inactivo.");
+            }
+
+            return ServiceResult<List<Turno>>.Ok(
+                await ObtenerTurnosDePersonaInternoAsync(personaId.Value));
+        }
+
+        public async Task<ServiceResult<Turno>> ObtenerTurnoPropioAsync(
+            int usuarioId,
+            int turnoId)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "CLIENTE_TURNO_VER"))
+            {
+                return ServiceResult<Turno>.Error(
+                    "No posee permisos para consultar sus turnos.");
+            }
+
+            var personaId = await ObtenerPersonaIdAsync(usuarioId);
+
+            if (!personaId.HasValue)
+            {
+                return ServiceResult<Turno>.Error(
+                    "Usuario no encontrado o inactivo.");
+            }
+
+            var turno = await ObtenerTurnoPropioInternoAsync(
+                personaId.Value,
+                turnoId);
+
+            return turno == null
+                ? ServiceResult<Turno>.Error("Turno no encontrado.")
+                : ServiceResult<Turno>.Ok(turno);
+        }
+
+        private async Task<List<Turno>> ObtenerTurnosDePersonaInternoAsync(
             int personaId)
         {
-            var turnos = await _context.Turnos
+            return await _context.Turnos
                 .Include(t => t.Vehiculo)
                     .ThenInclude(v => v.Marca)
                 .Include(t => t.Vehiculo)
@@ -72,14 +155,38 @@ namespace MecaniCar360.Services
                 .Where(t => t.ClienteId == personaId)
                 .OrderByDescending(t => t.FechaInicio)
                 .ToListAsync();
+        }
 
-            return ServiceResult<List<Turno>>.Ok(turnos);
+        private async Task<Turno?> ObtenerTurnoPropioInternoAsync(
+            int personaId,
+            int turnoId)
+        {
+            return await _context.Turnos
+                .Include(t => t.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(t => t.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
+                .Include(t => t.Cliente)
+                .Include(t => t.IngresoVehiculo)
+                .Include(t => t.OrdenTrabajo)
+                .FirstOrDefaultAsync(t =>
+                    t.Id == turnoId &&
+                    t.ClienteId == personaId);
         }
 
 
         public async Task<ServiceResult<List<Turno>>> ObtenerTurnosDeFechaAsync(
-            DateTime fecha)
+            DateTime fecha,
+            int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "TURNO_VER"))
+            {
+                return ServiceResult<List<Turno>>.Error(
+                    "No posee permisos para consultar turnos.");
+            }
+
             var desde = fecha.Date;
             var hasta = desde.AddDays(1);
 
@@ -108,6 +215,75 @@ namespace MecaniCar360.Services
             string motivo,
             int usuarioId,
             string? observaciones = null)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "TURNO_CREAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para crear turnos.");
+            }
+
+            return await CrearInternoAsync(
+                clienteId,
+                vehiculoId,
+                tipo,
+                fechaInicio,
+                motivo,
+                usuarioId,
+                observaciones);
+        }
+
+        public async Task<ServiceResult> CrearPropioAsync(
+            int usuarioId,
+            int vehiculoId,
+            TipoTurno tipo,
+            DateTime fechaInicio,
+            string motivo,
+            string? observaciones = null)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "CLIENTE_TURNO_CREAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para crear sus turnos.");
+            }
+
+            var personaId = await ObtenerPersonaIdAsync(usuarioId);
+
+            if (!personaId.HasValue)
+            {
+                return ServiceResult.Error(
+                    "Usuario no encontrado o inactivo.");
+            }
+
+            if (!await _dominioVehicularService.EsTitularActualAsync(
+                personaId.Value,
+                vehiculoId))
+            {
+                return ServiceResult.Error(
+                    "El cliente no es el titular actual del vehículo.");
+            }
+
+            return await CrearInternoAsync(
+                personaId.Value,
+                vehiculoId,
+                tipo,
+                fechaInicio,
+                motivo,
+                usuarioId,
+                observaciones);
+        }
+
+        private async Task<ServiceResult> CrearInternoAsync(
+            int clienteId,
+            int vehiculoId,
+            TipoTurno tipo,
+            DateTime fechaInicio,
+            string motivo,
+            int usuarioId,
+            string? observaciones)
         {
             // ---------------------------------
             // VALIDACIONES BÁSICAS
@@ -152,11 +328,8 @@ namespace MecaniCar360.Services
             // VERIFICAR TITULARIDAD
             // ---------------------------------
 
-            var esTitular = await _context.DominiosVehiculares
-                .AnyAsync(d =>
-                    d.PersonaId == clienteId &&
-                    d.VehiculoId == vehiculoId &&
-                    d.FechaHasta == null);
+            var esTitular = await _dominioVehicularService
+                .EsTitularActualAsync(clienteId, vehiculoId);
 
             if (!esTitular)
             {
@@ -252,6 +425,14 @@ namespace MecaniCar360.Services
             int turnoId,
             int usuarioId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "TURNO_CONFIRMAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para confirmar turnos.");
+            }
+
             var turno = await _context.Turnos
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
@@ -295,7 +476,57 @@ namespace MecaniCar360.Services
             int usuarioId,
             string? motivo = null)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "TURNO_CANCELAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para cancelar turnos.");
+            }
+
+            return await CancelarInternoAsync(turnoId, usuarioId, motivo);
+        }
+
+        public async Task<ServiceResult> CancelarPropioAsync(
+            int turnoId,
+            int usuarioId,
+            string? motivo = null)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "CLIENTE_TURNO_CANCELAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para cancelar sus turnos.");
+            }
+
+            var personaId = await ObtenerPersonaIdAsync(usuarioId);
+
+            if (!personaId.HasValue)
+            {
+                return ServiceResult.Error(
+                    "Usuario no encontrado o inactivo.");
+            }
+
+            var turno = await ObtenerTurnoPropioInternoAsync(
+                personaId.Value,
+                turnoId);
+
+            if (turno == null)
+            {
+                return ServiceResult.Error("Turno no encontrado.");
+            }
+
+            return await CancelarInternoAsync(turnoId, usuarioId, motivo);
+        }
+
+        private async Task<ServiceResult> CancelarInternoAsync(
+            int turnoId,
+            int usuarioId,
+            string? motivo)
+        {
             var turno = await _context.Turnos
+                .Include(t => t.IngresoVehiculo)
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
@@ -314,6 +545,12 @@ namespace MecaniCar360.Services
             {
                 return ServiceResult.Error(
                     "No se puede cancelar un turno finalizado.");
+            }
+
+            if (turno.Estado == EstadoTurno.ClienteAusente)
+            {
+                return ServiceResult.Error(
+                    "No se puede cancelar un turno marcado como cliente ausente.");
             }
 
             if (turno.IngresoVehiculo != null)
@@ -352,6 +589,14 @@ namespace MecaniCar360.Services
             int turnoId,
             int usuarioId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "TURNO_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar turnos.");
+            }
+
             var turno = await _context.Turnos
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
 
@@ -401,6 +646,14 @@ namespace MecaniCar360.Services
             DateTime nuevaFechaInicio,
             int usuarioId)
         {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioId,
+                "TURNO_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar turnos.");
+            }
+
             var turno = await _context.Turnos
                 .Include(t => t.IngresoVehiculo)
                 .FirstOrDefaultAsync(t => t.Id == turnoId);
@@ -411,22 +664,11 @@ namespace MecaniCar360.Services
                     "Turno no encontrado.");
             }
 
-            if (turno.Estado == EstadoTurno.Cancelado)
+            if (turno.Estado != EstadoTurno.Pendiente &&
+                turno.Estado != EstadoTurno.Confirmado)
             {
                 return ServiceResult.Error(
-                    "No se puede reprogramar un turno cancelado.");
-            }
-
-            if (turno.Estado == EstadoTurno.Finalizado)
-            {
-                return ServiceResult.Error(
-                    "No se puede reprogramar un turno finalizado.");
-            }
-
-            if (turno.Estado == EstadoTurno.ClienteAusente)
-            {
-                return ServiceResult.Error(
-                    "No se puede reprogramar un turno marcado como cliente ausente.");
+                    "Solo se pueden reprogramar turnos pendientes o confirmados.");
             }
 
             if (turno.IngresoVehiculo != null)
@@ -482,6 +724,17 @@ namespace MecaniCar360.Services
 
             return ServiceResult.Ok(
                 "Turno reprogramado correctamente.");
+        }
+
+        private async Task<int?> ObtenerPersonaIdAsync(int usuarioId)
+        {
+            return await _context.Usuarios
+                .Where(u =>
+                    u.Id == usuarioId &&
+                    u.Activo &&
+                    u.Persona.Activo)
+                .Select(u => (int?)u.PersonaId)
+                .FirstOrDefaultAsync();
         }
     }
 }

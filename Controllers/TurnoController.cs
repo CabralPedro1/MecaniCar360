@@ -1,9 +1,11 @@
 ﻿using MecaniCar360.Models;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Models.ViewModels;
+using MecaniCar360.Attributes;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MecaniCar360.Controllers
 {
@@ -25,9 +27,11 @@ namespace MecaniCar360.Controllers
         // INDEX
         // =====================================
 
+        [Permiso("TURNO_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _turnoService.ObtenerTodosAsync();
+            var resultado = await _turnoService
+                .ObtenerTodosAsync(ObtenerUsuarioId());
 
             if (!resultado.Exitoso)
             {
@@ -44,9 +48,11 @@ namespace MecaniCar360.Controllers
         // DETALLE
         // =====================================
 
+        [Permiso("TURNO_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _turnoService.ObtenerPorIdAsync(id);
+            var resultado = await _turnoService
+                .ObtenerPorIdAsync(id, ObtenerUsuarioId());
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -59,6 +65,7 @@ namespace MecaniCar360.Controllers
         // AGENDA
         // =====================================
 
+        [Permiso("TURNO_VER")]
         public async Task<IActionResult> Agenda(DateTime? fecha)
         {
             var dia = fecha?.Date ?? DateTime.Today;
@@ -88,6 +95,7 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("TURNO_CREAR")]
         public IActionResult Crear(
             int? clienteId = null,
             int? vehiculoId = null)
@@ -112,6 +120,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("TURNO_CREAR")]
         public async Task<IActionResult> Crear(
             CrearTurnoViewModel model)
         {
@@ -158,6 +167,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("TURNO_CONFIRMAR")]
         public async Task<IActionResult> Confirmar(int id)
         {
             var resultado =
@@ -181,6 +191,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("TURNO_CANCELAR")]
         public async Task<IActionResult> Cancelar(
             int id,
             string? motivo)
@@ -207,6 +218,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("TURNO_MODIFICAR")]
         public async Task<IActionResult> ClienteAusente(
             int id)
         {
@@ -231,6 +243,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("TURNO_MODIFICAR")]
         public async Task<IActionResult> Reprogramar(
             int id,
             DateTime nuevaFechaInicio)
@@ -297,12 +310,12 @@ namespace MecaniCar360.Controllers
 
         private int ObtenerUsuarioId()
         {
-            var claim = User.FindFirst("UsuarioId");
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
 
             if (claim == null)
             {
                 throw new InvalidOperationException(
-                    "No se encontró el UsuarioId en la sesión.");
+                    "No se encontró el identificador del usuario en la sesión.");
             }
 
             return int.Parse(claim.Value);
