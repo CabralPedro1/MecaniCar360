@@ -142,7 +142,7 @@ namespace MecaniCar360.Controllers
                 return Unauthorized();
 
             var resultado =
-                await _personaService.ObtenerPorIdAsync(
+                await _personaService.ObtenerPorIdParaEditarAsync(
                     id,
                     usuarioId.Value);
 
@@ -283,6 +283,7 @@ namespace MecaniCar360.Controllers
         // ADMINISTRAR ROLES
         // =====================================
 
+        [Permiso("PERSONA_VER")]
         [Permiso("ROL_VER")]
         public async Task<IActionResult> AdministrarRoles(
             int id)

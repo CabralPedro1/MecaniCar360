@@ -5,6 +5,10 @@ using System.Security.Claims;
 
 namespace MecaniCar360.Attributes
 {
+    [AttributeUsage(
+        AttributeTargets.Method | AttributeTargets.Class,
+        AllowMultiple = true,
+        Inherited = true)]
     public class PermisoAttribute : Attribute, IAsyncAuthorizationFilter
     {
         private readonly string _patente;
