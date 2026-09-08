@@ -1,0 +1,21 @@
+@model MecaniCar360.Models.Usuario
+
+@{
+    ViewData["Title"] = "Detalle de usuario";
+}
+
+<h2>Detalle de usuario</h2>
+<dl class="row">
+    <dt class="col-sm-3">Usuario</dt>
+    <dd class="col-sm-9">@Model.Username</dd>
+    <dt class="col-sm-3">Email</dt>
+    <dd class="col-sm-9">@Model.EmailLogin</dd>
+    <dt class="col-sm-3">Persona</dt>
+    <dd class="col-sm-9">@Model.Persona.Apellido, @Model.Persona.Nombre</dd>
+    <dt class="col-sm-3">Estado</dt>
+    <dd class="col-sm-9">@(Model.Activo ? "Activo" : "Inactivo")</dd>
+    <dt class="col-sm-3">Primer login</dt>
+    <dd class="col-sm-9">@(Model.PrimerLogin ? "Pendiente" : "Completado")</dd>
+</dl>
+<a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a>
+<a asp-action="Index" class="btn btn-secondary">Volver</a>

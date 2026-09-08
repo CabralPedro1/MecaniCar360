@@ -1331,6 +1331,11 @@ namespace MecaniCar360.Data
             AsociarFamilia(
                 context,
                 RolesSistema.CAJA,
+                "USUARIOS");
+
+            AsociarFamilia(
+                context,
+                RolesSistema.CAJA,
                 "PERSONAS");
 
             AsociarFamilia(

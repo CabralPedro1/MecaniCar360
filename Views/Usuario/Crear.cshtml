@@ -1,0 +1,31 @@
+@model MecaniCar360.Models.ViewModels.UsuarioCreateViewModel
+
+@{
+    ViewData["Title"] = "Crear usuario";
+}
+
+<h2>Crear usuario</h2>
+
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<form asp-action="Crear" method="post">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label asp-for="PersonaId" class="form-label"></label>
+        <select asp-for="PersonaId" asp-items="ViewBag.Personas" class="form-select">
+            <option value="">Seleccione una persona</option>
+        </select>
+        <span asp-validation-for="PersonaId" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="Username" class="form-label"></label>
+        <input asp-for="Username" class="form-control" />
+        <span asp-validation-for="Username" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="EmailLogin" class="form-label"></label>
+        <input asp-for="EmailLogin" class="form-control" />
+        <span asp-validation-for="EmailLogin" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Crear</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>

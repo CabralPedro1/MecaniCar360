@@ -1,0 +1,51 @@
+@model IEnumerable<MecaniCar360.Models.Usuario>
+
+@{
+    ViewData["Title"] = "Usuarios";
+}
+
+<h2>Usuarios</h2>
+
+@if (TempData["Ok"] != null)
+{
+    <div class="alert alert-success">@TempData["Ok"]</div>
+}
+@if (TempData["Error"] != null)
+{
+    <div class="alert alert-danger">@TempData["Error"]</div>
+}
+
+<p>
+    <a asp-action="Crear" class="btn btn-primary">Nueva cuenta</a>
+</p>
+
+<table class="table table-striped align-middle">
+    <thead>
+        <tr>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Persona</th>
+            <th>Estado</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var usuario in Model)
+    {
+        <tr>
+            <td>@usuario.Username</td>
+            <td>@usuario.EmailLogin</td>
+            <td>@usuario.Persona.Apellido, @usuario.Persona.Nombre</td>
+            <td>@(usuario.Activo ? "Activo" : "Inactivo")</td>
+            <td>
+                <a asp-action="Detalle" asp-route-id="@usuario.Id" class="btn btn-info btn-sm">Detalle</a>
+                <a asp-action="Editar" asp-route-id="@usuario.Id" class="btn btn-warning btn-sm">Editar</a>
+                <form asp-action="CambiarEstado" asp-route-id="@usuario.Id" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary btn-sm">@(usuario.Activo ? "Desactivar" : "Activar")</button>
+                </form>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

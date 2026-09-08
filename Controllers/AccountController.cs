@@ -81,14 +81,14 @@ namespace MecaniCar360.Controllers
 
             var usuario = resultado.Data!;
 
+            if (!usuario.PrimerLogin)
+                return RedirectToAction("Index", "Dashboard");
+
             var model = new CompletarDatosViewModel
             {
                 UsuarioId = usuario.Id,
                 Username = usuario.Username,
                 Email = usuario.EmailLogin,
-                Nombre = usuario.Persona.Nombre,
-                Apellido = usuario.Persona.Apellido,
-                Dni = usuario.Persona.Dni,
                 Telefono = usuario.Persona.Telefono
             };
 
@@ -122,6 +122,43 @@ namespace MecaniCar360.Controllers
         }
 
         [Authorize]
+        public IActionResult CambiarContraseña()
+        {
+            return View(new CambiarContraseñaViewModel());
+        }
+
+        [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CambiarContraseña(
+            CambiarContraseñaViewModel model)
+        {
+            if (!ModelState.IsValid)
+                return View(model);
+
+            var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (!int.TryParse(claim, out int usuarioId))
+                return Forbid();
+
+            var resultado = await _accountService
+                .CambiarContraseñaAsync(model, usuarioId);
+
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(
+                    string.Empty,
+                    resultado.Mensaje);
+
+                return View(model);
+            }
+
+            TempData["Ok"] = resultado.Mensaje;
+
+            return RedirectToAction(nameof(CompletarDatosExito));
+        }
+
+        [Authorize]
         public IActionResult CompletarDatosExito()
         {
             return View();
@@ -132,6 +169,8 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Authorize]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
             await HttpContext.SignOutAsync();
