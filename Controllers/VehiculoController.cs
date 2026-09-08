@@ -1,4 +1,6 @@
-﻿using MecaniCar360.Models;
+﻿using System.Security.Claims;
+using MecaniCar360.Attributes;
+using MecaniCar360.Models;
 using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -28,9 +30,16 @@ namespace MecaniCar360.Controllers
         // INDEX
         // =====================================
 
+        [Permiso("VEHICULO_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _vehiculoService.ObtenerTodosAsync();
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _vehiculoService
+                .ObtenerTodosAsync(usuarioId.Value);
 
             return View(resultado.Data);
         }
@@ -39,9 +48,16 @@ namespace MecaniCar360.Controllers
         // DETALLE
         // =====================================
 
+        [Permiso("VEHICULO_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _vehiculoService.ObtenerPorIdAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _vehiculoService
+                .ObtenerPorIdAsync(id, usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -53,6 +69,7 @@ namespace MecaniCar360.Controllers
         // CREAR
         // =====================================
 
+        [Permiso("VEHICULO_CREAR")]
         public async Task<IActionResult> Crear(int personaId)
         {
             await CargarMarcasAsync();
@@ -66,6 +83,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("VEHICULO_CREAR")]
         public async Task<IActionResult> Crear(VehiculoViewModel model)
         {
             if (!ModelState.IsValid)
@@ -78,10 +96,16 @@ namespace MecaniCar360.Controllers
                 return View(model);
             }
 
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
             var resultado = await _dominioVehicularService
                 .CrearVehiculoAsync(
                     model.PersonaId,
-                    model.Vehiculo);
+                    model.Vehiculo,
+                    usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -107,9 +131,16 @@ namespace MecaniCar360.Controllers
         // EDITAR
         // =====================================
 
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Editar(int id, int personaId)
         {
-            var resultado = await _vehiculoService.ObtenerPorIdAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _vehiculoService
+                .ObtenerPorIdParaEditarAsync(id, usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -128,6 +159,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Editar(VehiculoViewModel model)
         {
             if (!ModelState.IsValid)
@@ -140,8 +172,13 @@ namespace MecaniCar360.Controllers
                 return View(model);
             }
 
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
             var resultado = await _vehiculoService
-                .EditarAsync(model.Vehiculo);
+                .EditarAsync(model.Vehiculo, usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -169,9 +206,16 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> CambiarEstado(int id, int personaId)
         {
-            var resultado = await _vehiculoService.CambiarEstadoAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _vehiculoService
+                .CambiarEstadoAsync(id, usuarioId.Value);
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -235,6 +279,16 @@ namespace MecaniCar360.Controllers
                 "Id",
                 "Nombre",
                 seleccionado);
+        }
+
+        private int? ObtenerUsuarioActualId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (claim == null || !int.TryParse(claim.Value, out int usuarioId))
+                return null;
+
+            return usuarioId;
         }
     }
 }
