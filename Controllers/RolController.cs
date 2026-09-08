@@ -1,4 +1,6 @@
-﻿using MecaniCar360.Models;
+﻿using System.Security.Claims;
+using MecaniCar360.Attributes;
+using MecaniCar360.Models;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,9 +20,15 @@ namespace MecaniCar360.Controllers
         // =============================
         // INDEX
         // =============================
+        [Permiso("ROL_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _service.ObtenerTodosAsync();
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.ObtenerTodosAsync(usuarioId.Value);
 
             return View(resultado.Data);
         }
@@ -28,9 +36,17 @@ namespace MecaniCar360.Controllers
         // =============================
         // DETALLE
         // =============================
+        [Permiso("ROL_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _service.ObtenerPorIdAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.ObtenerPorIdAsync(
+                id,
+                usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -41,6 +57,7 @@ namespace MecaniCar360.Controllers
         // =============================
         // CREAR
         // =============================
+        [Permiso("ROL_CREAR")]
         public IActionResult Crear()
         {
             return View();
@@ -48,12 +65,18 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ROL_CREAR")]
         public async Task<IActionResult> Crear(Rol rol)
         {
             if (!ModelState.IsValid)
                 return View(rol);
 
-            var resultado = await _service.CrearAsync(rol);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.CrearAsync(rol, usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -69,9 +92,17 @@ namespace MecaniCar360.Controllers
         // =============================
         // EDITAR
         // =============================
+        [Permiso("ROL_MODIFICAR")]
         public async Task<IActionResult> Editar(int id)
         {
-            var resultado = await _service.ObtenerPorIdAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.ObtenerPorIdParaEditarAsync(
+                id,
+                usuarioId.Value);
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -81,12 +112,18 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ROL_MODIFICAR")]
         public async Task<IActionResult> Editar(Rol rol)
         {
             if (!ModelState.IsValid)
                 return View(rol);
 
-            var resultado = await _service.EditarAsync(rol);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.EditarAsync(rol, usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -105,13 +142,29 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("ROL_DESACTIVAR")]
         public async Task<IActionResult> CambiarEstado(int id)
         {
-            var resultado = await _service.CambiarEstadoAsync(id);
+            var usuarioId = ObtenerUsuarioActualId();
+
+            if (!usuarioId.HasValue)
+                return Unauthorized();
+
+            var resultado = await _service.CambiarEstadoAsync(id, usuarioId.Value);
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(Index));
+        }
+
+        private int? ObtenerUsuarioActualId()
+        {
+            var claim = User.FindFirst(ClaimTypes.NameIdentifier);
+
+            if (claim == null || !int.TryParse(claim.Value, out int usuarioId))
+                return null;
+
+            return usuarioId;
         }
     }
 }

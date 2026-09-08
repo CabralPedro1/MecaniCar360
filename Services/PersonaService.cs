@@ -80,6 +80,27 @@ namespace MecaniCar360.Services
             return ServiceResult<Persona>.Ok(persona);
         }
 
+        public async Task<ServiceResult<Persona>> ObtenerPorIdParaEditarAsync(
+            int id,
+            int usuarioSolicitanteId)
+        {
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_MODIFICAR"))
+            {
+                return ServiceResult<Persona>.Error(
+                    "No posee permisos para modificar personas.");
+            }
+
+            var persona = await ObtenerPersonaCompletaAsync(id);
+
+            if (persona == null)
+                return ServiceResult<Persona>.Error(
+                    "Persona no encontrada.");
+
+            return ServiceResult<Persona>.Ok(persona);
+        }
+
 
         public async Task<ServiceResult<Persona>> ObtenerPorDniAsync(
             string dni)
@@ -255,6 +276,37 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "La persona ya se encuentra desactivada.");
 
+            var esAdministrador = await _permisoService
+                .EsAdministradorEfectivoPersonaAsync(id);
+
+            if (esAdministrador)
+            {
+                if (!await _permisoService.EsAdministradorAsync(
+                    usuarioSolicitanteId))
+                {
+                    return ServiceResult.Error(
+                        "Sólo un administrador puede desactivar a otro administrador.");
+                }
+
+                var esSolicitante = await _context.Usuarios
+                    .AnyAsync(u =>
+                        u.Id == usuarioSolicitanteId &&
+                        u.PersonaId == id);
+
+                if (esSolicitante)
+                {
+                    return ServiceResult.Error(
+                        "No puede desactivarse a sí mismo como administrador.");
+                }
+
+                if (await _permisoService
+                    .ContarAdministradoresEfectivosAsync() <= 1)
+                {
+                    return ServiceResult.Error(
+                        "No se puede desactivar al último administrador efectivo.");
+                }
+            }
+
             persona.Activo = false;
 
             await _context.SaveChangesAsync();
@@ -312,6 +364,16 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "Rol no encontrado o inactivo.");
 
+            if (rol.Nombre.Equals(
+                RolesSistema.ADMIN,
+                StringComparison.OrdinalIgnoreCase) &&
+                !await _permisoService.EsAdministradorAsync(
+                    usuarioOtorgaId))
+            {
+                return ServiceResult.Error(
+                    "Sólo un administrador puede asignar el rol ADMIN.");
+            }
+
             bool yaExiste = await _context.PersonaRoles.AnyAsync(pr =>
                 pr.PersonaId == personaId &&
                 pr.RolId == rolId &&
@@ -351,6 +413,7 @@ namespace MecaniCar360.Services
             }
 
             var relacion = await _context.PersonaRoles
+                .Include(pr => pr.Rol)
                 .FirstOrDefaultAsync(pr =>
                     pr.PersonaId == personaId &&
                     pr.RolId == rolId &&
@@ -359,6 +422,37 @@ namespace MecaniCar360.Services
             if (relacion == null)
                 return ServiceResult.Error(
                     "La persona no posee ese rol.");
+
+            if (relacion.Rol.Nombre.Equals(
+                RolesSistema.ADMIN,
+                StringComparison.OrdinalIgnoreCase))
+            {
+                if (!await _permisoService.EsAdministradorAsync(
+                    usuarioSolicitanteId))
+                {
+                    return ServiceResult.Error(
+                        "Sólo un administrador puede quitar el rol ADMIN.");
+                }
+
+                var usuario = await _context.Usuarios
+                    .FirstOrDefaultAsync(u =>
+                        u.Id == usuarioSolicitanteId);
+
+                if (usuario?.PersonaId == personaId)
+                {
+                    return ServiceResult.Error(
+                        "No puede quitarse su propia asignación ADMIN.");
+                }
+
+                if (await _permisoService
+                    .EsAdministradorEfectivoPersonaAsync(personaId) &&
+                    await _permisoService
+                        .ContarAdministradoresEfectivosAsync() <= 1)
+                {
+                    return ServiceResult.Error(
+                        "No se puede quitar la última asignación ADMIN activa.");
+                }
+            }
 
             relacion.FechaBaja = DateTime.Now;
 

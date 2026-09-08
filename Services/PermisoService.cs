@@ -18,6 +18,41 @@ namespace MecaniCar360.Services
         // VERIFICAR PERMISO
         // =====================================
 
+        public async Task<bool> EsAdministradorAsync(int usuarioId)
+        {
+            var usuario =
+                await ObtenerUsuarioConPermisosAsync(
+                    usuarioId);
+
+            return usuario != null && EsAdministrador(usuario);
+        }
+
+        public async Task<bool> EsAdministradorEfectivoPersonaAsync(
+            int personaId)
+        {
+            return await _context.PersonaRoles
+                .AnyAsync(pr =>
+                    pr.PersonaId == personaId &&
+                    pr.FechaBaja == null &&
+                    pr.Rol.Activo &&
+                    pr.Rol.Nombre == RolesSistema.ADMIN &&
+                    pr.Persona.Activo &&
+                    pr.Persona.Usuario != null &&
+                    pr.Persona.Usuario.Activo);
+        }
+
+        public Task<int> ContarAdministradoresEfectivosAsync()
+        {
+            return _context.PersonaRoles
+                .CountAsync(pr =>
+                    pr.FechaBaja == null &&
+                    pr.Rol.Activo &&
+                    pr.Rol.Nombre == RolesSistema.ADMIN &&
+                    pr.Persona.Activo &&
+                    pr.Persona.Usuario != null &&
+                    pr.Persona.Usuario.Activo);
+        }
+
         public async Task<bool>
             TienePermisoAsync(
                 int usuarioId,
@@ -35,15 +70,7 @@ namespace MecaniCar360.Services
             // ADMINISTRADOR
             // =====================================
 
-            var esAdministrador =
-                usuario.Persona.Roles.Any(pr =>
-                    pr.FechaBaja == null &&
-                    pr.Rol.Activo &&
-                    pr.Rol.Nombre.Equals(
-                        "ADMIN",
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (esAdministrador)
+            if (EsAdministrador(usuario))
                 return true;
 
 
@@ -98,15 +125,7 @@ namespace MecaniCar360.Services
             // ADMINISTRADOR
             // =====================================
 
-            var esAdministrador =
-                usuario.Persona.Roles.Any(pr =>
-                    pr.FechaBaja == null &&
-                    pr.Rol.Activo &&
-                    pr.Rol.Nombre.Equals(
-                        "ADMIN",
-                        StringComparison.OrdinalIgnoreCase));
-
-            if (esAdministrador)
+            if (EsAdministrador(usuario))
             {
                 return await _context.Patentes
                     .Where(p => p.Activo)
@@ -286,6 +305,16 @@ namespace MecaniCar360.Services
                     u => u.Id == usuarioId &&
                          u.Activo &&
                          u.Persona.Activo);
+        }
+
+        private static bool EsAdministrador(Usuario usuario)
+        {
+            return usuario.Persona.Roles.Any(pr =>
+                pr.FechaBaja == null &&
+                pr.Rol.Activo &&
+                pr.Rol.Nombre.Equals(
+                    RolesSistema.ADMIN,
+                    StringComparison.OrdinalIgnoreCase));
         }
     }
 }
