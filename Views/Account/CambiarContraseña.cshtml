@@ -1,0 +1,27 @@
+@model MecaniCar360.Models.ViewModels.CambiarContraseñaViewModel
+
+@{
+    ViewData["Title"] = "Cambiar contraseña";
+}
+
+<h2>Cambiar contraseña</h2>
+<div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<form asp-action="CambiarContraseña" method="post">
+    @Html.AntiForgeryToken()
+    <div class="mb-3">
+        <label asp-for="ContraseñaActual" class="form-label"></label>
+        <input asp-for="ContraseñaActual" class="form-control" />
+        <span asp-validation-for="ContraseñaActual" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="NuevaContraseña" class="form-label"></label>
+        <input asp-for="NuevaContraseña" class="form-control" />
+        <span asp-validation-for="NuevaContraseña" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="ConfirmarNuevaContraseña" class="form-label"></label>
+        <input asp-for="ConfirmarNuevaContraseña" class="form-control" />
+        <span asp-validation-for="ConfirmarNuevaContraseña" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>

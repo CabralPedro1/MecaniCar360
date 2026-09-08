@@ -96,7 +96,13 @@
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a class="btn btn-outline-light" href="/Account/Logout">Salir</a>
+                            <a class="btn btn-outline-light me-2" href="/Account/CambiarContraseña">Cambiar contraseña</a>
+                        </li>
+                        <li class="nav-item">
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-outline-light" type="submit">Salir</button>
+                            </form>
                         </li>
                     </ul>
 

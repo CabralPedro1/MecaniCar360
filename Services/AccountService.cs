@@ -47,12 +47,6 @@ namespace MecaniCar360.Services
                 .Select(pr => pr.Rol.Nombre)
                 .ToList();
 
-            if (roles.Contains("EXEMPLEADO"))
-            {
-                resultado.Mensaje = "Usuario sin acceso al sistema.";
-                return resultado;
-            }
-
             resultado.Exitoso = true;
             resultado.Usuario = usuario;
             resultado.Roles = roles;
@@ -84,17 +78,18 @@ namespace MecaniCar360.Services
         {
             var usuario = await ObtenerUsuarioCompletoAsync(usuarioId);
 
-            if (usuario == null)
+            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
                 return ServiceResult.Error("Usuario no encontrado.");
+
+            if (!usuario.PrimerLogin)
+                return ServiceResult.Error(
+                    "El primer ingreso ya fue completado.");
 
             var validacion = ValidarCompletarDatos(model);
 
             if (!validacion.Exitoso)
                 return validacion;
 
-            usuario.Persona.Nombre = model.Nombre;
-            usuario.Persona.Apellido = model.Apellido;
-            usuario.Persona.Dni = model.Dni;
             usuario.Persona.Telefono = model.Telefono;
 
             usuario.PasswordHash =
@@ -105,6 +100,39 @@ namespace MecaniCar360.Services
             await GuardarCambiosAsync();
 
             return ServiceResult.Ok("Datos actualizados correctamente.");
+        }
+
+        public async Task<ServiceResult> CambiarContraseñaAsync(
+            CambiarContraseñaViewModel model,
+            int usuarioId)
+        {
+            var usuario = await ObtenerUsuarioCompletoAsync(usuarioId);
+
+            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
+                return ServiceResult.Error("Usuario no encontrado.");
+
+            if (!BCrypt.Net.BCrypt.Verify(
+                model.ContraseñaActual,
+                usuario.PasswordHash))
+            {
+                return ServiceResult.Error(
+                    "La contraseña actual no es válida.");
+            }
+
+            var validacion = PasswordValidator.EsValida(
+                model.NuevaContraseña,
+                out string error);
+
+            if (!validacion)
+                return ServiceResult.Error(error);
+
+            usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(
+                model.NuevaContraseña);
+
+            await GuardarCambiosAsync();
+
+            return ServiceResult.Ok(
+                "Contraseña actualizada correctamente.");
         }
 
         // =====================================

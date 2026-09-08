@@ -3,6 +3,8 @@ using MecaniCar360.Patterns.Facade;
 using MecaniCar360.Patterns.Observer;
 using MecaniCar360.Patterns.State;
 using MecaniCar360.Services;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
@@ -50,6 +52,53 @@ namespace MecaniCar360
 
                     options.AccessDeniedPath =
                         "/Account/Login";
+
+                    options.ExpireTimeSpan =
+                        TimeSpan.FromHours(8);
+
+                    options.SlidingExpiration = true;
+
+                    options.Cookie.HttpOnly = true;
+                    options.Cookie.SecurePolicy =
+                        CookieSecurePolicy.SameAsRequest;
+                    options.Cookie.SameSite =
+                        SameSiteMode.Lax;
+
+                    options.Events = new CookieAuthenticationEvents
+                    {
+                        OnValidatePrincipal = async context =>
+                        {
+                            var claim = context.Principal?
+                                .FindFirst(ClaimTypes.NameIdentifier);
+
+                            if (claim == null ||
+                                !int.TryParse(
+                                    claim.Value,
+                                    out int usuarioId))
+                            {
+                                context.RejectPrincipal();
+                                await context.HttpContext.SignOutAsync(
+                                    CookieAuthenticationDefaults.AuthenticationScheme);
+                                return;
+                            }
+
+                            var db = context.HttpContext.RequestServices
+                                .GetRequiredService<MecaniCarContext>();
+
+                            var vigente = await db.Usuarios
+                                .AnyAsync(u =>
+                                    u.Id == usuarioId &&
+                                    u.Activo &&
+                                    u.Persona.Activo);
+
+                            if (!vigente)
+                            {
+                                context.RejectPrincipal();
+                                await context.HttpContext.SignOutAsync(
+                                    CookieAuthenticationDefaults.AuthenticationScheme);
+                            }
+                        }
+                    };
                 });
 
 
@@ -121,6 +170,9 @@ namespace MecaniCar360
 
             builder.Services.AddScoped<
                 AccountService>();
+
+            builder.Services.AddScoped<
+                UsuarioService>();
 
             builder.Services.AddScoped<
                 PermisoService>();
