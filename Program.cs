@@ -105,6 +105,15 @@ namespace MecaniCar360
                 ProveedorService>();
 
             builder.Services.AddScoped<
+                MarcaService>();
+
+            builder.Services.AddScoped<
+                VehiculoService>();
+
+            builder.Services.AddScoped<
+                DominioVehicularService>();
+
+            builder.Services.AddScoped<
                 RolService>();
 
             builder.Services.AddScoped<
