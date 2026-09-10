@@ -256,10 +256,10 @@ namespace MecaniCar360.Services
 
             // El cliente puede consultar evidencias
             // de sus propias órdenes.
-            return await _context.Turnos
-                .AnyAsync(t =>
-                    t.Id == orden.TurnoId &&
-                    t.ClienteId == personaId);
+            return await _context.IngresosVehiculo
+                .AnyAsync(i =>
+                    i.Id == orden.IngresoVehiculoId &&
+                    i.Turno.ClienteId == personaId);
         }
 
 

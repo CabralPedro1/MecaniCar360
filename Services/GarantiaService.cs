@@ -51,8 +51,9 @@ namespace MecaniCar360.Services
                 await _context.OrdenesTrabajo
                     .Include(o => o.Presupuesto)
                         .ThenInclude(p => p.Items)
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
                     .FirstOrDefaultAsync(o =>
                         o.Id == ordenTrabajoId);
 
@@ -239,12 +240,14 @@ namespace MecaniCar360.Services
             var garantia =
                 await _context.Garantias
                     .Include(g => g.OrdenTrabajo)
-                        .ThenInclude(o => o.Turno)
-                            .ThenInclude(t => t.Vehiculo)
+                        .ThenInclude(o => o.IngresoVehiculo)
+                            .ThenInclude(i => i.Turno)
+                                .ThenInclude(t => t.Vehiculo)
 
                     .Include(g => g.OrdenTrabajo)
-                        .ThenInclude(o => o.Turno)
-                            .ThenInclude(t => t.Cliente)
+                        .ThenInclude(o => o.IngresoVehiculo)
+                            .ThenInclude(i => i.Turno)
+                                .ThenInclude(t => t.Cliente)
 
                     .Include(g => g.Items)
                         .ThenInclude(i =>
@@ -285,19 +288,19 @@ namespace MecaniCar360.Services
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Vehiculo)
+                            t.Turno.Vehiculo)
 
                     .Include(g =>
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Cliente)
+                            t.Turno.Cliente)
 
                     .Include(g =>
                         g.Items)
@@ -339,19 +342,19 @@ namespace MecaniCar360.Services
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Vehiculo)
+                            t.Turno.Vehiculo)
 
                     .Include(g =>
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Cliente)
+                            t.Turno.Cliente)
 
                     .Include(g =>
                         g.Items)
@@ -360,7 +363,7 @@ namespace MecaniCar360.Services
                             i.PresupuestoItem)
 
                     .Where(g =>
-                        g.OrdenTrabajo.Turno.ClienteId ==
+                        g.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId ==
                         clienteId)
 
                     .OrderByDescending(g =>
@@ -397,19 +400,19 @@ namespace MecaniCar360.Services
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Vehiculo)
+                            t.Turno.Vehiculo)
 
                     .Include(g =>
                         g.OrdenTrabajo)
 
                         .ThenInclude(o =>
-                            o.Turno)
+                            o.IngresoVehiculo)
 
                             .ThenInclude(t =>
-                                t.Cliente)
+                            t.Turno.Cliente)
 
                     .Include(g =>
                         g.Items)
@@ -418,7 +421,7 @@ namespace MecaniCar360.Services
                             i.PresupuestoItem)
 
                     .Where(g =>
-                        g.OrdenTrabajo.Turno.VehiculoId ==
+                        g.OrdenTrabajo.IngresoVehiculo.Turno.VehiculoId ==
                         vehiculoId)
 
                     .OrderByDescending(g =>

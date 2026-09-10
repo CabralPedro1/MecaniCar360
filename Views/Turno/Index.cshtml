@@ -44,10 +44,10 @@
 
                                     <div class="mt-2">
 
-                                        @if (t.OrdenTrabajo != null)
+                                        @if (t.IngresoVehiculo?.OrdenTrabajo != null)
                                         {
                                             <!-- YA TIENE ORDEN -->
-                                            <a href="/OrdenTrabajo/Detalle/@t.OrdenTrabajo.Id"
+                                            <a href="/OrdenTrabajo/Detalle/@t.IngresoVehiculo.OrdenTrabajo.Id"
                                                class="btn btn-sm btn-dark">
                                                 Ver Orden
                                             </a>

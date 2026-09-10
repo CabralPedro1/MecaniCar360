@@ -337,15 +337,19 @@ namespace MecaniCar360.Data
 
 
             // =============================
-            // TURNO - ORDEN DE TRABAJO
-            // 1 : 1
+            // INGRESO VEHICULO - ORDEN DE TRABAJO
+            // 1 : 0..1
             // =============================
 
-            modelBuilder.Entity<Turno>()
-                .HasOne(t => t.OrdenTrabajo)
-                .WithOne(o => o.Turno)
-                .HasForeignKey<OrdenTrabajo>(o => o.TurnoId)
+            modelBuilder.Entity<IngresoVehiculo>()
+                .HasOne(i => i.OrdenTrabajo)
+                .WithOne(o => o.IngresoVehiculo)
+                .HasForeignKey<OrdenTrabajo>(o => o.IngresoVehiculoId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrdenTrabajo>()
+                .HasIndex(o => o.IngresoVehiculoId)
+                .IsUnique();
 
 
             // =============================

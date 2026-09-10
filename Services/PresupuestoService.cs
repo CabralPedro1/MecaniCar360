@@ -430,7 +430,8 @@ namespace MecaniCar360.Services
                         .Include(p => p.Items)
 
                         .Include(p => p.OrdenTrabajo)
-                            .ThenInclude(o => o.Turno)
+                            .ThenInclude(o => o.IngresoVehiculo)
+                                .ThenInclude(i => i.Turno)
 
                         .FirstOrDefaultAsync(p =>
                             p.Id == presupuestoId);
@@ -442,7 +443,7 @@ namespace MecaniCar360.Services
                 }
 
                 if (presupuesto.OrdenTrabajo == null ||
-                    presupuesto.OrdenTrabajo.Turno == null)
+                    presupuesto.OrdenTrabajo.IngresoVehiculo?.Turno == null)
                 {
                     return ServiceResult.Error(
                         "No se pudo determinar la orden y el cliente.");
@@ -566,7 +567,8 @@ namespace MecaniCar360.Services
                             .ThenInclude(i => i.Repuesto)
 
                         .Include(p => p.OrdenTrabajo)
-                            .ThenInclude(o => o.Turno)
+                            .ThenInclude(o => o.IngresoVehiculo)
+                                .ThenInclude(i => i.Turno)
 
                         .Include(p => p.OrdenTrabajo)
                             .ThenInclude(o => o.Factura)
@@ -583,7 +585,7 @@ namespace MecaniCar360.Services
 
 
                 if (presupuesto.OrdenTrabajo == null ||
-                    presupuesto.OrdenTrabajo.Turno == null)
+                    presupuesto.OrdenTrabajo.IngresoVehiculo?.Turno == null)
                 {
                     return ServiceResult.Error(
                         "No se pudo determinar la orden y el cliente.");
@@ -598,7 +600,7 @@ namespace MecaniCar360.Services
                 // VERIFICAR CLIENTE
                 // =====================================
 
-                if (orden.Turno.ClienteId !=
+                if (orden.IngresoVehiculo.Turno.ClienteId !=
                     clienteId)
                 {
                     return ServiceResult.Error(
@@ -789,7 +791,8 @@ namespace MecaniCar360.Services
                     await _context.Presupuestos
 
                         .Include(p => p.OrdenTrabajo)
-                            .ThenInclude(o => o.Turno)
+                            .ThenInclude(o => o.IngresoVehiculo)
+                                .ThenInclude(i => i.Turno)
 
                         .Include(p => p.OrdenTrabajo)
                             .ThenInclude(o => o.Factura)
@@ -804,7 +807,7 @@ namespace MecaniCar360.Services
                 }
 
                 if (presupuesto.OrdenTrabajo == null ||
-                    presupuesto.OrdenTrabajo.Turno == null)
+                    presupuesto.OrdenTrabajo.IngresoVehiculo?.Turno == null)
                 {
                     return ServiceResult.Error(
                         "No se pudo determinar la orden y el cliente.");
@@ -818,7 +821,7 @@ namespace MecaniCar360.Services
                 // VERIFICAR CLIENTE
                 // =====================================
 
-                if (orden.Turno.ClienteId != clienteId)
+                if (orden.IngresoVehiculo.Turno.ClienteId != clienteId)
                 {
                     return ServiceResult.Error(
                         "No tiene autorización para rechazar este presupuesto.");

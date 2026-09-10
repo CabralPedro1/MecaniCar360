@@ -74,8 +74,9 @@ namespace MecaniCar360.Services
 
             var orden =
                 await _context.OrdenesTrabajo
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
                             .ThenInclude(v => v.DominiosVehiculares)
                     .FirstOrDefaultAsync(
                         o => o.Id == ordenTrabajoId);
@@ -109,7 +110,7 @@ namespace MecaniCar360.Services
             // El cliente debe ser el titular actual
             // del vehículo correspondiente a la orden.
             var clienteEsPropietario =
-                orden.Turno.Vehiculo.DominiosVehiculares
+                orden.IngresoVehiculo.Turno.Vehiculo.DominiosVehiculares
                     .Any(d =>
                         d.PersonaId == clienteId &&
                         d.FechaHasta == null);
