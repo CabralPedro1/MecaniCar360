@@ -41,16 +41,19 @@ namespace MecaniCar360.Services
 
             var ordenes =
                 await _context.OrdenesTrabajo
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
                             .ThenInclude(v => v.Marca)
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
                             .ThenInclude(v => v.Modelo)
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Cliente)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Cliente)
 
                     .Include(o => o.Mecanico)
 
@@ -132,11 +135,13 @@ namespace MecaniCar360.Services
             var ordenes =
                 await _context.OrdenesTrabajo
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Cliente)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Cliente)
 
                     .Where(o =>
                         o.EstadoActual ==
@@ -195,11 +200,13 @@ namespace MecaniCar360.Services
             var ordenes =
                 await _context.OrdenesTrabajo
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Vehiculo)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo)
 
-                    .Include(o => o.Turno)
-                        .ThenInclude(t => t.Cliente)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Cliente)
 
                     .Where(o =>
                         o.MecanicoId == mecanicoId &&
@@ -578,9 +585,7 @@ namespace MecaniCar360.Services
                             .ThenInclude(f =>
                                 f!.Pagos)
 
-                        .Include(o => o.Turno)
-                            .ThenInclude(t =>
-                                t.IngresoVehiculo)
+                        .Include(o => o.IngresoVehiculo)
 
                         .FirstOrDefaultAsync(o =>
                             o.Id == ordenTrabajoId);
@@ -648,7 +653,7 @@ namespace MecaniCar360.Services
                 // =====================================
 
                 var ingreso =
-                    orden.Turno?.IngresoVehiculo;
+                    orden.IngresoVehiculo;
 
                 if (ingreso == null)
                 {
@@ -869,16 +874,19 @@ namespace MecaniCar360.Services
         {
             return await _context.OrdenesTrabajo
 
-                .Include(o => o.Turno)
-                    .ThenInclude(t => t.Vehiculo)
+                .Include(o => o.IngresoVehiculo)
+                    .ThenInclude(i => i.Turno)
+                        .ThenInclude(t => t.Vehiculo)
                         .ThenInclude(v => v.Marca)
 
-                .Include(o => o.Turno)
-                    .ThenInclude(t => t.Vehiculo)
+                .Include(o => o.IngresoVehiculo)
+                    .ThenInclude(i => i.Turno)
+                        .ThenInclude(t => t.Vehiculo)
                         .ThenInclude(v => v.Modelo)
 
-                .Include(o => o.Turno)
-                    .ThenInclude(t => t.Cliente)
+                .Include(o => o.IngresoVehiculo)
+                    .ThenInclude(i => i.Turno)
+                        .ThenInclude(t => t.Cliente)
 
                 .Include(o => o.Mecanico)
 

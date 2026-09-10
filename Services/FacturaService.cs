@@ -331,7 +331,8 @@ namespace MecaniCar360.Services
                             p.RegistradoPorUsuario)
 
                     .Include(f => f.OrdenTrabajo)
-                        .ThenInclude(o => o.Turno)
+                        .ThenInclude(o => o.IngresoVehiculo)
+                            .ThenInclude(i => i.Turno)
                             .ThenInclude(t => t.Cliente)
 
                     .FirstOrDefaultAsync(f =>
@@ -366,7 +367,8 @@ namespace MecaniCar360.Services
                             p.RegistradoPorUsuario)
 
                     .Include(f => f.OrdenTrabajo)
-                        .ThenInclude(o => o.Turno)
+                        .ThenInclude(o => o.IngresoVehiculo)
+                            .ThenInclude(i => i.Turno)
                             .ThenInclude(t => t.Cliente)
 
                     .FirstOrDefaultAsync(f =>

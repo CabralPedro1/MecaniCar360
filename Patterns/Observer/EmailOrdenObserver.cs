@@ -22,14 +22,14 @@ namespace MecaniCar360.Patterns.Observer
             OrdenTrabajo orden,
             string evento)
         {
-            if (orden.Turno == null)
+            if (orden.IngresoVehiculo?.Turno == null)
             {
                 return;
             }
 
             var cliente = await _context.Personas
                 .FirstOrDefaultAsync(p =>
-                    p.Id == orden.Turno.ClienteId);
+                    p.Id == orden.IngresoVehiculo.Turno.ClienteId);
 
             if (cliente == null ||
                 string.IsNullOrWhiteSpace(cliente.Email))

@@ -7,6 +7,8 @@
         public int TurnoId { get; set; }
         public Turno Turno { get; set; } = null!;
 
+        public OrdenTrabajo? OrdenTrabajo { get; set; }
+
         public DateTime FechaIngreso { get; set; }
 
         public DateTime? FechaEgreso { get; set; }

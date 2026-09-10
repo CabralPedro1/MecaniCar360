@@ -17,7 +17,7 @@ namespace MecaniCar360.Patterns.Observer
             OrdenTrabajo orden,
             string evento)
         {
-            if (orden.Turno == null)
+            if (orden.IngresoVehiculo?.Turno == null)
             {
                 return;
             }
@@ -30,7 +30,7 @@ namespace MecaniCar360.Patterns.Observer
 
             await _notificacionService
                 .NotificarAsync(
-                    orden.Turno.ClienteId,
+                    orden.IngresoVehiculo.Turno.ClienteId,
                     titulo,
                     mensaje);
         }

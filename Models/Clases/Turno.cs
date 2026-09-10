@@ -70,8 +70,6 @@ namespace MecaniCar360.Models
         // =====================================
 
         public IngresoVehiculo? IngresoVehiculo { get; set; }
-
-        public OrdenTrabajo? OrdenTrabajo { get; set; }
     }
 
 

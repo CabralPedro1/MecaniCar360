@@ -218,8 +218,8 @@ namespace MecaniCar360.Services
 
                 var orden = new OrdenTrabajo
                 {
-                    TurnoId =
-                        turno.Id,
+                    IngresoVehiculoId =
+                        ingreso.Id,
 
                     EstadoActual =
                         EstadoOrden.Pendiente,

@@ -33,16 +33,18 @@ namespace MecaniCar360.Controllers
 
                 model.PresupuestosPendientes = await _context.Presupuestos
                     .Include(p => p.OrdenTrabajo)
-                    .ThenInclude(o => o.Turno)
+                    .ThenInclude(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
                     .Where(p => p.Estado == Models.Enums.EstadoPresupuesto.Pendiente &&
-                                p.OrdenTrabajo.Turno.ClienteId == personaId)
+                                p.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId == personaId)
                     .ToListAsync();
             }
 
             if (User.IsInRole("MECANICO"))
             {
                 model.OrdenesMecanico = await _context.OrdenesTrabajo
-                    .Include(o => o.Turno)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
                     .Include(o => o.Presupuesto)
                     .Where(o => o.MecanicoId == personaId)
                     .ToListAsync();

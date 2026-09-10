@@ -8,11 +8,11 @@ namespace MecaniCar360.Models
         public int Id { get; set; }
 
         // =====================================
-        // TURNO
+        // INGRESO DEL VEHICULO
         // =====================================
 
-        public int TurnoId { get; set; }
-        public Turno Turno { get; set; } = null!;
+        public int IngresoVehiculoId { get; set; }
+        public IngresoVehiculo IngresoVehiculo { get; set; } = null!;
 
         // =====================================
         // MECÁNICO

@@ -47,6 +47,8 @@ namespace MecaniCar360.Services
                 .Include(t => t.Vehiculo)
                     .ThenInclude(v => v.Modelo)
                 .Include(t => t.Cliente)
+                .Include(t => t.IngresoVehiculo)
+                    .ThenInclude(i => i.OrdenTrabajo)
                 .OrderBy(t => t.FechaInicio)
                 .ToListAsync();
 
@@ -79,7 +81,7 @@ namespace MecaniCar360.Services
                     .ThenInclude(v => v.Modelo)
                 .Include(t => t.Cliente)
                 .Include(t => t.IngresoVehiculo)
-                .Include(t => t.OrdenTrabajo)
+                    .ThenInclude(i => i.OrdenTrabajo)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (turno == null)
@@ -168,7 +170,7 @@ namespace MecaniCar360.Services
                     .ThenInclude(v => v.Modelo)
                 .Include(t => t.Cliente)
                 .Include(t => t.IngresoVehiculo)
-                .Include(t => t.OrdenTrabajo)
+                    .ThenInclude(i => i.OrdenTrabajo)
                 .FirstOrDefaultAsync(t =>
                     t.Id == turnoId &&
                     t.ClienteId == personaId);
