@@ -1,4 +1,5 @@
 ﻿using MecaniCar360.Models;
+using MecaniCar360.Attributes;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -23,11 +24,13 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("INGRESO_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
+            var usuarioId = ObtenerUsuarioId();
             var resultado =
                 await _ingresoService
-                    .ObtenerPorIdAsync(id);
+                    .ObtenerPorIdAsync(id, usuarioId);
 
             if (!resultado.Exitoso)
             {
@@ -43,13 +46,16 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("INGRESO_VER")]
         public async Task<IActionResult> PorTurno(
             int turnoId)
         {
+            var usuarioId = ObtenerUsuarioId();
             var resultado =
                 await _ingresoService
                     .ObtenerPorTurnoAsync(
-                        turnoId);
+                        turnoId,
+                        usuarioId);
 
             if (!resultado.Exitoso)
             {
@@ -76,13 +82,16 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("INGRESO_REGISTRAR")]
         public async Task<IActionResult> Registrar(
             int turnoId)
         {
+            var usuarioId = ObtenerUsuarioId();
             var resultado =
                 await _ingresoService
                     .ObtenerPorTurnoAsync(
-                        turnoId);
+                        turnoId,
+                        usuarioId);
 
             if (resultado.Exitoso)
             {
@@ -104,6 +113,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("INGRESO_REGISTRAR")]
         public async Task<IActionResult> Registrar(
             int turnoId,
             bool clienteEspera,
@@ -156,11 +166,14 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("INGRESO_VER")]
         public async Task<IActionResult> EnTaller()
         {
+            var usuarioId = ObtenerUsuarioId();
             var resultado =
                 await _ingresoService
-                    .ObtenerVehiculosEnTallerAsync();
+                    .ObtenerVehiculosEnTallerAsync(
+                        usuarioId);
 
             if (!resultado.Exitoso)
             {
@@ -173,37 +186,6 @@ namespace MecaniCar360.Controllers
 
             return View(
                 resultado.Data);
-        }
-
-
-        // =====================================
-        // REGISTRAR EGRESO
-        // =====================================
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RegistrarEgreso(
-            int id,
-            string? observaciones)
-        {
-            var resultado =
-                await _ingresoService
-                    .RegistrarEgresoAsync(
-                        id,
-                        observaciones);
-
-            TempData[
-                resultado.Exitoso
-                    ? "Ok"
-                    : "Error"
-            ] = resultado.Mensaje;
-
-            return RedirectToAction(
-                nameof(Detalle),
-                new
-                {
-                    id
-                });
         }
 
 

@@ -55,13 +55,12 @@
                                         else
                                         {
                                             <!-- INGRESAR VEHICULO -->
-                                            <form method="post" action="/Turno/Ingresar" style="display:inline;">
-                                                <input type="hidden" name="id" value="@t.Id" />
-
-                                                <button class="btn btn-sm btn-success">
-                                                    Ingresar
-                                                </button>
-                                            </form>
+                                            <a asp-controller="IngresoVehiculo"
+                                               asp-action="Registrar"
+                                               asp-route-turnoId="@t.Id"
+                                               class="btn btn-sm btn-success">
+                                                Ingresar
+                                            </a>
                                         }
 
                                     </div>
