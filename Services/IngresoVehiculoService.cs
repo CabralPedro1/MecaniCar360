@@ -2,6 +2,7 @@
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Services
@@ -9,10 +10,14 @@ namespace MecaniCar360.Services
     public class IngresoVehiculoService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisoService;
 
-        public IngresoVehiculoService(MecaniCarContext context)
+        public IngresoVehiculoService(
+            MecaniCarContext context,
+            PermisoService permisoService)
         {
             _context = context;
+            _permisoService = permisoService;
         }
 
         // =====================================
@@ -20,9 +25,19 @@ namespace MecaniCar360.Services
         // =====================================
 
         public async Task<ServiceResult<IngresoVehiculo>> ObtenerPorIdAsync(
-            int id)
+            int id,
+            int usuarioSolicitanteId)
         {
+            if (!await TienePermisoAsync(
+                    usuarioSolicitanteId,
+                    "INGRESO_VER"))
+            {
+                return ServiceResult<IngresoVehiculo>.Error(
+                    "No tiene permisos para consultar ingresos.");
+            }
+
             var ingreso = await _context.IngresosVehiculo
+                .Include(i => i.OrdenTrabajo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Vehiculo)
                         .ThenInclude(v => v.Marca)
@@ -49,9 +64,19 @@ namespace MecaniCar360.Services
 
 
         public async Task<ServiceResult<IngresoVehiculo>> ObtenerPorTurnoAsync(
-            int turnoId)
+            int turnoId,
+            int usuarioSolicitanteId)
         {
+            if (!await TienePermisoAsync(
+                    usuarioSolicitanteId,
+                    "INGRESO_VER"))
+            {
+                return ServiceResult<IngresoVehiculo>.Error(
+                    "No tiene permisos para consultar ingresos.");
+            }
+
             var ingreso = await _context.IngresosVehiculo
+                .Include(i => i.OrdenTrabajo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Vehiculo)
                         .ThenInclude(v => v.Marca)
@@ -86,8 +111,16 @@ namespace MecaniCar360.Services
                 int turnoId,
                 bool clienteEspera,
                 string? observaciones,
-                int usuarioId)
+                int usuarioSolicitanteId)
         {
+            if (!await TienePermisoAsync(
+                    usuarioSolicitanteId,
+                    "INGRESO_REGISTRAR"))
+            {
+                return ServiceResult<OrdenTrabajo>.Error(
+                    "No tiene permisos para registrar ingresos.");
+            }
+
             await using var transaction =
                 await _context.Database.BeginTransactionAsync();
 
@@ -113,32 +146,29 @@ namespace MecaniCar360.Services
                 // VALIDAR ESTADO
                 // =====================================
 
-                if (turno.Estado ==
-                    EstadoTurno.Cancelado)
+                if (turno.Estado == EstadoTurno.Cancelado)
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "No se puede registrar el ingreso de un turno cancelado.");
                 }
 
-                if (turno.Estado ==
-                    EstadoTurno.Finalizado)
-                {
-                    return ServiceResult<OrdenTrabajo>.Error(
-                        "El turno ya fue atendido.");
-                }
-
-                if (turno.Estado ==
-                    EstadoTurno.ClienteAusente)
+                if (turno.Estado == EstadoTurno.ClienteAusente)
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "El cliente fue marcado como ausente.");
                 }
 
-                if (turno.Estado !=
-                    EstadoTurno.Confirmado)
+                if (turno.Estado == EstadoTurno.Finalizado)
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
-                        "Solo se puede registrar el ingreso de un turno confirmado.");
+                        "El turno ya fue atendido.");
+                }
+
+                if (turno.Estado != EstadoTurno.Pendiente &&
+                    turno.Estado != EstadoTurno.Confirmado)
+                {
+                    return ServiceResult<OrdenTrabajo>.Error(
+                        "Solo se puede registrar el ingreso de un turno pendiente o confirmado.");
                 }
 
 
@@ -198,7 +228,7 @@ namespace MecaniCar360.Services
                             DateTime.Now,
 
                         UsuarioId =
-                            usuarioId,
+                            usuarioSolicitanteId,
 
                         Observaciones =
                             "Vehículo ingresado al taller."
@@ -228,7 +258,7 @@ namespace MecaniCar360.Services
                         DateTime.Now,
 
                     CreadaPorUsuarioId =
-                        usuarioId,
+                        usuarioSolicitanteId,
 
                     Urgencia =
                         NivelUrgencia.Media
@@ -273,6 +303,14 @@ namespace MecaniCar360.Services
                     orden,
                     "Ingreso del vehículo y orden de trabajo registrados correctamente.");
             }
+            catch (DbUpdateException ex)
+                when (EsViolacionUnicidad(ex))
+            {
+                await transaction.RollbackAsync();
+
+                return ServiceResult<OrdenTrabajo>.Error(
+                    "El turno ya posee un ingreso u orden de trabajo registrada.");
+            }
             catch
             {
                 await transaction.RollbackAsync();
@@ -282,63 +320,23 @@ namespace MecaniCar360.Services
 
 
         // =====================================
-        // REGISTRAR EGRESO
-        // =====================================
-
-        public async Task<ServiceResult> RegistrarEgresoAsync(
-            int ingresoId,
-            string? observaciones = null)
-        {
-            var ingreso = await _context.IngresosVehiculo
-                .FirstOrDefaultAsync(i =>
-                    i.Id == ingresoId);
-
-            if (ingreso == null)
-            {
-                return ServiceResult.Error(
-                    "Ingreso de vehículo no encontrado.");
-            }
-
-            if (ingreso.FechaEgreso.HasValue)
-            {
-                return ServiceResult.Error(
-                    "El vehículo ya posee una fecha de egreso.");
-            }
-
-            ingreso.FechaEgreso =
-                DateTime.Now;
-
-            if (!string.IsNullOrWhiteSpace(observaciones))
-            {
-                if (string.IsNullOrWhiteSpace(
-                    ingreso.ObservacionesRecepcion))
-                {
-                    ingreso.ObservacionesRecepcion =
-                        observaciones.Trim();
-                }
-                else
-                {
-                    ingreso.ObservacionesRecepcion +=
-                        Environment.NewLine +
-                        observaciones.Trim();
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return ServiceResult.Ok(
-                "Egreso del vehículo registrado correctamente.");
-        }
-
-
-        // =====================================
         // VEHÍCULOS EN EL TALLER
         // =====================================
 
         public async Task<ServiceResult<List<IngresoVehiculo>>>
-            ObtenerVehiculosEnTallerAsync()
+            ObtenerVehiculosEnTallerAsync(
+                int usuarioSolicitanteId)
         {
+            if (!await TienePermisoAsync(
+                    usuarioSolicitanteId,
+                    "INGRESO_VER"))
+            {
+                return ServiceResult<List<IngresoVehiculo>>.Error(
+                    "No tiene permisos para consultar ingresos.");
+            }
+
             var ingresos = await _context.IngresosVehiculo
+                .Include(i => i.OrdenTrabajo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Vehiculo)
                         .ThenInclude(v => v.Marca)
@@ -360,6 +358,23 @@ namespace MecaniCar360.Services
 
             return ServiceResult<List<IngresoVehiculo>>.Ok(
                 ingresos);
+        }
+
+        private async Task<bool> TienePermisoAsync(
+            int usuarioId,
+            string patente)
+        {
+            return await _permisoService.TienePermisoAsync(
+                usuarioId,
+                patente);
+        }
+
+        private static bool EsViolacionUnicidad(
+            DbUpdateException exception)
+        {
+            return exception.InnerException is SqlException sqlException &&
+                (sqlException.Number == 2601 ||
+                 sqlException.Number == 2627);
         }
 
 
