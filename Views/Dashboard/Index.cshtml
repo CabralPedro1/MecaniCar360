@@ -1,92 +1,63 @@
-﻿@model MecaniCar360.Models.ViewModels.CalendarioViewModel
+﻿@model MecaniCar360.Models.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
 
-<h2 class="mb-4">Calendario de Turnos - @Model.Fecha.ToString("dd/MM/yyyy")</h2>
+<h2 class="mb-4">Dashboard</h2>
 
-<div class="mb-3">
-    <a class="btn btn-primary" href="/Turno/Crear">Nuevo Turno</a>
-</div>
+@if (User.IsInRole("ADMIN"))
+{
+    <section class="mb-4">
+        <h3>Resumen del taller</h3>
+        <dl class="row">
+            <dt class="col-sm-4">Turnos de hoy</dt>
+            <dd class="col-sm-8">@Model.TotalTurnosHoy</dd>
+            <dt class="col-sm-4">Órdenes activas</dt>
+            <dd class="col-sm-8">@Model.OrdenesActivas</dd>
+            <dt class="col-sm-4">Ingresos de hoy</dt>
+            <dd class="col-sm-8">@Model.IngresosHoy.ToString("N2")</dd>
+        </dl>
+    </section>
+}
 
-<table class="table table-bordered table-hover">
-    <thead class="table-dark">
-        <tr>
-            <th style="width:120px;">Hora</th>
-            <th>Turnos</th>
-            <th style="width:180px;">Capacidad</th>
-        </tr>
-    </thead>
-    <tbody>
+@if (User.IsInRole("CLIENTE"))
+{
+    <section class="mb-4">
+        <h3>Mi actividad</h3>
+        <dl class="row">
+            <dt class="col-sm-4">Mis turnos</dt>
+            <dd class="col-sm-8">@Model.TurnosCliente.Count</dd>
+            <dt class="col-sm-4">Presupuestos pendientes</dt>
+            <dd class="col-sm-8">@Model.PresupuestosPendientes.Count</dd>
+        </dl>
+    </section>
+}
 
-        @foreach (var h in Model.Horarios)
-        {
-            var porcentaje = (h.Ocupados * 100) / h.CapacidadTotal;
+@if (User.IsInRole("MECANICO"))
+{
+    <section class="mb-4">
+        <h3>Trabajo asignado</h3>
+        <p>Órdenes asignadas: @Model.OrdenesMecanico.Count</p>
+    </section>
+}
 
-            <tr>
-                <!-- HORA -->
-                <td>
-                    <strong>@h.Hora.ToString("HH:mm")</strong>
-                </td>
+@if (User.IsInRole("CAJA"))
+{
+    <section class="mb-4">
+        <h3>Caja</h3>
+        <dl class="row">
+            <dt class="col-sm-4">Turnos de hoy</dt>
+            <dd class="col-sm-8">@Model.TurnosHoy.Count</dd>
+            <dt class="col-sm-4">Facturas pendientes</dt>
+            <dd class="col-sm-8">@Model.FacturasPendientes.Count</dd>
+        </dl>
+    </section>
+}
 
-                <!-- TURNOS -->
-                <td>
-                    @if (h.Turnos.Any())
-                    {
-                        foreach (var t in h.Turnos)
-                        {
-                            <div class="card mb-2">
-                                <div class="card-body p-2">
-
-                                    <strong>🚗 @t.Vehiculo.Patente</strong><br />
-                                    👤 @t.Cliente.Nombre<br />
-                                    ⏰ @t.FechaInicio.ToString("HH:mm")
-
-                                    <div class="mt-2">
-
-                                        @if (t.IngresoVehiculo?.OrdenTrabajo != null)
-                                        {
-                                            <!-- YA TIENE ORDEN -->
-                                            <a href="/OrdenTrabajo/Detalle/@t.IngresoVehiculo.OrdenTrabajo.Id"
-                                               class="btn btn-sm btn-dark">
-                                                Ver Orden
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <!-- INGRESAR VEHICULO -->
-                                            <form method="post" action="/Turno/Ingresar" style="display:inline;">
-                                                <input type="hidden" name="id" value="@t.Id" />
-                                                <button class="btn btn-sm btn-success">
-                                                    Ingresar
-                                                </button>
-                                            </form>
-                                        }
-
-                                    </div>
-
-                                </div>
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <span class="text-muted">Sin turnos</span>
-                    }
-            </td>
-
-            <!-- CAPACIDAD -->
-            <td>
-                <div class="progress">
-                    <div class="progress-bar
-                            @(porcentaje > 80 ? "bg-danger" :
-                                                       porcentaje > 50 ? "bg-warning" :
-                                                       "bg-success")"
-                         style="width:@porcentaje%">
-
-                            @h.Ocupados / @h.CapacidadTotal
-                        </div>
-                    </div>
-                </td>
-            </tr>
-                }
-
-    </tbody>
-</table>
+@if (User.IsInRole("STOCK"))
+{
+    <section class="mb-4">
+        <h3>Stock</h3>
+        <p>Repuestos con stock bajo: @Model.StockBajo.Count</p>
+    </section>
+}
