@@ -1,0 +1,45 @@
+@model MecaniCar360.Models.PresupuestoVersion
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Presupuesto enviado";
+    var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var vigente = ViewData["PuedeDecidir"] is true;
+}
+<h2>Presupuesto — versión @Model.NumeroVersion</h2>
+@if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+<p>Enviado: @Model.FechaEnvio — Decisión: @Model.Decision</p>
+@if (!vigente && Model.Decision == MecaniCar360.Models.Enums.EstadoPresupuestoVersion.Pendiente)
+{ <div class="alert alert-info">Este envío ya no admite decisiones. El taller debe enviar una nueva versión.</div> }
+<table class="table table-striped">
+<thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+<tbody>@foreach (var item in Model.Items)
+{
+    <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td></tr>
+}</tbody>
+</table>
+<p><strong>Total enviado: $ @Model.Total.ToString("N2")</strong></p>
+<p>@Model.MotivoRechazo</p>
+@if (Model.FechaDecision.HasValue) { <p>Fecha de decisión: @Model.FechaDecision</p> }
+<h4>Evidencias del envío</h4>
+@foreach (var e in Model.Evidencias) { <p>@e.EvidenciaTrabajo.Descripcion — @e.EvidenciaTrabajo.Fecha</p> }
+@if (vigente)
+{
+    @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_PRESUPUESTO_APROBAR"))
+    {
+        <form asp-action="Aprobar" method="post" class="mb-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
+            <button class="btn btn-primary">Aprobar esta versión</button>
+        </form>
+    }
+    @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_PRESUPUESTO_RECHAZAR"))
+    {
+        <form asp-action="Rechazar" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
+            <label>Motivo del rechazo</label><input name="motivo" maxlength="1000" required class="form-control mb-2" />
+            <button class="btn btn-warning">Rechazar esta versión</button>
+        </form>
+    }
+}

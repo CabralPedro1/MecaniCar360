@@ -1,356 +1,91 @@
-﻿@model MecaniCar360.Models.Presupuesto
-
+@model MecaniCar360.Models.Presupuesto
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 @{
     ViewData["Title"] = "Presupuesto";
+    var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var activa = !Model.OrdenTrabajo.FechaFin.HasValue && Model.OrdenTrabajo.Factura == null &&
+        Model.OrdenTrabajo.EstadoActual is EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or
+            EstadoOrden.Aprobado or EstadoOrden.EnReparacion or EstadoOrden.Rechazado;
+    var editar = activa && await Permisos.TienePermisoAsync(usuarioId, "PRESUPUESTO_MODIFICAR");
+    var enviar = activa && Model.Estado == EstadoPresupuesto.Modificado && Model.Items.Any() &&
+        await Permisos.TienePermisoAsync(usuarioId, "PRESUPUESTO_ENVIAR");
 }
-
 <h2>Presupuesto #@Model.Id</h2>
-
-@if (TempData["Error"] != null)
+@if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+<p>Cliente: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Cliente.Nombre</p>
+<p>Vehículo: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Vehiculo.Patente</p>
+<p>Estado: @Model.Estado — Total actual: $ @Model.Total.ToString("N2")</p>
+@if (editar)
 {
-    <div class="alert alert-danger">
-        @TempData["Error"]
-    </div>
+    <h4>Agregar ítem</h4>
+    <form asp-action="AgregarItem" method="post" class="row g-2">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="presupuestoId" value="@Model.Id" />
+        <div class="col-md-4"><label>Descripción</label><input name="descripcion" class="form-control" required /></div>
+        <div class="col-md-2"><label>Cantidad</label><input name="cantidad" type="number" min="1" value="1" class="form-control" required /></div>
+        <div class="col-md-2"><label>Precio unitario</label><input name="precioUnitario" type="number" min="0" step="0.01" class="form-control" required /></div>
+        <div class="col-md-2"><label>Repuesto opcional</label><select name="repuestoId" class="form-select" asp-items='@(ViewData["Repuestos"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)'><option value="">Sin repuesto</option></select></div>
+        <div class="col-md-2"><button class="btn btn-success mt-4">Agregar</button></div>
+    </form>
 }
-
-@if (TempData["Ok"] != null)
-{
-    <div class="alert alert-success">
-        @TempData["Ok"]
-    </div>
-}
-
-<hr />
-
-<div class="row">
-
-    <div class="col-md-6">
-
-        <h5>Cliente</h5>
-
-        <p>
-            @Model.OrdenTrabajo.IngresoVehiculo.Turno.Cliente.Nombre
-        </p>
-
-    </div>
-
-    <div class="col-md-6">
-
-        <h5>Vehículo</h5>
-
-        <p>
-            @Model.OrdenTrabajo.IngresoVehiculo.Turno.Vehiculo.Patente
-        </p>
-
-    </div>
-
-</div>
-
-<hr />
-
-<div class="row">
-
-    <div class="col-md-4">
-
-        <strong>Estado</strong>
-
-        <p>
-            @Model.Estado
-        </p>
-
-    </div>
-
-    <div class="col-md-4">
-
-        <strong>Total</strong>
-
-        <h3>
-            $ @Model.Total.ToString("N2")
-        </h3>
-
-    </div>
-
-    <div class="col-md-4">
-
-        <strong>Última modificación</strong>
-
-        <p>
-            @Model.FechaUltimaModificacion.ToString("dd/MM/yyyy HH:mm")
-        </p>
-
-    </div>
-
-</div>
-
-<hr />
-
-<h4>Agregar Item</h4>
-
-<form asp-action="AgregarItem" method="post">
-
-    @Html.AntiForgeryToken()
-
-    <input type="hidden"
-           name="presupuestoId"
-           value="@Model.Id" />
-
-    <div class="row">
-
-        <div class="col-md-5">
-
-            <label>Descripción</label>
-
-            <input name="descripcion"
-                   class="form-control"
-                   required />
-
-        </div>
-
-        <div class="col-md-2">
-
-            <label>Cantidad</label>
-
-            <input type="number"
-                   min="1"
-                   value="1"
-                   name="cantidad"
-                   class="form-control"
-                   required />
-
-        </div>
-
-        <div class="col-md-3">
-
-            <label>Precio Unitario</label>
-
-            <input type="number"
-                   min="0"
-                   step="0.01"
-                   value="0"
-                   name="precioUnitario"
-                   class="form-control"
-                   required />
-
-        </div>
-
-        <div class="col-md-2 d-flex align-items-end">
-
-            <button class="btn btn-success w-100">
-                Agregar
-            </button>
-
-        </div>
-
-    </div>
-
-</form>
-
-<hr />
-
-<h4>Items del presupuesto</h4>
-
-@if (Model.Items.Any())
-{
-    <table class="table table-striped">
-
-        <thead>
-
-            <tr>
-
-                <th>Descripción</th>
-
-                <th>Cantidad</th>
-
-                <th>Precio</th>
-
-                <th>Subtotal</th>
-
-                <th></th>
-
-            </tr>
-
-        </thead>
-
-        <tbody>
-
-            @foreach (var item in Model.Items)
-            {
-                <tr>
-
-                    <td>@item.Descripcion</td>
-
-                    <td>@item.Cantidad</td>
-
-                    <td>$ @item.PrecioUnitario.ToString("N2")</td>
-
-                    <td>$ @item.Subtotal.ToString("N2")</td>
-
-                    <td>
-
-                        <form asp-action="EliminarItem"
-                              method="post">
-
-                            @Html.AntiForgeryToken()
-
-                            <input type="hidden"
-                                   name="itemId"
-                                   value="@item.Id" />
-
-                            <input type="hidden"
-                                   name="presupuestoId"
-                                   value="@Model.Id" />
-
-                            <button class="btn btn-danger btn-sm">
-                                Eliminar
-                            </button>
-
-                        </form>
-
-                    </td>
-
-                </tr>
-            }
-
-        </tbody>
-
-        <tfoot>
-
-            <tr>
-
-                <th colspan="3" class="text-end">
-
-                    TOTAL
-
-                </th>
-
-                <th>
-
-                    $ @Model.Total.ToString("N2")
-
-                </th>
-
-                <th></th>
-
-            </tr>
-
-        </tfoot>
-
-    </table>
-}
-else
-{
-    <div class="alert alert-info">
-
-        Este presupuesto todavía no posee ítems.
-
-    </div>
-}
-
-<hr />
-
-<div class="d-flex gap-2">
-
-    @if (Model.Estado != MecaniCar360.Models.Enums.EstadoPresupuesto.Aprobado)
+<h4 class="mt-4">Ítems actuales</h4>
+<table class="table table-striped">
+    <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var item in Model.Items)
     {
-        <form asp-action="Aprobar"
-              method="post">
-
-            @Html.AntiForgeryToken()
-
-            <input type="hidden"
-                   name="presupuestoId"
-                   value="@Model.Id" />
-
-            <button class="btn btn-primary">
-                Aprobar Presupuesto
-            </button>
-
-        </form>
-
-        <form asp-action="Rechazar"
-              method="post">
-
-            @Html.AntiForgeryToken()
-
-            <input type="hidden"
-                   name="presupuestoId"
-                   value="@Model.Id" />
-
-            <input name="motivo"
-                   class="form-control mb-2"
-                   placeholder="Motivo del rechazo"
-                   required />
-
-            <button class="btn btn-warning">
-                Rechazar
-            </button>
-
-        </form>
+        <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td>
+        <td>@if (editar)
+        {
+            <form asp-action="EliminarItem" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="presupuestoId" value="@Model.Id" />
+                <input type="hidden" name="itemId" value="@item.Id" />
+                <button class="btn btn-danger btn-sm">Eliminar</button>
+            </form>
+        }</td></tr>
     }
-
-    <a asp-controller="OrdenTrabajo"
-       asp-action="Detalle"
-       asp-route-id="@Model.OrdenTrabajo.Id"
-       class="btn btn-secondary">
-
-        Volver a la Orden
-
-    </a>
-
-</div>
-
-<hr />
-
-<h4>Historial</h4>
-
+    </tbody>
+</table>
+@if (enviar)
+{
+    <form asp-action="EnviarAprobacion" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="presupuestoId" value="@Model.Id" />
+        @foreach (var evidencia in Model.OrdenTrabajo.Evidencias)
+        {
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="evidenciaIds" value="@evidencia.Id" id="evidencia-@evidencia.Id" />
+            <label class="form-check-label" for="evidencia-@evidencia.Id">@evidencia.Descripcion</label></div>
+        }
+        <button class="btn btn-primary">Enviar versión al cliente</button>
+    </form>
+}
+<h4 class="mt-4">Versiones enviadas</h4>
+@foreach (var version in Model.Versiones.OrderByDescending(v => v.NumeroVersion))
+{
+    <details class="mb-3">
+        <summary>Versión @version.NumeroVersion — @version.Decision — $ @version.Total.ToString("N2") — @version.FechaEnvio</summary>
+        <p>@version.MotivoRechazo</p>
+        <table class="table"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+        <tbody>@foreach (var item in version.Items)
+        {
+            <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td></tr>
+        }</tbody></table>
+        @foreach (var e in version.Evidencias) { <p>Evidencia: @e.EvidenciaTrabajo.Descripcion</p> }
+    </details>
+}
+@if (Model.Versiones.Any() && await Permisos.EsAdministradorAsync(usuarioId))
+{
+    <a asp-action="Propio" asp-route-ordenTrabajoId="@Model.OrdenTrabajoId" class="btn btn-outline-primary">Consultar envío / intervención administrativa</a>
+}
 @if (Model.Historial.Any())
 {
-    <table class="table table-bordered">
-
-        <thead>
-
-            <tr>
-
-                <th>Fecha</th>
-
-                <th>Total anterior</th>
-
-                <th>Motivo</th>
-
-            </tr>
-
-        </thead>
-
-        <tbody>
-
-            @foreach (var h in Model.Historial.OrderByDescending(x => x.Fecha))
-            {
-                <tr>
-
-                    <td>
-                        @h.Fecha.ToString("dd/MM/yyyy HH:mm")
-                    </td>
-
-                    <td>
-                        $ @h.TotalAnterior.ToString("N2")
-                    </td>
-
-                    <td>
-                        @h.Motivo
-                    </td>
-
-                </tr>
-            }
-
-        </tbody>
-
-    </table>
+    <h4 class="mt-4">Historial legado</h4>
+    <table class="table"><thead><tr><th>Fecha</th><th>Total anterior</th><th>Motivo</th></tr></thead><tbody>
+    @foreach (var h in Model.Historial.OrderByDescending(h => h.Fecha))
+    { <tr><td>@h.Fecha</td><td>@h.TotalAnterior.ToString("N2")</td><td>@h.Motivo</td></tr> }
+    </tbody></table>
 }
-else
-{
-    <div class="alert alert-secondary">
-
-        No hay historial de modificaciones.
-
-    </div>
-}
+<a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-secondary">Volver a la orden</a>
