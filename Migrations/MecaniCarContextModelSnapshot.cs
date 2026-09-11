@@ -149,13 +149,36 @@ namespace MecaniCar360.Migrations
                     b.Property<int?>("MecanicoId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RegistradoPorUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TipoRegistro")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DiagnosticoId");
 
                     b.HasIndex("MecanicoId");
 
+                    b.HasIndex("RegistradoPorUsuarioId");
+
                     b.ToTable("DiagnosticoHistoriales");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.DiagnosticoHistorialEvidencia", b =>
+                {
+                    b.Property<int>("DiagnosticoHistorialId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EvidenciaTrabajoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("DiagnosticoHistorialId", "EvidenciaTrabajoId");
+
+                    b.HasIndex("EvidenciaTrabajoId");
+
+                    b.ToTable("DiagnosticoHistorialEvidencias");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.DominioVehicular", b =>
@@ -917,6 +940,114 @@ namespace MecaniCar360.Migrations
                     b.ToTable("PresupuestoItems");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersion", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("DecididaPorUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Decision")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EnviadaPorUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaDecision")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaEnvio")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("MotivoRechazo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("NumeroVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PresupuestoId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DecididaPorUsuarioId");
+
+                    b.HasIndex("EnviadaPorUsuarioId");
+
+                    b.HasIndex("PresupuestoId", "NumeroVersion")
+                        .IsUnique();
+
+                    b.ToTable("PresupuestoVersiones", t =>
+                        {
+                            t.HasCheckConstraint("CK_PresupuestoVersiones_NumeroVersion", "[NumeroVersion] > 0");
+
+                            t.HasCheckConstraint("CK_PresupuestoVersiones_Total", "[Total] >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersionEvidencia", b =>
+                {
+                    b.Property<int>("PresupuestoVersionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("EvidenciaTrabajoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("PresupuestoVersionId", "EvidenciaTrabajoId");
+
+                    b.HasIndex("EvidenciaTrabajoId");
+
+                    b.ToTable("PresupuestoVersionEvidencias");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersionItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Descripcion")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("PrecioUnitario")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("PresupuestoVersionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("RepuestoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PresupuestoVersionId");
+
+                    b.HasIndex("RepuestoId");
+
+                    b.ToTable("PresupuestoVersionItems", t =>
+                        {
+                            t.HasCheckConstraint("CK_PresupuestoVersionItems_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_PresupuestoVersionItems_PrecioUnitario", "[PrecioUnitario] >= 0");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Proveedor", b =>
                 {
                     b.Property<int>("Id")
@@ -1332,7 +1463,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Diagnostico", "Diagnostico")
                         .WithMany("Historial")
                         .HasForeignKey("DiagnosticoId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MecaniCar360.Models.Persona", "Mecanico")
@@ -1340,9 +1471,35 @@ namespace MecaniCar360.Migrations
                         .HasForeignKey("MecanicoId")
                         .OnDelete(DeleteBehavior.Restrict);
 
+                    b.HasOne("MecaniCar360.Models.Usuario", "RegistradoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("RegistradoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("Diagnostico");
 
                     b.Navigation("Mecanico");
+
+                    b.Navigation("RegistradoPorUsuario");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.DiagnosticoHistorialEvidencia", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.DiagnosticoHistorial", "DiagnosticoHistorial")
+                        .WithMany("Evidencias")
+                        .HasForeignKey("DiagnosticoHistorialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.EvidenciaTrabajo", "EvidenciaTrabajo")
+                        .WithMany("DiagnosticoHistoriales")
+                        .HasForeignKey("EvidenciaTrabajoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DiagnosticoHistorial");
+
+                    b.Navigation("EvidenciaTrabajo");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.DominioVehicular", b =>
@@ -1369,13 +1526,13 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.OrdenTrabajo", "OrdenTrabajo")
                         .WithMany("Evidencias")
                         .HasForeignKey("OrdenTrabajoId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MecaniCar360.Models.Usuario", "SubidaPorUsuario")
                         .WithMany()
                         .HasForeignKey("SubidaPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("OrdenTrabajo");
@@ -1690,6 +1847,69 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Repuesto");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersion", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.Usuario", "DecididaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("DecididaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MecaniCar360.Models.Usuario", "EnviadaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("EnviadaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.Presupuesto", "Presupuesto")
+                        .WithMany("Versiones")
+                        .HasForeignKey("PresupuestoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DecididaPorUsuario");
+
+                    b.Navigation("EnviadaPorUsuario");
+
+                    b.Navigation("Presupuesto");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersionEvidencia", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.EvidenciaTrabajo", "EvidenciaTrabajo")
+                        .WithMany("PresupuestoVersiones")
+                        .HasForeignKey("EvidenciaTrabajoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.PresupuestoVersion", "PresupuestoVersion")
+                        .WithMany("Evidencias")
+                        .HasForeignKey("PresupuestoVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EvidenciaTrabajo");
+
+                    b.Navigation("PresupuestoVersion");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersionItem", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.PresupuestoVersion", "PresupuestoVersion")
+                        .WithMany("Items")
+                        .HasForeignKey("PresupuestoVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.Repuesto", "Repuesto")
+                        .WithMany()
+                        .HasForeignKey("RepuestoId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("PresupuestoVersion");
+
+                    b.Navigation("Repuesto");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.ProveedorRepuesto", b =>
                 {
                     b.HasOne("MecaniCar360.Models.Proveedor", "Proveedor")
@@ -1807,6 +2027,18 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Historial");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.DiagnosticoHistorial", b =>
+                {
+                    b.Navigation("Evidencias");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.EvidenciaTrabajo", b =>
+                {
+                    b.Navigation("DiagnosticoHistoriales");
+
+                    b.Navigation("PresupuestoVersiones");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Factura", b =>
                 {
                     b.Navigation("Items");
@@ -1875,6 +2107,15 @@ namespace MecaniCar360.Migrations
             modelBuilder.Entity("MecaniCar360.Models.Presupuesto", b =>
                 {
                     b.Navigation("Historial");
+
+                    b.Navigation("Items");
+
+                    b.Navigation("Versiones");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.PresupuestoVersion", b =>
+                {
+                    b.Navigation("Evidencias");
 
                     b.Navigation("Items");
                 });

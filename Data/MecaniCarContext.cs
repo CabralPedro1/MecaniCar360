@@ -70,6 +70,10 @@ namespace MecaniCar360.Data
         // =============================
 
         public DbSet<Presupuesto> Presupuestos { get; set; }
+        public DbSet<PresupuestoVersion> PresupuestoVersiones { get; set; }
+        public DbSet<PresupuestoVersionItem> PresupuestoVersionItems { get; set; }
+        public DbSet<PresupuestoVersionEvidencia> PresupuestoVersionEvidencias { get; set; }
+        public DbSet<DiagnosticoHistorialEvidencia> DiagnosticoHistorialEvidencias { get; set; }
         public DbSet<PresupuestoItem> PresupuestoItems { get; set; }
         public DbSet<PresupuestoHistorial> PresupuestoHistoriales { get; set; }
 
@@ -412,7 +416,7 @@ namespace MecaniCar360.Data
                 .HasOne(h => h.Diagnostico)
                 .WithMany(d => d.Historial)
                 .HasForeignKey(h => h.DiagnosticoId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<DiagnosticoHistorial>()
                 .HasOne(h => h.Mecanico)
@@ -590,6 +594,66 @@ namespace MecaniCar360.Data
             modelBuilder.Entity<EvidenciaTrabajo>()
                 .Property(e => e.Fecha)
                 .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<EvidenciaTrabajo>()
+                .HasOne(e => e.OrdenTrabajo).WithMany(o => o.Evidencias)
+                .HasForeignKey(e => e.OrdenTrabajoId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<EvidenciaTrabajo>()
+                .HasOne(e => e.SubidaPorUsuario).WithMany()
+                .HasForeignKey(e => e.SubidaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+
+            // Snapshots de envíos y asociaciones de evidencia histórica.
+            modelBuilder.Entity<PresupuestoVersion>(entity =>
+            {
+                entity.HasOne(v => v.Presupuesto).WithMany(p => p.Versiones)
+                    .HasForeignKey(v => v.PresupuestoId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(v => v.EnviadaPorUsuario).WithMany()
+                    .HasForeignKey(v => v.EnviadaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(v => v.DecididaPorUsuario).WithMany()
+                    .HasForeignKey(v => v.DecididaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(v => new { v.PresupuestoId, v.NumeroVersion }).IsUnique();
+                entity.Property(v => v.Total).HasPrecision(18, 2);
+                entity.Property(v => v.MotivoRechazo).HasMaxLength(1000);
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_PresupuestoVersiones_NumeroVersion", "[NumeroVersion] > 0");
+                    t.HasCheckConstraint("CK_PresupuestoVersiones_Total", "[Total] >= 0");
+                });
+            });
+            modelBuilder.Entity<PresupuestoVersionItem>(entity =>
+            {
+                entity.HasOne(i => i.PresupuestoVersion).WithMany(v => v.Items)
+                    .HasForeignKey(i => i.PresupuestoVersionId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(i => i.Repuesto).WithMany()
+                    .HasForeignKey(i => i.RepuestoId).OnDelete(DeleteBehavior.Restrict);
+                entity.Property(i => i.Descripcion).IsRequired();
+                entity.Property(i => i.PrecioUnitario).HasPrecision(18, 2);
+                entity.Ignore(i => i.Subtotal);
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_PresupuestoVersionItems_Cantidad", "[Cantidad] > 0");
+                    t.HasCheckConstraint("CK_PresupuestoVersionItems_PrecioUnitario", "[PrecioUnitario] >= 0");
+                });
+            });
+            modelBuilder.Entity<PresupuestoVersionEvidencia>(entity =>
+            {
+                entity.HasKey(e => new { e.PresupuestoVersionId, e.EvidenciaTrabajoId });
+                entity.HasOne(e => e.PresupuestoVersion).WithMany(v => v.Evidencias)
+                    .HasForeignKey(e => e.PresupuestoVersionId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.EvidenciaTrabajo).WithMany(e => e.PresupuestoVersiones)
+                    .HasForeignKey(e => e.EvidenciaTrabajoId).OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<DiagnosticoHistorialEvidencia>(entity =>
+            {
+                entity.HasKey(e => new { e.DiagnosticoHistorialId, e.EvidenciaTrabajoId });
+                entity.HasOne(e => e.DiagnosticoHistorial).WithMany(h => h.Evidencias)
+                    .HasForeignKey(e => e.DiagnosticoHistorialId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(e => e.EvidenciaTrabajo).WithMany(e => e.DiagnosticoHistoriales)
+                    .HasForeignKey(e => e.EvidenciaTrabajoId).OnDelete(DeleteBehavior.Restrict);
+            });
+            modelBuilder.Entity<DiagnosticoHistorial>()
+                .HasOne(h => h.RegistradoPorUsuario).WithMany()
+                .HasForeignKey(h => h.RegistradoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
 
 
             // =============================

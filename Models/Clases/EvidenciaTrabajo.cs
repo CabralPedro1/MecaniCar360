@@ -21,5 +21,7 @@ namespace MecaniCar360.Models
 
         public int SubidaPorUsuarioId { get; set; }
         public Usuario SubidaPorUsuario { get; set; } = null!;
+        public ICollection<PresupuestoVersionEvidencia> PresupuestoVersiones { get; set; } = new List<PresupuestoVersionEvidencia>();
+        public ICollection<DiagnosticoHistorialEvidencia> DiagnosticoHistoriales { get; set; } = new List<DiagnosticoHistorialEvidencia>();
     }
 }
