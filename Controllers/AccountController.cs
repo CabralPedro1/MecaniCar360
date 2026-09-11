@@ -66,10 +66,8 @@ namespace MecaniCar360.Controllers
         {
             var claim = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            if (claim == null)
+            if (!int.TryParse(claim, out int usuarioId))
                 return RedirectToAction(nameof(Login));
-
-            int usuarioId = int.Parse(claim);
 
             var resultado = await _accountService.ObtenerUsuarioAsync(usuarioId);
 
@@ -86,7 +84,6 @@ namespace MecaniCar360.Controllers
 
             var model = new CompletarDatosViewModel
             {
-                UsuarioId = usuario.Id,
                 Username = usuario.Username,
                 Email = usuario.EmailLogin,
                 Telefono = usuario.Persona.Telefono
@@ -100,11 +97,25 @@ namespace MecaniCar360.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CompletarDatos(CompletarDatosViewModel model)
         {
+            if (!int.TryParse(
+                    User.FindFirstValue(ClaimTypes.NameIdentifier),
+                    out int usuarioId))
+                return Forbid();
+
+            var usuarioResultado = await _accountService.ObtenerUsuarioAsync(usuarioId);
+
+            if (!usuarioResultado.Exitoso)
+            {
+                TempData["Error"] = usuarioResultado.Mensaje;
+                return RedirectToAction(nameof(Login));
+            }
+
+            // Los datos informativos siempre provienen del usuario autenticado.
+            model.Username = usuarioResultado.Data!.Username;
+            model.Email = usuarioResultado.Data.EmailLogin;
+
             if (!ModelState.IsValid)
                 return View(model);
-
-            int usuarioId = int.Parse(
-                User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
             var resultado = await _accountService.CompletarDatosAsync(
                 model,

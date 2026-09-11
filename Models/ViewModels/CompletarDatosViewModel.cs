@@ -1,17 +1,22 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+
 namespace MecaniCar360.Models.ViewModels
 {
     public class CompletarDatosViewModel
     {
         // ===== Datos NO editables =====
-        public int UsuarioId { get; set; }
-
+        [BindNever]
+        [ValidateNever]
         [Display(Name = "Usuario")]
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
 
+        [BindNever]
+        [ValidateNever]
         [Display(Name = "Email")]
-        public string Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         // ===== Datos editables =====
         [RegularExpression(@"^\d{6,15}$",
