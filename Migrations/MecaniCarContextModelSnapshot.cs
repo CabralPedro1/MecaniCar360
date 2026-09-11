@@ -110,9 +110,6 @@ namespace MecaniCar360.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("FechaFinalizacion")
-                        .HasColumnType("datetime2");
-
                     b.Property<DateTime>("FechaUltimaModificacion")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
