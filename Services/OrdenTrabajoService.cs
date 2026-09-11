@@ -12,15 +12,18 @@ namespace MecaniCar360.Services
         private readonly MecaniCarContext _context;
         private readonly OrdenStateService _ordenStateService;
         private readonly PermisoService _permisoService;
+        private readonly DiagnosticoService _diagnosticoService;
 
         public OrdenTrabajoService(
             MecaniCarContext context,
             OrdenStateService ordenStateService,
-            PermisoService permisoService)
+            PermisoService permisoService,
+            DiagnosticoService diagnosticoService)
         {
             _context = context;
             _ordenStateService = ordenStateService;
             _permisoService = permisoService;
+            _diagnosticoService = diagnosticoService;
         }
 
 
@@ -51,6 +54,7 @@ namespace MecaniCar360.Services
 
             var ordenes =
                 await _context.OrdenesTrabajo
+                    .AsNoTracking()
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
                             .ThenInclude(t => t.Vehiculo)
@@ -114,8 +118,7 @@ namespace MecaniCar360.Services
 
             if (esAdmin)
             {
-                return ServiceResult<OrdenTrabajo>.Ok(
-                    orden);
+                return await CompletarDiagnosticoVisibleAsync(orden, usuarioSolicitanteId);
             }
 
             if (esMecanico)
@@ -129,11 +132,10 @@ namespace MecaniCar360.Services
                         "No tiene acceso a esta orden de trabajo.");
                 }
 
-                return ServiceResult<OrdenTrabajo>.Ok(
-                    orden);
+                return await CompletarDiagnosticoVisibleAsync(orden, usuarioSolicitanteId);
             }
 
-            return ServiceResult<OrdenTrabajo>.Ok(orden);
+            return await CompletarDiagnosticoVisibleAsync(orden, usuarioSolicitanteId);
         }
 
 
@@ -156,6 +158,7 @@ namespace MecaniCar360.Services
 
             var ordenes =
                 await _context.OrdenesTrabajo
+                    .AsNoTracking()
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
@@ -229,6 +232,7 @@ namespace MecaniCar360.Services
 
             var ordenes =
                 await _context.OrdenesTrabajo
+                    .AsNoTracking()
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
@@ -927,11 +931,20 @@ namespace MecaniCar360.Services
         }
 
 
+        private async Task<ServiceResult<OrdenTrabajo>> CompletarDiagnosticoVisibleAsync(
+            OrdenTrabajo orden, int usuarioSolicitanteId)
+        {
+            var resultado = await _diagnosticoService.ObtenerAsync(orden.Id, usuarioSolicitanteId);
+            orden.Diagnostico = resultado.Exitoso ? resultado.Data : null;
+            return ServiceResult<OrdenTrabajo>.Ok(orden);
+        }
+
         private async Task<OrdenTrabajo?>
             ObtenerOrdenCompletaAsync(
                 int id)
         {
             return await _context.OrdenesTrabajo
+                .AsNoTracking()
 
                 .Include(o => o.IngresoVehiculo)
                     .ThenInclude(i => i.Turno)
@@ -948,10 +961,6 @@ namespace MecaniCar360.Services
                         .ThenInclude(t => t.Cliente)
 
                 .Include(o => o.Mecanico)
-
-                .Include(o => o.Diagnostico)
-                    .ThenInclude(d => d!.Historial)
-                        .ThenInclude(h => h.Mecanico)
 
                 .Include(o => o.Presupuesto)
                     .ThenInclude(p => p!.Items)
