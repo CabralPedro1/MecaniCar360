@@ -411,7 +411,7 @@ namespace MecaniCar360.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<DiagnosticoHistorial>()
-                .HasOne<Persona>()
+                .HasOne(h => h.Mecanico)
                 .WithMany()
                 .HasForeignKey(h => h.MecanicoId)
                 .OnDelete(DeleteBehavior.Restrict);
@@ -429,7 +429,7 @@ namespace MecaniCar360.Data
                 .HasOne(p => p.OrdenTrabajo)
                 .WithOne(o => o.Presupuesto)
                 .HasForeignKey<Presupuesto>(p => p.OrdenTrabajoId)
-                .OnDelete(DeleteBehavior.SetNull);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Presupuesto>()
                 .HasOne(p => p.Mecanico)
