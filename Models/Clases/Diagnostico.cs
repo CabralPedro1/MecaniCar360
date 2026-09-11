@@ -25,6 +25,10 @@
         public DateTime Fecha { get; set; }
 
         public int? MecanicoId { get; set; }
-        public Persona? Mecanico { get; set; } 
+        public Persona? Mecanico { get; set; }
+        public int? RegistradoPorUsuarioId { get; set; }
+        public Usuario? RegistradoPorUsuario { get; set; }
+        public Enums.TipoRegistroDiagnostico TipoRegistro { get; set; } = Enums.TipoRegistroDiagnostico.Legado;
+        public ICollection<DiagnosticoHistorialEvidencia> Evidencias { get; set; } = new List<DiagnosticoHistorialEvidencia>();
     }
 }

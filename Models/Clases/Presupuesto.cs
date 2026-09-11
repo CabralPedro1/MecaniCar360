@@ -20,6 +20,7 @@ namespace MecaniCar360.Models
 
         public List<PresupuestoItem> Items { get; set; } = new();
         public List<PresupuestoHistorial> Historial { get; set; } = new();
+        public ICollection<PresupuestoVersion> Versiones { get; set; } = new List<PresupuestoVersion>();
 
         public string? MotivoRechazo { get; set; }
 
