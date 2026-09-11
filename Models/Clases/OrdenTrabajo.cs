@@ -51,7 +51,7 @@ namespace MecaniCar360.Models
         // DIAGNÓSTICOS
         // =====================================
 
-        public List<Diagnostico> Diagnosticos { get; set; } = new();
+        public Diagnostico? Diagnostico { get; set; }
 
         public decimal? CostoDiagnostico { get; set; }
 

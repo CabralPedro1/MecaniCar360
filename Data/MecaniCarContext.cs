@@ -396,9 +396,13 @@ namespace MecaniCar360.Data
 
             modelBuilder.Entity<Diagnostico>()
                 .HasOne(d => d.OrdenTrabajo)
-                .WithMany(o => o.Diagnosticos)
-                .HasForeignKey(d => d.OrdenTrabajoId)
+                .WithOne(o => o.Diagnostico)
+                .HasForeignKey<Diagnostico>(d => d.OrdenTrabajoId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Diagnostico>()
+                .HasIndex(d => d.OrdenTrabajoId)
+                .IsUnique();
 
             modelBuilder.Entity<Diagnostico>()
                 .Property(d => d.FechaUltimaModificacion)
@@ -633,4 +637,4 @@ namespace MecaniCar360.Data
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }
-}   
+}

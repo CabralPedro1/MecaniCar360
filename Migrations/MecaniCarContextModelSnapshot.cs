@@ -110,6 +110,9 @@ namespace MecaniCar360.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("FechaFinalizacion")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("FechaUltimaModificacion")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -120,7 +123,8 @@ namespace MecaniCar360.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("OrdenTrabajoId");
+                    b.HasIndex("OrdenTrabajoId")
+                        .IsUnique();
 
                     b.ToTable("Diagnosticos");
                 });
@@ -1318,8 +1322,8 @@ namespace MecaniCar360.Migrations
             modelBuilder.Entity("MecaniCar360.Models.Diagnostico", b =>
                 {
                     b.HasOne("MecaniCar360.Models.OrdenTrabajo", "OrdenTrabajo")
-                        .WithMany("Diagnosticos")
-                        .HasForeignKey("OrdenTrabajoId")
+                        .WithOne("Diagnostico")
+                        .HasForeignKey("MecaniCar360.Models.Diagnostico", "OrdenTrabajoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -1846,7 +1850,7 @@ namespace MecaniCar360.Migrations
                 {
                     b.Navigation("Calificacion");
 
-                    b.Navigation("Diagnosticos");
+                    b.Navigation("Diagnostico");
 
                     b.Navigation("Evidencias");
 
