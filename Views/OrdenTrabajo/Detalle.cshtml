@@ -328,8 +328,13 @@
 
 
                 <!-- GUARDAR DIAGNÓSTICO -->
-                @if (Model.EstadoActual ==
-                            MecaniCar360.Models.Enums.EstadoOrden.Diagnostico)
+                @if (!Model.FechaFin.HasValue &&
+                    (Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
+                     (Model.Diagnostico != null && Model.EstadoActual is
+                        MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion or
+                        MecaniCar360.Models.Enums.EstadoOrden.Aprobado or
+                        MecaniCar360.Models.Enums.EstadoOrden.EnReparacion or
+                        MecaniCar360.Models.Enums.EstadoOrden.Rechazado)))
                 {
                     <form asp-controller="Diagnostico"
                           asp-action="Guardar"
@@ -400,55 +405,6 @@
                                 </p>
 
 
-                                <!-- HISTORIAL -->
-
-                                <h6 class="mt-4">
-                                    Historial
-                                </h6>
-
-                                @if (diagnostico.Historial.Any())
-                                {
-                                    <ul class="list-group">
-
-                                        @foreach (
-                                                                var historial in
-                                                                diagnostico.Historial
-                                                                .OrderByDescending(
-                                                                h => h.Fecha))
-                                        {
-                                            <li class="list-group-item">
-
-                                                <strong>
-                                                    @historial.Fecha.ToString(
-                                                    "dd/MM/yyyy HH:mm")
-                            </strong>
-
-                            @if (
-                                                        historial.Mecanico != null)
-                                                {
-                                                    <span class="text-muted">
-                                                        -
-                                                        @historial.Mecanico.Nombre
-                                                        @historial.Mecanico.Apellido
-                                                    </span>
-                                                }
-
-                                                <br />
-
-                                                @historial.Descripcion
-
-                                            </li>
-                                        }
-
-                                    </ul>
-                                }
-                                else
-                                {
-                                    <div class="alert alert-light">
-                                        No hay historial.
-                                    </div>
-                                }
-
                             </div>
 
                         </div>
@@ -456,31 +412,7 @@
                 }
 
 
-                <!-- FINALIZAR DIAGNÓSTICO -->
-                @if (Model.EstadoActual ==
-                            MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
-                            Model.Diagnostico != null)
-                {
-                    <form asp-controller="Diagnostico"
-                          asp-action="Finalizar"
-                          method="post"
-                          class="mt-3">
 
-                        @Html.AntiForgeryToken()
-
-                        <input type="hidden"
-                               name="id"
-                               value="@Model.Id" />
-
-                        <button type="submit"
-                                class="btn btn-success">
-
-                            Finalizar diagnóstico
-
-                        </button>
-
-                    </form>
-                }
 
             </div>
 

@@ -92,7 +92,17 @@ namespace MecaniCar360.Services
                 EstadoOrden.Diagnostico)
             {
                 return ServiceResult<Presupuesto>.Error(
-                    "El diagnóstico debe estar finalizado para crear el presupuesto.");
+                    "La orden debe estar en diagnóstico para crear el presupuesto.");
+            }
+
+            var descripcionDiagnostico = await _context.Diagnosticos
+                .Where(d => d.OrdenTrabajoId == ordenTrabajoId)
+                .Select(d => d.DescripcionActual)
+                .FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(descripcionDiagnostico))
+            {
+                return ServiceResult<Presupuesto>.Error(
+                    "Debe registrar un diagnóstico con descripción antes de crear el presupuesto.");
             }
 
             var existente =

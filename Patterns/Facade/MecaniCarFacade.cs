@@ -82,9 +82,11 @@ namespace MecaniCar360.Patterns.Facade
                 await _diagnosticoService
                     .ObtenerAsync(
                         ordenTrabajoId,
-                        mecanicoId);
+                        usuarioSolicitanteId);
 
-            if (!diagnosticoResultado.Exitoso)
+            if (!diagnosticoResultado.Exitoso ||
+                diagnosticoResultado.Data!.OrdenTrabajoId != ordenTrabajoId ||
+                string.IsNullOrWhiteSpace(diagnosticoResultado.Data.DescripcionActual))
             {
                 return ServiceResult<
                     Presupuesto>.Error(
