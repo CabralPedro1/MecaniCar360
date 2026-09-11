@@ -27,9 +27,9 @@ namespace MecaniCar360.Controllers
         [Permiso("ORDEN_VER")]
         public async Task<IActionResult> Index()
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -37,7 +37,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _ordenTrabajoService
                     .ObtenerTodasAsync(
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -61,9 +61,9 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Detalle(
             int id)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -72,7 +72,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .ObtenerPorIdAsync(
                         id,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -94,9 +94,9 @@ namespace MecaniCar360.Controllers
         [Permiso("ORDEN_VER")]
         public async Task<IActionResult> Pendientes()
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -104,7 +104,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _ordenTrabajoService
                     .ObtenerPendientesAsync(
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -127,9 +127,9 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> DeMecanico(
             int mecanicoId)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -138,7 +138,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .ObtenerDeMecanicoAsync(
                         mecanicoId,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -165,9 +165,9 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult>
             MecanicosDisponibles()
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -175,7 +175,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _ordenTrabajoService
                     .ObtenerMecanicosDisponiblesAsync(
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -204,9 +204,9 @@ namespace MecaniCar360.Controllers
                 int ordenTrabajoId,
                 int mecanicoId)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -216,7 +216,7 @@ namespace MecaniCar360.Controllers
                     .AsignarMecanicoAsync(
                         ordenTrabajoId,
                         mecanicoId,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -251,14 +251,14 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Permiso("ORDEN_VER")]
+        [Permiso("ORDEN_MODIFICAR")]
         public async Task<IActionResult>
             TomarOrden(
                 int ordenTrabajoId)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -267,7 +267,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .TomarOrdenAsync(
                         ordenTrabajoId,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -307,9 +307,9 @@ namespace MecaniCar360.Controllers
             IniciarReparacion(
                 int ordenTrabajoId)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -318,7 +318,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .IniciarReparacionAsync(
                         ordenTrabajoId,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -359,9 +359,9 @@ namespace MecaniCar360.Controllers
                 int ordenTrabajoId,
                 int? horasReales)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -370,7 +370,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .FinalizarAsync(
                         ordenTrabajoId,
-                        personaId.Value,
+                        usuarioSolicitanteId.Value,
                         horasReales);
 
             if (!resultado.Exitoso)
@@ -411,9 +411,9 @@ namespace MecaniCar360.Controllers
             Entregar(
                 int ordenTrabajoId)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -422,7 +422,7 @@ namespace MecaniCar360.Controllers
                 await _ordenTrabajoService
                     .EntregarAsync(
                         ordenTrabajoId,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -463,9 +463,9 @@ namespace MecaniCar360.Controllers
                 int ordenTrabajoId,
                 NivelUrgencia urgencia)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -475,7 +475,7 @@ namespace MecaniCar360.Controllers
                     .CambiarUrgenciaAsync(
                         ordenTrabajoId,
                         urgencia,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -516,9 +516,9 @@ namespace MecaniCar360.Controllers
                 int ordenTrabajoId,
                 string? observaciones)
         {
-            var personaId = ObtenerPersonaId();
+            var usuarioSolicitanteId = ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioSolicitanteId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -528,7 +528,7 @@ namespace MecaniCar360.Controllers
                     .ActualizarObservacionesAsync(
                         ordenTrabajoId,
                         observaciones,
-                        personaId.Value);
+                        usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -559,11 +559,11 @@ namespace MecaniCar360.Controllers
         // HELPER
         // =====================================================
 
-        private int? ObtenerPersonaId()
+        private int? ObtenerUsuarioId()
         {
             var claim =
                 User.FindFirstValue(
-                    "PersonaId");
+                    ClaimTypes.NameIdentifier);
 
             if (string.IsNullOrWhiteSpace(
                     claim))
@@ -573,9 +573,9 @@ namespace MecaniCar360.Controllers
 
             if (int.TryParse(
                     claim,
-                    out int personaId))
+                    out int usuarioSolicitanteId))
             {
-                return personaId;
+                return usuarioSolicitanteId;
             }
 
             return null;

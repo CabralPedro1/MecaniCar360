@@ -11,13 +11,16 @@ namespace MecaniCar360.Services
     {
         private readonly MecaniCarContext _context;
         private readonly OrdenStateService _ordenStateService;
+        private readonly PermisoService _permisoService;
 
         public OrdenTrabajoService(
             MecaniCarContext context,
-            OrdenStateService ordenStateService)
+            OrdenStateService ordenStateService,
+            PermisoService permisoService)
         {
             _context = context;
             _ordenStateService = ordenStateService;
+            _permisoService = permisoService;
         }
 
 
@@ -27,17 +30,24 @@ namespace MecaniCar360.Services
 
         // -----------------------------------------------------
         // TODAS LAS ÓRDENES
-        // Solo ADMIN
+        // ORDEN_VER; el mec?nico no administrador s?lo ve sus asignadas.
         // -----------------------------------------------------
 
         public async Task<ServiceResult<List<OrdenTrabajo>>>
-            ObtenerTodasAsync(int personaId)
+            ObtenerTodasAsync(int usuarioSolicitanteId)
         {
-            if (!await EsAdministradorAsync(personaId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_VER");
+
+            if (usuario == null)
                 return ServiceResult<List<OrdenTrabajo>>.Error(
-                    "No tiene permisos para consultar todas las órdenes.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var personaId = usuario.PersonaId;
+
+            var limitarAlMecanico =
+                !await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await EsMecanicoActivoAsync(personaId);
 
             var ordenes =
                 await _context.OrdenesTrabajo
@@ -57,6 +67,7 @@ namespace MecaniCar360.Services
 
                     .Include(o => o.Mecanico)
 
+                    .Where(o => !limitarAlMecanico || o.MecanicoId == personaId)
                     .OrderByDescending(o => o.FechaInicio)
 
                     .ToListAsync();
@@ -75,8 +86,17 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult<OrdenTrabajo>>
             ObtenerPorIdAsync(
                 int id,
-                int personaId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_VER_DETALLE");
+
+            if (usuario == null)
+                return ServiceResult<OrdenTrabajo>.Error(
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var personaId = usuario.PersonaId;
+
             var orden =
                 await ObtenerOrdenCompletaAsync(id);
 
@@ -87,7 +107,7 @@ namespace MecaniCar360.Services
             }
 
             bool esAdmin =
-                await EsAdministradorAsync(personaId);
+                await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             bool esMecanico =
                 await EsMecanicoActivoAsync(personaId);
@@ -100,7 +120,10 @@ namespace MecaniCar360.Services
 
             if (esMecanico)
             {
-                if (orden.MecanicoId != personaId)
+                if (orden.MecanicoId != personaId &&
+                    !(orden.MecanicoId == null &&
+                      orden.EstadoActual == EstadoOrden.Pendiente &&
+                      !orden.FechaFin.HasValue))
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "No tiene acceso a esta orden de trabajo.");
@@ -110,8 +133,7 @@ namespace MecaniCar360.Services
                     orden);
             }
 
-            return ServiceResult<OrdenTrabajo>.Error(
-                "No tiene permisos para consultar esta orden.");
+            return ServiceResult<OrdenTrabajo>.Ok(orden);
         }
 
 
@@ -123,14 +145,14 @@ namespace MecaniCar360.Services
         // -----------------------------------------------------
 
         public async Task<ServiceResult<List<OrdenTrabajo>>>
-            ObtenerPendientesAsync(int personaId)
+            ObtenerPendientesAsync(int usuarioSolicitanteId)
         {
-            if (!await EsMecanicoActivoAsync(personaId) &&
-                !await EsAdministradorAsync(personaId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_VER");
+
+            if (usuario == null)
                 return ServiceResult<List<OrdenTrabajo>>.Error(
-                    "No tiene permisos para consultar las órdenes pendientes.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
 
             var ordenes =
                 await _context.OrdenesTrabajo
@@ -171,11 +193,19 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult<List<OrdenTrabajo>>>
             ObtenerDeMecanicoAsync(
                 int mecanicoId,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_VER");
+
+            if (usuario == null)
+                return ServiceResult<List<OrdenTrabajo>>.Error(
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var personaSolicitanteId = usuario.PersonaId;
+
             bool esAdmin =
-                await EsAdministradorAsync(
-                    personaSolicitanteId);
+                await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             bool esMecanicoSolicitante =
                 await EsMecanicoActivoAsync(
@@ -227,14 +257,14 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<Persona>>>
             ObtenerMecanicosDisponiblesAsync(
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
-            if (!await EsAdministradorAsync(
-                    personaSolicitanteId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_ASIGNAR_MECANICO");
+
+            if (usuario == null)
                 return ServiceResult<List<Persona>>.Error(
-                    "Solo un administrador puede consultar los mecánicos para asignación.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
 
             var mecanicos =
                 await _context.PersonaRoles
@@ -244,7 +274,7 @@ namespace MecaniCar360.Services
 
                     .Where(pr =>
                         pr.Persona.Activo &&
-                        pr.Rol.Nombre == "MECANICO" &&
+                        pr.Rol.Nombre == RolesSistema.MECANICO &&
                         pr.Rol.Activo &&
                         pr.FechaBaja == null)
 
@@ -264,21 +294,21 @@ namespace MecaniCar360.Services
 
         // =====================================================
         // ASIGNAR MECÁNICO
-        // SOLO ADMIN
+        // ORDEN_ASIGNAR_MECANICO; destinatario elegible como mec?nico.
         // =====================================================
 
         public async Task<ServiceResult>
             AsignarMecanicoAsync(
                 int ordenTrabajoId,
                 int mecanicoId,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
-            if (!await EsAdministradorAsync(
-                    personaSolicitanteId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_ASIGNAR_MECANICO");
+
+            if (usuario == null)
                 return ServiceResult.Error(
-                    "Solo un administrador puede asignar mecánicos.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
 
             var orden =
                 await _context.OrdenesTrabajo
@@ -291,7 +321,9 @@ namespace MecaniCar360.Services
                     "Orden de trabajo no encontrada.");
             }
 
-            if (orden.FechaFin.HasValue)
+            if (orden.FechaFin.HasValue ||
+                orden.EstadoActual == EstadoOrden.Finalizado ||
+                orden.EstadoActual == EstadoOrden.Entregado)
             {
                 return ServiceResult.Error(
                     "La orden de trabajo ya finalizó.");
@@ -329,8 +361,17 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult>
             TomarOrdenAsync(
                 int ordenTrabajoId,
-                int mecanicoId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_MODIFICAR");
+
+            if (usuario == null)
+                return ServiceResult.Error(
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var mecanicoId = usuario.PersonaId;
+
             if (!await EsMecanicoActivoAsync(
                     mecanicoId))
             {
@@ -393,14 +434,18 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult>
             IniciarReparacionAsync(
                 int ordenTrabajoId,
-                int mecanicoId)
+                int usuarioSolicitanteId)
         {
-            if (!await EsMecanicoActivoAsync(
-                    mecanicoId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_CAMBIAR_ESTADO");
+
+            if (usuario == null)
                 return ServiceResult.Error(
-                    "El mecánico no está activo.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var mecanicoId = usuario.PersonaId;
+
+            var esAdmin = await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             var orden =
                 await _context.OrdenesTrabajo
@@ -419,8 +464,12 @@ namespace MecaniCar360.Services
                     "La orden ya finalizó.");
             }
 
-            if (orden.MecanicoId !=
-                mecanicoId)
+            if (!orden.MecanicoId.HasValue)
+                return ServiceResult.Error("La orden debe tener un mec?nico asignado.");
+
+            if (!esAdmin &&
+                (!await EsMecanicoActivoAsync(mecanicoId) ||
+                 orden.MecanicoId != mecanicoId))
             {
                 return ServiceResult.Error(
                     "La orden no está asignada a este mecánico.");
@@ -446,8 +495,9 @@ namespace MecaniCar360.Services
 
             if (historial != null)
             {
+                // El modelo actual no registra un actor administrativo.
                 historial.MecanicoId =
-                    mecanicoId;
+                    esAdmin ? null : mecanicoId;
             }
 
             await _context.SaveChangesAsync();
@@ -465,15 +515,19 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult>
             FinalizarAsync(
                 int ordenTrabajoId,
-                int mecanicoId,
+                int usuarioSolicitanteId,
                 int? horasReales = null)
         {
-            if (!await EsMecanicoActivoAsync(
-                    mecanicoId))
-            {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_FINALIZAR");
+
+            if (usuario == null)
                 return ServiceResult.Error(
-                    "El mecánico no está activo.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var mecanicoId = usuario.PersonaId;
+
+            var esAdmin = await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             var orden =
                 await _context.OrdenesTrabajo
@@ -492,8 +546,12 @@ namespace MecaniCar360.Services
                     "La orden ya está finalizada.");
             }
 
-            if (orden.MecanicoId !=
-                mecanicoId)
+            if (!orden.MecanicoId.HasValue)
+                return ServiceResult.Error("La orden debe tener un mec?nico asignado.");
+
+            if (!esAdmin &&
+                (!await EsMecanicoActivoAsync(mecanicoId) ||
+                 orden.MecanicoId != mecanicoId))
             {
                 return ServiceResult.Error(
                     "La orden no está asignada a este mecánico.");
@@ -533,8 +591,9 @@ namespace MecaniCar360.Services
 
             if (historial != null)
             {
+                // El modelo actual no registra un actor administrativo.
                 historial.MecanicoId =
-                    mecanicoId;
+                    esAdmin ? null : mecanicoId;
             }
 
             await _context.SaveChangesAsync();
@@ -556,21 +615,14 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult>
             EntregarAsync(
                 int ordenTrabajoId,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
-            bool esAdmin =
-                await EsAdministradorAsync(
-                    personaSolicitanteId);
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_ENTREGAR");
 
-            bool esCaja =
-                await EsCajaAsync(
-                    personaSolicitanteId);
-
-            if (!esAdmin && !esCaja)
-            {
+            if (usuario == null)
                 return ServiceResult.Error(
-                    "No tiene permisos para entregar vehículos.");
-            }
+                    "Usuario inactivo o sin permisos para esta operación.");
 
             await using var transaction =
                 await _context.Database
@@ -703,8 +755,20 @@ namespace MecaniCar360.Services
             CambiarUrgenciaAsync(
                 int ordenTrabajoId,
                 NivelUrgencia urgencia,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_MODIFICAR");
+
+            if (usuario == null)
+                return ServiceResult.Error(
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var personaSolicitanteId = usuario.PersonaId;
+
+            if (!Enum.IsDefined(typeof(NivelUrgencia), urgencia))
+                return ServiceResult.Error("El nivel de urgencia no es válido.");
+
             var orden =
                 await _context.OrdenesTrabajo
                     .FirstOrDefaultAsync(o =>
@@ -717,8 +781,7 @@ namespace MecaniCar360.Services
             }
 
             bool esAdmin =
-                await EsAdministradorAsync(
-                    personaSolicitanteId);
+                await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             bool esMecanicoAsignado =
                 await EsMecanicoActivoAsync(
@@ -760,8 +823,17 @@ namespace MecaniCar360.Services
             ActualizarObservacionesAsync(
                 int ordenTrabajoId,
                 string? observaciones,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(
+                usuarioSolicitanteId, "ORDEN_MODIFICAR");
+
+            if (usuario == null)
+                return ServiceResult.Error(
+                    "Usuario inactivo o sin permisos para esta operación.");
+
+            var personaSolicitanteId = usuario.PersonaId;
+
             var orden =
                 await _context.OrdenesTrabajo
                     .FirstOrDefaultAsync(o =>
@@ -774,8 +846,7 @@ namespace MecaniCar360.Services
             }
 
             bool esAdmin =
-                await EsAdministradorAsync(
-                    personaSolicitanteId);
+                await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             bool esMecanicoAsignado =
                 await EsMecanicoActivoAsync(
@@ -814,33 +885,21 @@ namespace MecaniCar360.Services
         // MÉTODOS PRIVADOS
         // =====================================================
 
-        private async Task<bool>
-            EsAdministradorAsync(
-                int personaId)
+        private async Task<Usuario?> ObtenerUsuarioAutorizadoAsync(
+            int usuarioSolicitanteId,
+            string patente)
         {
-            return await _context.PersonaRoles
-                .Include(pr => pr.Rol)
-                .AnyAsync(pr =>
-                    pr.PersonaId == personaId &&
-                    pr.Rol.Nombre ==
-                        "ADMIN" &&
-                    pr.Rol.Activo &&
-                    pr.FechaBaja == null);
-        }
+            var usuario = await _context.Usuarios
+                .Include(u => u.Persona)
+                .FirstOrDefaultAsync(u =>
+                    u.Id == usuarioSolicitanteId &&
+                    u.Activo && u.Persona.Activo);
 
+            if (usuario == null ||
+                !await _permisoService.TienePermisoAsync(usuarioSolicitanteId, patente))
+                return null;
 
-        private async Task<bool>
-            EsCajaAsync(
-                int personaId)
-        {
-            return await _context.PersonaRoles
-                .Include(pr => pr.Rol)
-                .AnyAsync(pr =>
-                    pr.PersonaId == personaId &&
-                    pr.Rol.Nombre ==
-                        "CAJA" &&
-                    pr.Rol.Activo &&
-                    pr.FechaBaja == null);
+            return usuario;
         }
 
 
@@ -860,7 +919,7 @@ namespace MecaniCar360.Services
                     pr.Persona.Activo &&
 
                     pr.Rol.Nombre ==
-                        "MECANICO" &&
+                        RolesSistema.MECANICO &&
 
                     pr.Rol.Activo &&
 

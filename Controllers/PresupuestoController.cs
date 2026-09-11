@@ -3,6 +3,7 @@ using MecaniCar360.Patterns.Facade;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MecaniCar360.Controllers
 {
@@ -60,14 +61,16 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Crear(
      int ordenTrabajoId)
         {
-            var mecanicoId =
-                ObtenerUsuarioPersonaId();
+            if (!int.TryParse(
+                    User.FindFirstValue(ClaimTypes.NameIdentifier),
+                    out int usuarioSolicitanteId))
+                return Forbid();
 
             var resultado =
                 await _mecaniCarFacade
                     .PrepararPresupuestoAsync(
                         ordenTrabajoId,
-                        mecanicoId);
+                        usuarioSolicitanteId);
 
             TempData[
                 resultado.Exitoso
