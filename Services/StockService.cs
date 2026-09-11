@@ -948,6 +948,46 @@ namespace MecaniCar360.Services
         
 
 
+        // Participa en la transacción de aprobación; no confirma cambios por su cuenta.
+        public async Task<ServiceResult> ProcesarAprobacionIncrementalAsync(
+            int ordenTrabajoId, int usuarioId, IEnumerable<PresupuestoVersionItem> items)
+        {
+            if (_context.Database.CurrentTransaction == null)
+                return ServiceResult.Error("El procesamiento incremental requiere una transacción.");
+            var cantidades = items.Where(i => i.RepuestoId.HasValue)
+                .GroupBy(i => i.RepuestoId!.Value)
+                .Select(g => new { RepuestoId = g.Key, Cantidad = g.Sum(i => (long)i.Cantidad) })
+                .OrderBy(g => g.RepuestoId).ToList();
+            var faltantes = new List<string>();
+            foreach (var solicitado in cantidades)
+            {
+                if (solicitado.Cantidad <= 0 || solicitado.Cantidad > int.MaxValue)
+                    return ServiceResult.Error("La cantidad total de un repuesto no es válida.");
+                var repuesto = await _context.Repuestos.FromSqlInterpolated(
+                    $"SELECT * FROM [Repuestos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {solicitado.RepuestoId}")
+                    .FirstOrDefaultAsync();
+                if (repuesto == null) return ServiceResult.Error("Repuesto no encontrado.");
+                await _context.Entry(repuesto).ReloadAsync();
+                if (repuesto.StockActual < 0)
+                    return ServiceResult.Error("El repuesto tiene stock negativo; debe revisarlo el encargado de Stock.");
+                var movimientos = _context.MovimientosStock.Where(m =>
+                    m.OrdenTrabajoId == ordenTrabajoId && m.RepuestoId == solicitado.RepuestoId &&
+                    m.Tipo == TipoMovimientoStock.EgresoOrdenTrabajo);
+                if (await movimientos.AnyAsync(m => m.Cantidad >= 0))
+                    return ServiceResult.Error("Existe un egreso con signo inválido; debe revisarlo el encargado de Stock.");
+                var procesado = -(await movimientos.SumAsync(m => (long?)m.Cantidad) ?? 0);
+                var adicional = Math.Max(0L, solicitado.Cantidad - procesado);
+                if (adicional == 0) continue;
+                var resultado = await ReservarParaOrdenAsync(solicitado.RepuestoId,
+                    (int)adicional, usuarioId, ordenTrabajoId);
+                if (!resultado.Exitoso) return ServiceResult.Error(resultado.Mensaje);
+                if (resultado.CantidadFaltante > 0)
+                    faltantes.Add($"Repuesto #{solicitado.RepuestoId}: faltan {resultado.CantidadFaltante} unidad(es)");
+            }
+            return ServiceResult.Ok(faltantes.Count == 0 ? "" :
+                "Se registraron sólo las salidas disponibles. Pendiente de reposición: " + string.Join("; ", faltantes) + ".");
+        }
+
         private async Task RegistrarMovimientoAsync(
             int repuestoId,
             int cantidad,

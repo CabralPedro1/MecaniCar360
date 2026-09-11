@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -451,10 +451,11 @@ namespace MecaniCar360.Services
 
             var esAdmin = await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                .FirstOrDefaultAsync();
 
             if (orden == null)
             {
@@ -486,6 +487,10 @@ namespace MecaniCar360.Services
                     "La orden debe estar aprobada para iniciar la reparación.");
             }
 
+            if (!await TienePresupuestoVigenteAprobadoAsync(ordenTrabajoId))
+                return ServiceResult.Error(
+                    "No se puede iniciar la reparación porque el presupuesto vigente y su última versión enviada deben estar aprobados.");
+
             // =====================================
             // STATE PATTERN
             // =====================================
@@ -505,6 +510,7 @@ namespace MecaniCar360.Services
             }
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Reparación iniciada correctamente.");
@@ -533,10 +539,11 @@ namespace MecaniCar360.Services
 
             var esAdmin = await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                .FirstOrDefaultAsync();
 
             if (orden == null)
             {
@@ -576,6 +583,10 @@ namespace MecaniCar360.Services
                     "Las horas reales no son válidas.");
             }
 
+            if (!await TienePresupuestoVigenteAprobadoAsync(ordenTrabajoId))
+                return ServiceResult.Error(
+                    "No se puede finalizar la reparación porque el presupuesto vigente y su última versión enviada deben estar aprobados.");
+
             // =====================================
             // STATE PATTERN
             // =====================================
@@ -601,6 +612,7 @@ namespace MecaniCar360.Services
             }
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Orden de trabajo finalizada correctamente.");
@@ -931,11 +943,37 @@ namespace MecaniCar360.Services
         }
 
 
+        private Task<bool> TienePresupuestoVigenteAprobadoAsync(int ordenTrabajoId) =>
+            _context.Presupuestos.AsNoTracking().AnyAsync(p =>
+                p.OrdenTrabajoId == ordenTrabajoId &&
+                p.Estado == EstadoPresupuesto.Aprobado &&
+                p.Versiones.OrderByDescending(v => v.NumeroVersion)
+                    .Select(v => (EstadoPresupuestoVersion?)v.Decision).FirstOrDefault()
+                    == EstadoPresupuestoVersion.Aprobado);
+
         private async Task<ServiceResult<OrdenTrabajo>> CompletarDiagnosticoVisibleAsync(
             OrdenTrabajo orden, int usuarioSolicitanteId)
         {
             var resultado = await _diagnosticoService.ObtenerAsync(orden.Id, usuarioSolicitanteId);
             orden.Diagnostico = resultado.Exitoso ? resultado.Data : null;
+            // No cargar presupuesto por permiso de orden. La vista obtiene sólo el resumen
+            // si el actor posee además permiso de presupuesto y acceso técnico a esta OT.
+            orden.Presupuesto = null;
+            if (await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PRESUPUESTO_VER"))
+            {
+                var usuario = await _context.Usuarios.AsNoTracking()
+                    .FirstOrDefaultAsync(u => u.Id == usuarioSolicitanteId && u.Activo && u.Persona.Activo);
+                if (usuario != null && (await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) ||
+                    orden.MecanicoId == usuario.PersonaId && await EsMecanicoActivoAsync(usuario.PersonaId)))
+                    orden.Presupuesto = await _context.Presupuestos.AsNoTracking()
+                        .Where(p => p.OrdenTrabajoId == orden.Id)
+                        .Select(p => new Presupuesto
+                        {
+                            Id = p.Id, OrdenTrabajoId = p.OrdenTrabajoId, Estado = p.Estado,
+                            Total = p.Total, FechaUltimaModificacion = p.FechaUltimaModificacion,
+                            MotivoRechazo = p.MotivoRechazo
+                        }).FirstOrDefaultAsync();
+            }
             return ServiceResult<OrdenTrabajo>.Ok(orden);
         }
 
@@ -962,16 +1000,11 @@ namespace MecaniCar360.Services
 
                 .Include(o => o.Mecanico)
 
-                .Include(o => o.Presupuesto)
-                    .ThenInclude(p => p!.Items)
-
                 .Include(o => o.Factura)
                     .ThenInclude(f => f!.Pagos)
 
                 .Include(o => o.HistorialEstados)
                     .ThenInclude(h => h.Mecanico)
-
-                .Include(o => o.Evidencias)
 
                 .FirstOrDefaultAsync(o =>
                     o.Id == id);
