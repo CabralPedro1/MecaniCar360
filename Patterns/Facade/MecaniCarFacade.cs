@@ -1,11 +1,14 @@
 ﻿using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Services;
+using MecaniCar360.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Patterns.Facade
 {
     public class MecaniCarFacade
     {
+        private readonly MecaniCarContext _context;
         private readonly DiagnosticoService
             _diagnosticoService;
 
@@ -18,8 +21,10 @@ namespace MecaniCar360.Patterns.Facade
         public MecaniCarFacade(
             DiagnosticoService diagnosticoService,
             PresupuestoService presupuestoService,
-            OrdenTrabajoService ordenTrabajoService)
+            OrdenTrabajoService ordenTrabajoService,
+            MecaniCarContext context)
         {
+            _context = context;
             _diagnosticoService =
                 diagnosticoService;
 
@@ -39,8 +44,18 @@ namespace MecaniCar360.Patterns.Facade
             ServiceResult<Presupuesto>>
             PrepararPresupuestoAsync(
                 int ordenTrabajoId,
-                int mecanicoId)
+                int usuarioSolicitanteId)
         {
+            var usuario = await _context.Usuarios
+                .FirstOrDefaultAsync(u =>
+                    u.Id == usuarioSolicitanteId &&
+                    u.Activo && u.Persona.Activo);
+
+            if (usuario == null)
+                return ServiceResult<Presupuesto>.Error("Usuario inactivo o inexistente.");
+
+            // Los módulos auxiliares conservan por ahora sus contratos por persona.
+            var mecanicoId = usuario.PersonaId;
             // =====================================
             // VERIFICAR ORDEN
             // =====================================
@@ -49,7 +64,7 @@ namespace MecaniCar360.Patterns.Facade
             await _ordenTrabajoService
                 .ObtenerPorIdAsync(
                     ordenTrabajoId,
-                    mecanicoId);
+                    usuarioSolicitanteId);
 
             if (!ordenResultado.Exitoso)
             {
