@@ -11,6 +11,8 @@
 
         public DateTime FechaUltimaModificacion { get; set; }
 
+        public DateTime? FechaFinalizacion { get; set; }
+
         public List<DiagnosticoHistorial> Historial { get; set; } = new();
     }
 

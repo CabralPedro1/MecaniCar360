@@ -316,7 +316,7 @@
     <!-- ===================================== -->
     @if (Model.EstadoActual ==
         MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
-        Model.Diagnosticos.Any())
+        Model.Diagnostico != null)
     {
         <div class="card mb-4">
 
@@ -368,15 +368,11 @@
 
 
                 <!-- DIAGNÓSTICOS EXISTENTES -->
-                @if (Model.Diagnosticos.Any())
+                @if (Model.Diagnostico != null)
                 {
                     <hr class="my-4" />
 
-                    @foreach (var diagnostico in
-                                Model.Diagnosticos
-                                .OrderByDescending(
-                                d => d.FechaUltimaModificacion))
-                    {
+                    var diagnostico = Model.Diagnostico;
 
                         <div class="card mb-3">
 
@@ -456,14 +452,14 @@
                             </div>
 
                         </div>
-                    }
+
                 }
 
 
                 <!-- FINALIZAR DIAGNÓSTICO -->
                 @if (Model.EstadoActual ==
                             MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
-                            Model.Diagnosticos.Any())
+                            Model.Diagnostico != null)
                 {
                     <form asp-controller="Diagnostico"
                           asp-action="Finalizar"
@@ -498,7 +494,7 @@
     @if (Model.Presupuesto == null &&
         Model.EstadoActual ==
         MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
-        Model.Diagnosticos.Any())
+        Model.Diagnostico != null)
     {
         <div class="card mb-4">
 
