@@ -2,7 +2,6 @@
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
-using MecaniCar360.Patterns.Memento;
 using MecaniCar360.Patterns.State;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,7 +72,8 @@ namespace MecaniCar360.Services
                 : ServiceResult<Diagnostico>.Ok(diagnostico);
         }
 
-        public async Task<ServiceResult> GuardarAsync(int ordenTrabajoId, int usuarioSolicitanteId, string descripcion)
+        public async Task<ServiceResult> GuardarAsync(int ordenTrabajoId, int usuarioSolicitanteId,
+            string descripcion, IEnumerable<int>? evidenciaIds = null)
         {
             var usuario = await ObtenerUsuarioAsync(usuarioSolicitanteId);
             if (usuario == null) return ServiceResult.Error("Usuario inactivo o inexistente.");
@@ -99,6 +99,17 @@ namespace MecaniCar360.Services
                 if (descripcion.Length > 5000)
                     return ServiceResult.Error("La descripción del diagnóstico no puede superar los 5000 caracteres.");
 
+                var ids = evidenciaIds?.ToList() ?? new List<int>();
+                if (ids.Count != ids.Distinct().Count())
+                    return ServiceResult.Error("No se puede asociar la misma evidencia más de una vez.");
+                if (ids.Any(id => id <= 0))
+                    return ServiceResult.Error("Los identificadores de evidencia deben ser válidos.");
+                // El permiso técnico y la asignación ya fueron comprobados para esta orden.
+                // Sólo pueden reutilizarse evidencias existentes de esa misma orden.
+                if (ids.Count > 0 && await _context.Evidencias.CountAsync(e =>
+                        ids.Contains(e.Id) && e.OrdenTrabajoId == ordenTrabajoId) != ids.Count)
+                    return ServiceResult.Error("Alguna evidencia no existe o no pertenece a esta orden.");
+
                 var ahora = DateTime.Now;
                 var texto = descripcion.Trim();
                 var mecanicoActorId = await MecanicoActorAsync(usuario);
@@ -111,35 +122,25 @@ namespace MecaniCar360.Services
                         FechaUltimaModificacion = ahora
                     };
                     _context.Diagnosticos.Add(diagnostico);
-                    await _context.SaveChangesAsync();
-                    _context.DiagnosticoHistoriales.Add(new DiagnosticoHistorial
-                    {
-                        DiagnosticoId = diagnostico.Id,
-                        Descripcion = texto,
-                        Fecha = ahora,
-                        MecanicoId = mecanicoActorId
-                    });
                 }
                 else
                 {
-                    var originator = new DiagnosticoOriginator(diagnostico.DescripcionActual);
-                    var caretaker = new DiagnosticoCaretaker();
-                    caretaker.Guardar(originator.CrearMemento());
-                    var estadoAnterior = caretaker.ObtenerAnterior();
-                    if (estadoAnterior != null)
-                    {
-                        _context.DiagnosticoHistoriales.Add(new DiagnosticoHistorial
-                        {
-                            DiagnosticoId = diagnostico.Id,
-                            Descripcion = estadoAnterior.Descripcion,
-                            Fecha = estadoAnterior.Fecha,
-                            MecanicoId = mecanicoActorId
-                        });
-                    }
-                    originator.Actualizar(texto);
-                    diagnostico.DescripcionActual = originator.Descripcion;
+                    diagnostico.DescripcionActual = texto;
                     diagnostico.FechaUltimaModificacion = ahora;
                 }
+                _context.DiagnosticoHistoriales.Add(new DiagnosticoHistorial
+                {
+                    Diagnostico = diagnostico,
+                    Descripcion = texto,
+                    Fecha = ahora,
+                    TipoRegistro = TipoRegistroDiagnostico.Revision,
+                    RegistradoPorUsuarioId = usuario.Id,
+                    MecanicoId = mecanicoActorId,
+                    Evidencias = ids.Select(id => new DiagnosticoHistorialEvidencia
+                    {
+                        EvidenciaTrabajoId = id
+                    }).ToList()
+                });
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return ServiceResult.Ok("Diagnóstico guardado correctamente.");
@@ -166,8 +167,11 @@ namespace MecaniCar360.Services
                 return ServiceResult<List<DiagnosticoHistorial>>.Error("La orden todavía no tiene un diagnóstico.");
             var historial = await _context.DiagnosticoHistoriales.AsNoTracking()
                 .Include(h => h.Mecanico)
+                .Include(h => h.Evidencias.Where(e =>
+                    e.EvidenciaTrabajo.OrdenTrabajoId == ordenTrabajoId))
+                    .ThenInclude(e => e.EvidenciaTrabajo)
                 .Where(h => h.DiagnosticoId == diagnosticoId.Value)
-                .OrderByDescending(h => h.Fecha).ToListAsync();
+                .OrderByDescending(h => h.Fecha).ThenByDescending(h => h.Id).ToListAsync();
             return ServiceResult<List<DiagnosticoHistorial>>.Ok(historial);
         }
 

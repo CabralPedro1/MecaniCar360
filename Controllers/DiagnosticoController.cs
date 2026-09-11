@@ -49,10 +49,15 @@ namespace MecaniCar360.Controllers
         // La patente se decide en el service según exista o no el diagnóstico.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Guardar(int id, string descripcion)
+        public async Task<IActionResult> Guardar(int id, string descripcion, IEnumerable<int>? evidenciaIds = null)
         {
             if (!ObtenerUsuarioId(out var usuarioSolicitanteId)) return Forbid();
-            var resultado = await _diagnosticoService.GuardarAsync(id, usuarioSolicitanteId, descripcion);
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Los datos del diagnóstico o de las evidencias no son válidos.";
+                return RedirectToAction("Detalle", "OrdenTrabajo", new { id });
+            }
+            var resultado = await _diagnosticoService.GuardarAsync(id, usuarioSolicitanteId, descripcion, evidenciaIds);
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
             return RedirectToAction("Detalle", "OrdenTrabajo", new { id });
         }
@@ -70,8 +75,17 @@ namespace MecaniCar360.Controllers
                 exitoso = true,
                 historial = resultado.Data!.Select(h => new
                 {
+                    id = h.Id,
                     descripcion = h.Descripcion,
                     fecha = h.Fecha,
+                    tipoRegistro = h.TipoRegistro.ToString(),
+                    registradoPorUsuarioId = h.RegistradoPorUsuarioId,
+                    evidencias = h.Evidencias.Select(e => new
+                    {
+                        id = e.EvidenciaTrabajoId,
+                        descripcion = e.EvidenciaTrabajo.Descripcion,
+                        fecha = e.EvidenciaTrabajo.Fecha
+                    }).ToList(),
                     mecanico = h.Mecanico == null ? null : $"{h.Mecanico.Apellido}, {h.Mecanico.Nombre}"
                 }).ToList()
             });
