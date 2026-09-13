@@ -708,9 +708,15 @@ namespace MecaniCar360.Data
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<GarantiaItem>()
-                .HasOne(gi => gi.PresupuestoItem)
+                .HasOne(gi => gi.FacturaItem)
                 .WithMany()
-                .HasForeignKey(gi => gi.PresupuestoItemId)
+                .HasForeignKey(gi => gi.FacturaItemId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Garantia>()
+                .HasOne(g => g.CreadaPorUsuario)
+                .WithMany()
+                .HasForeignKey(g => g.CreadaPorUsuarioId)
                 .OnDelete(DeleteBehavior.Restrict);
         }
     }

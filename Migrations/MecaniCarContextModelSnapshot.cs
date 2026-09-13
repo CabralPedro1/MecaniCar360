@@ -423,6 +423,9 @@ namespace MecaniCar360.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("FacturaItemId")
+                        .HasColumnType("int");
+
                     b.Property<int>("GarantiaId")
                         .HasColumnType("int");
 
@@ -433,14 +436,11 @@ namespace MecaniCar360.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("PresupuestoItemId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("GarantiaId");
+                    b.HasIndex("FacturaItemId");
 
-                    b.HasIndex("PresupuestoItemId");
+                    b.HasIndex("GarantiaId");
 
                     b.ToTable("GarantiaItems");
                 });
@@ -1615,7 +1615,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Usuario", "CreadaPorUsuario")
                         .WithMany()
                         .HasForeignKey("CreadaPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MecaniCar360.Models.OrdenTrabajo", "OrdenTrabajo")
@@ -1631,21 +1631,21 @@ namespace MecaniCar360.Migrations
 
             modelBuilder.Entity("MecaniCar360.Models.GarantiaItem", b =>
                 {
+                    b.HasOne("MecaniCar360.Models.FacturaItem", "FacturaItem")
+                        .WithMany()
+                        .HasForeignKey("FacturaItemId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("MecaniCar360.Models.Garantia", "Garantia")
                         .WithMany("Items")
                         .HasForeignKey("GarantiaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MecaniCar360.Models.PresupuestoItem", "PresupuestoItem")
-                        .WithMany()
-                        .HasForeignKey("PresupuestoItemId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("FacturaItem");
 
                     b.Navigation("Garantia");
-
-                    b.Navigation("PresupuestoItem");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.IngresoVehiculo", b =>

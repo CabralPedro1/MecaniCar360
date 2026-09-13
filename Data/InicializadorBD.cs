@@ -994,17 +994,15 @@ namespace MecaniCar360.Data
             AsociarPatente(
                 context,
                 "GARANTIAS",
-                "GARANTIA_VER_PROPIA");
-
-            AsociarPatente(
-                context,
-                "GARANTIAS",
                 "GARANTIA_CREAR");
 
-            AsociarPatente(
-                context,
-                "GARANTIAS",
-                "GARANTIA_ANULAR");
+            // Retirar únicamente anulación de GARANTIAS, también en bases ya sembradas.
+            // Conservar las asociaciones de consulta propia; ADMIN mantiene el bypass.
+            var asociacionesGarantiaRetiradas = context.FamiliaPatentes
+                .Where(fp => fp.Familia.Nombre == "GARANTIAS" &&
+                    fp.Patente.Nombre == "GARANTIA_ANULAR")
+                .ToList();
+            context.FamiliaPatentes.RemoveRange(asociacionesGarantiaRetiradas);
 
             // -------------------------------------
             // REPUESTOS - CONSULTA

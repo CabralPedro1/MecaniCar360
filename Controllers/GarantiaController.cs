@@ -155,7 +155,6 @@ namespace MecaniCar360.Controllers
         [Permiso("GARANTIA_CREAR")]
         public async Task<IActionResult> Crear(
             int ordenTrabajoId,
-            DateTime fechaInicio,
             List<GarantiaItemDto> items)
         {
             var usuarioId =
@@ -166,12 +165,14 @@ namespace MecaniCar360.Controllers
                     "Login",
                     "Account");
 
+            if (ordenTrabajoId <= 0 || !ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var resultado =
                 await _garantiaService
                     .CrearAsync(
                         ordenTrabajoId,
                         usuarioId.Value,
-                        fechaInicio,
                         items);
 
             if (!resultado.Exitoso)
