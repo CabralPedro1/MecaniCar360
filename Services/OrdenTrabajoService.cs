@@ -648,27 +648,23 @@ namespace MecaniCar360.Services
 
             await using var transaction =
                 await _context.Database
-                    .BeginTransactionAsync();
+                    .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             try
             {
-                var orden =
-                    await _context.OrdenesTrabajo
-
-                        .Include(o => o.Factura)
-                            .ThenInclude(f =>
-                                f!.Pagos)
-
-                        .Include(o => o.IngresoVehiculo)
-
-                        .FirstOrDefaultAsync(o =>
-                            o.Id == ordenTrabajoId);
+                // Mismo orden de bloqueo que emisión y pago: primero la OT.
+                var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                    $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                    .FirstOrDefaultAsync();
 
                 if (orden == null)
                 {
                     return ServiceResult.Error(
                         "Orden de trabajo no encontrada.");
                 }
+
+                // No validar una instancia que el contexto hubiera cargado antes del bloqueo.
+                await _context.Entry(orden).ReloadAsync();
 
                 if (orden.EstadoActual ==
                     EstadoOrden.Entregado)
@@ -690,13 +686,17 @@ namespace MecaniCar360.Services
                 // FACTURA
                 // =====================================
 
-                if (orden.Factura == null)
+                var factura = await _context.Facturas.AsNoTracking()
+                    .Include(f => f.Pagos)
+                    .FirstOrDefaultAsync(f => f.OrdenTrabajoId == orden.Id);
+
+                if (factura == null)
                 {
                     return ServiceResult.Error(
                         "No se puede entregar el vehículo porque todavía no existe una factura.");
                 }
 
-                if (orden.Factura.Estado !=
+                if (factura.Estado !=
                     EstadoFactura.Pagada)
                 {
                     return ServiceResult.Error(
@@ -708,7 +708,7 @@ namespace MecaniCar360.Services
                 // =====================================
 
                 var totalPagado =
-                    orden.Factura.Pagos
+                    factura.Pagos
                         .Where(p =>
                             p.Estado ==
                             EstadoPago.Pagado)
@@ -716,7 +716,7 @@ namespace MecaniCar360.Services
                             p.Monto);
 
                 if (totalPagado <
-                    orden.Factura.Total)
+                    factura.Total)
                 {
                     return ServiceResult.Error(
                         "No se puede entregar el vehículo porque el pago no cubre el total de la factura.");
@@ -726,14 +726,17 @@ namespace MecaniCar360.Services
                 // INGRESO
                 // =====================================
 
-                var ingreso =
-                    orden.IngresoVehiculo;
+                var ingreso = await _context.IngresosVehiculo.FromSqlInterpolated(
+                    $"SELECT * FROM [IngresosVehiculo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {orden.IngresoVehiculoId}")
+                    .FirstOrDefaultAsync();
 
                 if (ingreso == null)
                 {
                     return ServiceResult.Error(
                         "No se encontró el ingreso del vehículo asociado a la orden.");
                 }
+
+                await _context.Entry(ingreso).ReloadAsync();
 
                 if (ingreso.FechaEgreso.HasValue)
                 {
@@ -763,6 +766,7 @@ namespace MecaniCar360.Services
             catch
             {
                 await transaction.RollbackAsync();
+                _context.ChangeTracker.Clear();
                 throw;
             }
         }
