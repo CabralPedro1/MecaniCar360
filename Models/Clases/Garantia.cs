@@ -67,12 +67,12 @@ namespace MecaniCar360.Models
 
 
         // =====================================
-        // ÍTEM DEL PRESUPUESTO
+        // ÍTEM HISTÓRICO FACTURADO
         // =====================================
 
-        public int PresupuestoItemId { get; set; }
+        public int FacturaItemId { get; set; }
 
-        public PresupuestoItem PresupuestoItem { get; set; }
+        public FacturaItem FacturaItem { get; set; }
             = null!;
 
 
@@ -80,7 +80,7 @@ namespace MecaniCar360.Models
         // COBERTURA
         // =====================================
 
-        [Range(0, 120)]
+        [Range(1, 120)]
         public int MesesGarantia { get; set; }
 
 
