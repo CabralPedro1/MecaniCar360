@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -8,18 +8,22 @@ namespace MecaniCar360.Services
     public class ModeloService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
-        public ModeloService(MecaniCarContext context)
+        public ModeloService(MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         //====================================
         // CONSULTAS
         //====================================
 
-        public async Task<ServiceResult<List<Modelo>>> ObtenerTodosAsync()
+        public async Task<ServiceResult<List<Modelo>>> ObtenerTodosAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TieneAlgunoAsync(usuarioSolicitanteId, "VEHICULO_VER", "VEHICULO_CREAR", "VEHICULO_MODIFICAR")) return ServiceResult<List<Modelo>>.Error("Acceso denegado.");
+
             var modelos = await _context.Modelos
                 .Include(m => m.Marca)
                 .Include(m => m.Vehiculos)
@@ -30,8 +34,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Modelo>>.Ok(modelos);
         }
 
-        public async Task<ServiceResult<Modelo>> ObtenerPorIdAsync(int id)
+        public async Task<ServiceResult<Modelo>> ObtenerPorIdAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_VER")) return ServiceResult<Modelo>.Error("Acceso denegado.");
+
             var modelo = await ObtenerModeloAsync(id);
 
             if (modelo == null)
@@ -44,8 +50,10 @@ namespace MecaniCar360.Services
         // ABM
         //====================================
 
-        public async Task<ServiceResult> CrearAsync(Modelo modelo)
+        public async Task<ServiceResult> CrearAsync(Modelo modelo, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             if (string.IsNullOrWhiteSpace(modelo.Nombre))
                 return ServiceResult.Error("Debe ingresar el nombre.");
 
@@ -59,6 +67,7 @@ namespace MecaniCar360.Services
             modelo.FechaCreacion = DateTime.UtcNow;
             modelo.Activo = true;
 
+            modelo.Id = 0; modelo.Marca = null!; modelo.Vehiculos = new();
             _context.Modelos.Add(modelo);
 
             await GuardarCambiosAsync();
@@ -66,8 +75,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Modelo creado correctamente.");
         }
 
-        public async Task<ServiceResult> EditarAsync(Modelo modelo)
+        public async Task<ServiceResult> EditarAsync(Modelo modelo, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var existente = await ObtenerModeloAsync(modelo.Id);
 
             if (existente == null)
@@ -90,8 +101,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Modelo actualizado correctamente.");
         }
 
-        public async Task<ServiceResult> CambiarEstadoAsync(int id)
+        public async Task<ServiceResult> CambiarEstadoAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var modelo = await ObtenerModeloAsync(id);
 
             if (modelo == null)

@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Services;
@@ -22,8 +22,10 @@ public class DominioVehicularService
 
     // CONSULTAS
 
-    public async Task<ServiceResult<List<Vehiculo>>> ObtenerVehiculosDePersonaAsync(int personaId)
+    public async Task<ServiceResult<List<Vehiculo>>> ObtenerVehiculosDePersonaAsync(int personaId, int usuarioSolicitanteId)
     {
+        if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_VER")) return ServiceResult<List<Vehiculo>>.Error("Acceso denegado.");
+
         var vehiculos = await _context.DominiosVehiculares
             .Include(d => d.Vehiculo)
                 .ThenInclude(v => v.Marca)
@@ -40,8 +42,10 @@ public class DominioVehicularService
         return ServiceResult<List<Vehiculo>>.Ok(vehiculos);
     }
 
-    public async Task<ServiceResult<Persona>> ObtenerTitularActualAsync(int vehiculoId)
+    public async Task<ServiceResult<Persona>> ObtenerTitularActualAsync(int vehiculoId, int usuarioSolicitanteId)
     {
+        if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_VER")) return ServiceResult<Persona>.Error("Acceso denegado.");
+
         var dominio = await _context.DominiosVehiculares
             .Include(d => d.Persona)
             .FirstOrDefaultAsync(d =>
@@ -54,7 +58,7 @@ public class DominioVehicularService
         return ServiceResult<Persona>.Ok(dominio.Persona);
     }
 
-    public Task<bool> EsTitularActualAsync(
+    internal Task<bool> EsTitularActualAsync(
         int personaId,
         int vehiculoId)
     {
@@ -64,8 +68,10 @@ public class DominioVehicularService
             d.FechaHasta == null);
     }
 
-    public async Task<ServiceResult<List<DominioVehicular>>> ObtenerHistorialAsync(int vehiculoId)
+    public async Task<ServiceResult<List<DominioVehicular>>> ObtenerHistorialAsync(int vehiculoId, int usuarioSolicitanteId)
     {
+        if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_VER")) return ServiceResult<List<DominioVehicular>>.Error("Acceso denegado.");
+
         var historial = await _context.DominiosVehiculares
             .Include(d => d.Persona)
             .Where(d => d.VehiculoId == vehiculoId)

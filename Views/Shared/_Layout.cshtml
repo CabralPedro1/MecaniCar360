@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+@inject MecaniCar360.Services.PermisoService Permisos
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8" />
@@ -17,7 +18,7 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
             <div class="container-fluid">
 
-                <a class="navbar-brand" href="/Dashboard">🚗 MEC360</a>
+                <a class="navbar-brand" asp-controller="Dashboard" asp-action="Index">🚗 MEC360</a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
                     <span class="navbar-toggler-icon"></span>
@@ -29,14 +30,14 @@
 
                         <!-- DASHBOARD -->
                         <li class="nav-item">
-                            <a class="nav-link" href="/Dashboard">Inicio</a>
+                            <a class="nav-link" asp-controller="Dashboard" asp-action="Index">Inicio</a>
                         </li>
 
                         <!-- TURNOS -->
                         @if (!User.IsInRole("CLIENTE"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/Turno">Turnos</a>
+                                <a class="nav-link" asp-controller="Turno" asp-action="Index">Turnos</a>
                             </li>
                         }
 
@@ -52,7 +53,7 @@
                         @if (User.IsInRole("MECANICO"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/OrdenTrabajo">Ordenes</a>
+                                <a class="nav-link" asp-controller="OrdenTrabajo" asp-action="Index">Ordenes</a>
                             </li>
                         }
 
@@ -60,30 +61,33 @@
                         @if (User.IsInRole("STOCK"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/Repuesto">Repuestos</a>
+                                <a class="nav-link" asp-controller="Stock" asp-action="Index">Repuestos</a>
                             </li>
                         }
 
-                        <!-- CAJA -->
-                        @if (User.IsInRole("CAJA"))
+                        <!-- FACTURACIÓN: permisos efectivos, identidad del usuario -->
+                        @{
+                            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioFacturacionId);
+                        }
+                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "FACTURA_VER"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/Pago">Pagos</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/Factura">Facturación</a>
+                                <a class="nav-link" asp-controller="Factura" asp-action="Index">Facturas</a>
                             </li>
                         }
-
+                        else if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "CLIENTE_FACTURA_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Factura" asp-action="MisFacturas">Mis facturas</a>
+                            </li>
+                        }
                         <!-- ADMIN -->
                         @if (User.IsInRole("ADMIN"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/Usuario">Usuarios</a>
+                                <a class="nav-link" asp-controller="Usuario" asp-action="Index">Usuarios</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link" href="/Reportes">Reportes</a>
-                            </li>
+
                         }
 
                     </ul>

@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
@@ -62,7 +62,7 @@ namespace MecaniCar360.Services
         {
             var usuario = await ObtenerUsuarioCompletoAsync(id);
 
-            if (usuario == null)
+            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
                 return ServiceResult<Usuario>.Error("Usuario no encontrado.");
 
             return ServiceResult<Usuario>.Ok(usuario);
@@ -139,7 +139,7 @@ namespace MecaniCar360.Services
         // HELPERS
         // =====================================
 
-        public ClaimsIdentity CrearIdentity(LoginResult login)
+        internal ClaimsIdentity CrearIdentity(LoginResult login)
         {
             var usuario = login.Usuario!;
 

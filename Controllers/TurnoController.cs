@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Models;
+using MecaniCar360.Models;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Attributes;
@@ -71,7 +71,7 @@ namespace MecaniCar360.Controllers
             var dia = fecha?.Date ?? DateTime.Today;
 
             var resultado =
-                await _agendaService.ObtenerAgendaDelDiaAsync(dia);
+                await _agendaService.ObtenerAgendaDelDiaAsync(dia, SolicitanteId());
 
             var model = new AgendaViewModel
             {
@@ -269,13 +269,14 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("TURNO_VER", "TURNO_CREAR", "TURNO_MODIFICAR", "CLIENTE_TURNO_CREAR")]
         public async Task<JsonResult> HorariosDisponibles(
      DateTime fecha)
         {
             var resultado =
                 await _agendaService
                     .ObtenerHorariosDisponiblesAsync(
-                        fecha);
+                        fecha, SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -320,5 +321,38 @@ namespace MecaniCar360.Controllers
 
             return int.Parse(claim.Value);
         }
+        [HttpGet, Permiso("CLIENTE_TURNO_VER")]
+        public async Task<IActionResult> MisTurnos()
+        {
+            var resultado = await _turnoService.ObtenerTurnosPropiosAsync(SolicitanteId());
+            if (!resultado.Exitoso) return Forbid();
+            return Json(resultado.Data!.Select(t => new { t.Id, t.FechaInicio, t.Estado, t.Motivo, t.VehiculoId }));
+        }
+
+        [HttpGet, Permiso("CLIENTE_TURNO_VER")]
+        public async Task<IActionResult> Propio(int id)
+        {
+            var resultado = await _turnoService.ObtenerTurnoPropioAsync(SolicitanteId(), id);
+            if (!resultado.Exitoso) return NotFound();
+            var t = resultado.Data!;
+            return Json(new { t.Id, t.FechaInicio, t.Estado, t.Motivo, t.VehiculoId });
+        }
+
+        [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_TURNO_CREAR")]
+        public async Task<IActionResult> CrearPropio(int vehiculoId, TipoTurno tipo, DateTime fechaInicio, string motivo, string? observaciones)
+        {
+            if (!ModelState.IsValid) return BadRequest("Datos inválidos.");
+            var resultado = await _turnoService.CrearPropioAsync(SolicitanteId(), vehiculoId, tipo, fechaInicio, motivo, observaciones);
+            return resultado.Exitoso ? Ok(resultado) : BadRequest(resultado.Mensaje);
+        }
+
+        [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_TURNO_CANCELAR")]
+        public async Task<IActionResult> CancelarPropio(int id, string? motivo)
+        {
+            var resultado = await _turnoService.CancelarPropioAsync(id, SolicitanteId(), motivo);
+            return resultado.Exitoso ? Ok(resultado) : BadRequest(resultado.Mensaje);
+        }
+
+        private int SolicitanteId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
     }
 }

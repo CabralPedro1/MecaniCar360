@@ -20,6 +20,8 @@ namespace MecaniCar360.Models
 
         public int? PresupuestoOrigenId { get; set; }
         public Presupuesto? PresupuestoOrigen { get; set; } = null!;
+        public int? PresupuestoVersionOrigenId { get; set; }
+        public PresupuestoVersion? PresupuestoVersionOrigen { get; set; }
 
         // =====================================
         // ESTADO

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MecaniCar360.Attributes;
 using MecaniCar360.Models;
 using MecaniCar360.Services;
@@ -66,7 +66,7 @@ namespace MecaniCar360.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("ROL_CREAR")]
-        public async Task<IActionResult> Crear(Rol rol)
+        public async Task<IActionResult> Crear([Bind("Id,Nombre,EsRolCliente")] Rol rol)
         {
             if (!ModelState.IsValid)
                 return View(rol);
@@ -113,7 +113,7 @@ namespace MecaniCar360.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("ROL_MODIFICAR")]
-        public async Task<IActionResult> Editar(Rol rol)
+        public async Task<IActionResult> Editar([Bind("Id,Nombre,EsRolCliente")] Rol rol)
         {
             if (!ModelState.IsValid)
                 return View(rol);

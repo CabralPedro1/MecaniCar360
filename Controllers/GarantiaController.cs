@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Attributes;
+using MecaniCar360.Attributes;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Services;
@@ -32,7 +32,7 @@ namespace MecaniCar360.Controllers
         {
             var resultado =
                 await _garantiaService
-                    .ObtenerTodasAsync();
+                    .ObtenerTodasAsync(ObtenerUsuarioId() ?? 0);
 
             if (!resultado.Exitoso)
             {
@@ -61,7 +61,7 @@ namespace MecaniCar360.Controllers
         {
             var resultado =
                 await _garantiaService
-                    .ObtenerAsync(id);
+                    .ObtenerAsync(id, ObtenerUsuarioId() ?? 0);
 
             if (!resultado.Exitoso)
             {
@@ -86,10 +86,10 @@ namespace MecaniCar360.Controllers
         [Permiso("GARANTIA_VER_PROPIA")]
         public async Task<IActionResult> MisGarantias()
         {
-            var personaId =
-                ObtenerPersonaId();
+            var usuarioId =
+                ObtenerUsuarioId();
 
-            if (personaId == null)
+            if (usuarioId == null)
                 return RedirectToAction(
                     "Login",
                     "Account");
@@ -97,7 +97,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _garantiaService
                     .ObtenerPorClienteAsync(
-                        personaId.Value);
+                        usuarioId.Value);
 
             if (!resultado.Exitoso)
             {
@@ -127,7 +127,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _garantiaService
                     .ObtenerPorVehiculoAsync(
-                        vehiculoId);
+                        vehiculoId, ObtenerUsuarioId() ?? 0);
 
             if (!resultado.Exitoso)
             {
@@ -212,7 +212,7 @@ namespace MecaniCar360.Controllers
         {
             var resultado =
                 await _garantiaService
-                    .EstaVigenteAsync(id);
+                    .EstaVigenteAsync(id, ObtenerUsuarioId() ?? 0);
 
             return Json(new
             {
@@ -237,7 +237,7 @@ namespace MecaniCar360.Controllers
         {
             var resultado =
                 await _garantiaService
-                    .ItemEstaCubiertoAsync(id);
+                    .ItemEstaCubiertoAsync(id, ObtenerUsuarioId() ?? 0);
 
             return Json(new
             {
@@ -264,7 +264,7 @@ namespace MecaniCar360.Controllers
         {
             var resultado =
                 await _garantiaService
-                    .AnularAsync(id);
+                    .AnularAsync(id, ObtenerUsuarioId() ?? 0);
 
             if (!resultado.Exitoso)
             {
@@ -295,6 +295,15 @@ namespace MecaniCar360.Controllers
         // HELPERS
         // =====================================================
 
+        [HttpGet, Permiso("GARANTIA_VER_PROPIA")]
+        public async Task<IActionResult> Propia(int id)
+        {
+            var resultado = await _garantiaService.ObtenerPropiaAsync(id, ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) return NotFound();
+            var g = resultado.Data!;
+            return Json(new { g.Id, g.OrdenTrabajoId, g.FechaInicio, g.FechaFin, g.Activa });
+        }
+
         private int? ObtenerUsuarioId()
         {
             var claim =
@@ -318,26 +327,5 @@ namespace MecaniCar360.Controllers
         }
 
 
-        private int? ObtenerPersonaId()
-        {
-            var claim =
-                User.FindFirstValue(
-                    "PersonaId");
-
-            if (string.IsNullOrWhiteSpace(
-                    claim))
-            {
-                return null;
-            }
-
-            if (int.TryParse(
-                    claim,
-                    out int personaId))
-            {
-                return personaId;
-            }
-
-            return null;
-        }
     }
 }

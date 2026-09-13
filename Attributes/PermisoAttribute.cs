@@ -11,11 +11,17 @@ namespace MecaniCar360.Attributes
         Inherited = true)]
     public class PermisoAttribute : Attribute, IAsyncAuthorizationFilter
     {
-        private readonly string _patente;
+        private readonly string[] _patentes;
 
         public PermisoAttribute(string patente)
         {
-            _patente = patente;
+            _patentes = new[] { patente };
+        }
+
+        // Alternativas funcionales (OR). Varios atributos separados siguen exigiendo todos.
+        public PermisoAttribute(string patente, params string[] alternativas)
+        {
+            _patentes = new[] { patente }.Concat(alternativas).ToArray();
         }
 
         public async Task OnAuthorizationAsync(
@@ -71,9 +77,9 @@ namespace MecaniCar360.Attributes
 
             var tienePermiso =
                 await permisoService
-                    .TienePermisoAsync(
+                    .TieneAlgunoAsync(
                         usuarioId,
-                        _patente);
+                        _patentes);
 
 
             if (!tienePermiso)

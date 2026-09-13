@@ -26,7 +26,7 @@ namespace MecaniCar360.Controllers
             if (!UsuarioId(out var usuario)) return Forbid();
             var resultado = await _service.ObtenerAsync(ordenTrabajoId, usuario);
             if (!resultado.Exitoso) return BadRequest(resultado.Mensaje);
-            var repuestos = await _stock.ObtenerRepuestosAsync();
+            var repuestos = await _stock.ObtenerRepuestosAsync(usuario);
             ViewData["Repuestos"] = repuestos.Data?.Select(r => new Microsoft.AspNetCore.Mvc.Rendering.SelectListItem
             {
                 Value = r.Id.ToString(), Text = r.Nombre

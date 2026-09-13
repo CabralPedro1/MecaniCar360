@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -9,10 +9,12 @@ namespace MecaniCar360.Services
     public class GarantiaService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
-        public GarantiaService(MecaniCarContext context)
+        public GarantiaService(MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
 
@@ -27,6 +29,8 @@ namespace MecaniCar360.Services
                 DateTime fechaInicio,
                 List<GarantiaItemDto> items)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "GARANTIA_CREAR")) return ServiceResult<Garantia>.Error("Acceso denegado.");
+
             // =====================================
             // VALIDACIONES GENERALES
             // =====================================
@@ -235,8 +239,10 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<Garantia>>
             ObtenerAsync(
-                int garantiaId)
+                int garantiaId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER")) return ServiceResult<Garantia>.Error("Acceso denegado.");
+
             var garantia =
                 await _context.Garantias
                     .Include(g => g.OrdenTrabajo)
@@ -279,8 +285,10 @@ namespace MecaniCar360.Services
 
         public async Task<
             ServiceResult<List<Garantia>>>
-            ObtenerTodasAsync()
+            ObtenerTodasAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER")) return ServiceResult<List<Garantia>>.Error("Acceso denegado.");
+
             var garantias =
                 await _context.Garantias
 
@@ -333,8 +341,12 @@ namespace MecaniCar360.Services
         public async Task<
             ServiceResult<List<Garantia>>>
             ObtenerPorClienteAsync(
-                int clienteId)
+                int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER_PROPIA")) return ServiceResult<List<Garantia>>.Error("Acceso denegado.");
+            var clienteId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!clienteId.HasValue) return ServiceResult<List<Garantia>>.Error("Acceso denegado.");
+
             var garantias =
                 await _context.Garantias
 
@@ -391,8 +403,10 @@ namespace MecaniCar360.Services
         public async Task<
             ServiceResult<List<Garantia>>>
             ObtenerPorVehiculoAsync(
-                int vehiculoId)
+                int vehiculoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER")) return ServiceResult<List<Garantia>>.Error("Acceso denegado.");
+
             var garantias =
                 await _context.Garantias
 
@@ -447,8 +461,10 @@ namespace MecaniCar360.Services
         // =====================================
 
         public async Task<ServiceResult> EstaVigenteAsync(
-        int garantiaId)
+        int garantiaId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER")) return ServiceResult.Error("Acceso denegado.");
+
             var garantia =
                 await _context.Garantias
                     .FirstOrDefaultAsync(g =>
@@ -483,8 +499,10 @@ namespace MecaniCar360.Services
         // =====================================
 
         public async Task<ServiceResult> ItemEstaCubiertoAsync(
-        int garantiaItemId)
+        int garantiaItemId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER")) return ServiceResult.Error("Acceso denegado.");
+
             var item =
                 await _context.GarantiaItems
                     .Include(i => i.Garantia)
@@ -525,8 +543,10 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult>
             AnularAsync(
-                int garantiaId)
+                int garantiaId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_ANULAR")) return ServiceResult.Error("Acceso denegado.");
+
             var garantia =
                 await _context.Garantias
                     .FirstOrDefaultAsync(g =>
@@ -550,6 +570,19 @@ namespace MecaniCar360.Services
 
             return ServiceResult.Ok(
                 "Garantía anulada correctamente.");
+        }
+
+        public async Task<ServiceResult<Garantia>> ObtenerPropiaAsync(int garantiaId, int usuarioSolicitanteId)
+        {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "GARANTIA_VER_PROPIA"))
+                return ServiceResult<Garantia>.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult<Garantia>.Error("Acceso denegado.");
+            var garantia = await _context.Garantias.AsNoTracking().Include(g => g.Items)
+                .FirstOrDefaultAsync(g => g.Id == garantiaId && g.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId == personaId);
+            if (garantia == null) return ServiceResult<Garantia>.Error("Garantía no encontrada.");
+            ActualizarEstadoInterno(garantia);
+            return ServiceResult<Garantia>.Ok(garantia);
         }
 
         private void ActualizarEstadoInterno(

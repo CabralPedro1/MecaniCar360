@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -8,18 +8,22 @@ namespace MecaniCar360.Services
     public class ProveedorService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
-        public ProveedorService(MecaniCarContext context)
+        public ProveedorService(MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         //====================================
         // CONSULTAS
         //====================================
 
-        public async Task<ServiceResult<List<Proveedor>>> ObtenerTodosAsync()
+        public async Task<ServiceResult<List<Proveedor>>> ObtenerTodosAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<List<Proveedor>>.Error("Acceso denegado.");
+
             var proveedores = await _context.Proveedores
                 .Include(p => p.Repuestos)
                     .ThenInclude(pr => pr.Repuesto)
@@ -30,8 +34,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Proveedor>>.Ok(proveedores);
         }
 
-        public async Task<ServiceResult<Proveedor>> ObtenerPorIdAsync(int id)
+        public async Task<ServiceResult<Proveedor>> ObtenerPorIdAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<Proveedor>.Error("Acceso denegado.");
+
             var proveedor = await ObtenerProveedorCompletoAsync(id);
 
             if (proveedor == null)
@@ -65,8 +71,10 @@ namespace MecaniCar360.Services
         // ABM
         //====================================
 
-        public async Task<ServiceResult> CrearAsync(Proveedor proveedor)
+        public async Task<ServiceResult> CrearAsync(Proveedor proveedor, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "PROVEEDOR_CREAR")) return ServiceResult.Error("Acceso denegado.");
+
             if (string.IsNullOrWhiteSpace(proveedor.Nombre))
                 return ServiceResult.Error("Debe ingresar el nombre.");
 
@@ -78,6 +86,7 @@ namespace MecaniCar360.Services
             proveedor.FechaCreacion = DateTime.UtcNow;
             proveedor.Activo = true;
 
+            proveedor.Id = 0; proveedor.Repuestos = new();
             _context.Proveedores.Add(proveedor);
 
             await _context.SaveChangesAsync();
@@ -85,8 +94,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Proveedor creado correctamente.");
         }
 
-        public async Task<ServiceResult> EditarAsync(Proveedor proveedor)
+        public async Task<ServiceResult> EditarAsync(Proveedor proveedor, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "PROVEEDOR_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var existente = await _context.Proveedores.FindAsync(proveedor.Id);
 
             if (existente == null)
@@ -105,8 +116,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Proveedor actualizado correctamente.");
         }
 
-        public async Task<ServiceResult> CambiarEstadoAsync(int id)
+        public async Task<ServiceResult> CambiarEstadoAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "PROVEEDOR_DESACTIVAR")) return ServiceResult.Error("Acceso denegado.");
+
             var proveedor = await ObtenerProveedorCompletoAsync(id);
 
             if (proveedor == null)

@@ -1,0 +1,30 @@
+﻿@model List<Factura>
+@{
+    ViewData["Title"] = "Mis facturas";
+}
+<h2>Mis facturas</h2>
+<partial name="_Mensajes" />
+<a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary mb-3">Volver</a>
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">Todavía no tiene facturas emitidas.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Número</th><th>Fecha</th><th>Vehículo</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var factura in Model)
+            {
+                <tr>
+                    <td class="text-break">@factura.NumeroFactura</td><td>@factura.FechaEmision.ToString("dd/MM/yyyy")</td>
+                    <td>@factura.OrdenTrabajo.IngresoVehiculo.Turno.Vehiculo.Patente</td>
+                    <td>@factura.Total.ToString("C2")</td><td>@factura.Estado</td>
+                    <td><a asp-action="DetallePropio" asp-route-facturaId="@factura.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

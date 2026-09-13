@@ -1,4 +1,6 @@
-﻿using MecaniCar360.Models;
+using MecaniCar360.Attributes;
+using System.Security.Claims;
+using MecaniCar360.Models;
 using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -7,7 +9,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace MecaniCar360.Controllers
 {
-    [Authorize(Roles = "ADMIN,MECANICO")]
+    [Authorize]
     public class StockController : Controller
     {
         private readonly StockService _service;
@@ -25,9 +27,10 @@ namespace MecaniCar360.Controllers
         // LISTADO
         // ======================================
 
+        [Permiso("STOCK_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _service.ObtenerRepuestosAsync();
+            var resultado = await _service.ObtenerRepuestosAsync(SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -42,9 +45,10 @@ namespace MecaniCar360.Controllers
         // DETALLE
         // ======================================
 
+        [Permiso("STOCK_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _service.ObtenerRepuestoAsync(id);
+            var resultado = await _service.ObtenerRepuestoAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -56,14 +60,15 @@ namespace MecaniCar360.Controllers
         // ADMINISTRAR PROVEEDORES
         // ======================================
 
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> AdministrarProveedores(int id)
         {
-            var resultadoRepuesto = await _service.ObtenerRepuestoAsync(id);
+            var resultadoRepuesto = await _service.ObtenerRepuestoAsync(id, SolicitanteId());
 
             if (!resultadoRepuesto.Exitoso)
                 return NotFound();
 
-            var resultadoProveedores = await _service.ObtenerProveedoresDeRepuestoAsync(id);
+            var resultadoProveedores = await _service.ObtenerProveedoresDeRepuestoAsync(id, SolicitanteId());
 
             if (!resultadoProveedores.Exitoso)
             {
@@ -71,7 +76,7 @@ namespace MecaniCar360.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var resultadoDisponibles = await _proveedorService.ObtenerTodosAsync();
+            var resultadoDisponibles = await _proveedorService.ObtenerTodosAsync(SolicitanteId());
 
             if (!resultadoDisponibles.Exitoso)
             {
@@ -104,6 +109,7 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> AgregarProveedor(
             AdministrarProveedoresViewModel model)
         {
@@ -112,7 +118,7 @@ namespace MecaniCar360.Controllers
                 model.ProveedorId,
                 model.PrecioCompra,
                 model.CodigoProveedor,
-                model.Principal);
+                model.Principal, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -127,14 +133,15 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> CambiarProveedorPrincipal(int proveedorRepuestoId)
         {
-            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId);
+            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId, SolicitanteId());
 
             if (!relacionResultado.Exitoso)
                 return NotFound();
 
-            var resultado = await _service.CambiarProveedorPrincipalAsync(proveedorRepuestoId);
+            var resultado = await _service.CambiarProveedorPrincipalAsync(proveedorRepuestoId, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -145,18 +152,19 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> ActualizarPrecio(
             int proveedorRepuestoId,
             decimal precioCompra)
         {
-            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId);
+            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId, SolicitanteId());
 
             if (!relacionResultado.Exitoso)
                 return NotFound();
 
             var resultado = await _service.ActualizarPrecioCompraAsync(
                 proveedorRepuestoId,
-                precioCompra);
+                precioCompra, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -167,14 +175,15 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> EliminarProveedor(int proveedorRepuestoId)
         {
-            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId);
+            var relacionResultado = await _service.ObtenerRelacionProveedorAsync(proveedorRepuestoId, SolicitanteId());
 
             if (!relacionResultado.Exitoso)
                 return NotFound();
 
-            var resultado = await _service.EliminarProveedorDelRepuestoAsync(proveedorRepuestoId);
+            var resultado = await _service.EliminarProveedorDelRepuestoAsync(proveedorRepuestoId, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -187,6 +196,7 @@ namespace MecaniCar360.Controllers
         // CREAR
         // ======================================
 
+        [Permiso("STOCK_CREAR")]
         public async Task<IActionResult> Crear()
         {
             await CargarProveedores();
@@ -196,7 +206,8 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Crear(Repuesto repuesto)
+        [Permiso("STOCK_CREAR")]
+        public async Task<IActionResult> Crear([Bind("Id,SKU,Nombre,Marca,Modelo,Compatibilidad,PrecioVenta,StockMinimo,StockActual")] Repuesto repuesto)
         {
             if (!ModelState.IsValid)
             {
@@ -204,7 +215,7 @@ namespace MecaniCar360.Controllers
                 return View(repuesto);
             }
 
-            var resultado = await _service.CrearRepuestoAsync(repuesto);
+            var resultado = await _service.CrearRepuestoAsync(repuesto, SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -224,9 +235,10 @@ namespace MecaniCar360.Controllers
         // EDITAR
         // ======================================
 
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> Editar(int id)
         {
-            var resultado = await _service.ObtenerRepuestoAsync(id);
+            var resultado = await _service.ObtenerRepuestoAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -238,7 +250,8 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Editar(Repuesto repuesto)
+        [Permiso("STOCK_MODIFICAR")]
+        public async Task<IActionResult> Editar([Bind("Id,SKU,Nombre,Marca,Modelo,Compatibilidad,PrecioVenta,StockMinimo")] Repuesto repuesto)
         {
             if (!ModelState.IsValid)
             {
@@ -246,7 +259,7 @@ namespace MecaniCar360.Controllers
                 return View(repuesto);
             }
 
-            var resultado = await _service.EditarRepuestoAsync(repuesto);
+            var resultado = await _service.EditarRepuestoAsync(repuesto, SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -268,9 +281,10 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MODIFICAR")]
         public async Task<IActionResult> CambiarEstado(int id)
         {
-            var resultado = await _service.CambiarEstadoAsync(id);
+            var resultado = await _service.CambiarEstadoAsync(id, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -283,13 +297,14 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MOVIMIENTO")]
         public async Task<IActionResult> RegistrarIngreso(
             int repuestoId,
             int proveedorRepuestoId,
             int cantidad,
             string? observaciones)
         {
-            int usuarioId = int.Parse(User.FindFirst("UsuarioId")!.Value);
+            int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarIngresoAsync(
                 repuestoId,
@@ -309,12 +324,13 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MOVIMIENTO")]
         public async Task<IActionResult> RegistrarSalida(
             int repuestoId,
             int cantidad,
             string? observaciones)
         {
-            int usuarioId = int.Parse(User.FindFirst("UsuarioId")!.Value);
+            int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarSalidaAsync(
                 repuestoId,
@@ -333,12 +349,13 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("STOCK_MOVIMIENTO")]
         public async Task<IActionResult> RegistrarAjuste(
             int repuestoId,
             int diferencia,
             string observaciones)
         {
-            int usuarioId = int.Parse(User.FindFirst("UsuarioId")!.Value);
+            int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarAjusteAsync(
                 repuestoId,
@@ -355,9 +372,10 @@ namespace MecaniCar360.Controllers
         // HISTORIAL
         // ======================================
 
+        [Permiso("STOCK_MOVIMIENTO")]
         public async Task<IActionResult> Movimientos()
         {
-            var resultado = await _service.ObtenerMovimientosAsync();
+            var resultado = await _service.ObtenerMovimientosAsync(SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -374,7 +392,7 @@ namespace MecaniCar360.Controllers
 
         private async Task CargarProveedores()
         {
-            var resultado = await _proveedorService.ObtenerTodosAsync();
+            var resultado = await _proveedorService.ObtenerTodosAsync(SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -389,5 +407,6 @@ namespace MecaniCar360.Controllers
                 "Id",
                 "Nombre");
         }
+        private int SolicitanteId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
     }
 }

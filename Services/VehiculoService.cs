@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -112,8 +112,10 @@ namespace MecaniCar360.Services
             return ServiceResult<Vehiculo>.Ok(vehiculo);
         }
 
-        public async Task<ServiceResult<List<Modelo>>> ObtenerModelosPorMarcaAsync(int marcaId)
+        public async Task<ServiceResult<List<Modelo>>> ObtenerModelosPorMarcaAsync(int marcaId, int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TieneAlgunoAsync(usuarioSolicitanteId, "VEHICULO_VER", "VEHICULO_CREAR", "VEHICULO_MODIFICAR")) return ServiceResult<List<Modelo>>.Error("Acceso denegado.");
+
             var modelos = await _context.Modelos
                 .Where(m => m.MarcaId == marcaId && m.Activo)
                 .OrderBy(m => m.Nombre)
@@ -222,6 +224,8 @@ namespace MecaniCar360.Services
             vehiculo.FechaCreacion = DateTime.Now;
             vehiculo.Activo = true;
 
+            vehiculo.Id = 0; vehiculo.Marca = null!; vehiculo.Modelo = null!;
+            vehiculo.DominiosVehiculares = new(); vehiculo.Turnos = new(); vehiculo.OrdenesTrabajo = new();
             _context.Vehiculos.Add(vehiculo);
 
             await GuardarCambiosAsync();

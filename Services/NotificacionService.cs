@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +8,13 @@ namespace MecaniCar360.Services
     public class NotificacionService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
         public NotificacionService(
-            MecaniCarContext context)
+            MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         // =====================================
@@ -21,8 +23,11 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<Notificacion>>>
             ObtenerPorPersonaAsync(
-                int personaId)
+                int usuarioSolicitanteId)
         {
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult<List<Notificacion>>.Error("Usuario inactivo o no encontrado.");
+
             var personaExiste =
                 await _context.Personas
                     .AnyAsync(p =>
@@ -54,8 +59,11 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<Notificacion>>>
             ObtenerNoLeidasAsync(
-                int personaId)
+                int usuarioSolicitanteId)
         {
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult<List<Notificacion>>.Error("Usuario inactivo o no encontrado.");
+
             var notificaciones =
                 await _context.Notificaciones
 
@@ -76,7 +84,7 @@ namespace MecaniCar360.Services
         // CREAR NOTIFICACIÓN
         // =====================================
 
-        public async Task<ServiceResult>
+        internal async Task<ServiceResult>
             NotificarAsync(
                 int personaId,
                 string titulo,
@@ -156,8 +164,11 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult>
             MarcarComoLeidaAsync(
                 int notificacionId,
-                int personaId)
+                int usuarioSolicitanteId)
         {
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult.Error("Usuario inactivo o no encontrado.");
+
             var notificacion =
                 await _context.Notificaciones
                     .FirstOrDefaultAsync(n =>
@@ -187,8 +198,11 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult>
             MarcarTodasComoLeidasAsync(
-                int personaId)
+                int usuarioSolicitanteId)
         {
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult.Error("Usuario inactivo o no encontrado.");
+
             var notificaciones =
                 await _context.Notificaciones
 

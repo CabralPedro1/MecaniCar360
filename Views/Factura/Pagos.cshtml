@@ -1,0 +1,20 @@
+﻿@model Factura
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Historial de pagos";
+    var propia = ViewData["Propia"] is true;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+}
+<h2>Historial de pagos</h2>
+<partial name="_Mensajes" />
+<p class="text-break"><strong>Factura:</strong> @Model.NumeroFactura · <strong>Orden:</strong> @Model.OrdenTrabajoId</p>
+<partial name="_TablaPagos" model="Model" />
+@if (propia || await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER"))
+{
+    <a asp-action="@(propia ? "DetallePropio" : "PorId")" asp-route-facturaId="@Model.Id" class="btn btn-secondary">Volver a factura</a>
+}
+else
+{
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver</a>
+}

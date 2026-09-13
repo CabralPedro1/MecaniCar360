@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -9,11 +9,13 @@ namespace MecaniCar360.Services
     public class CalificacionTrabajoService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
         public CalificacionTrabajoService(
-            MecaniCarContext context)
+            MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         // =====================================
@@ -22,8 +24,14 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<CalificacionTrabajo>>
             ObtenerPorOrdenTrabajoAsync(
-                int ordenTrabajoId)
+                int ordenTrabajoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "CLIENTE_ORDEN_VER")) return ServiceResult<CalificacionTrabajo>.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue || (!await _permisos.EsAdministradorAsync(usuarioSolicitanteId) &&
+                !await _context.OrdenesTrabajo.AnyAsync(o => o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == personaId)))
+                return ServiceResult<CalificacionTrabajo>.Error("Acceso denegado.");
+
             var calificacion =
                 await _context.Calificaciones
                     .Include(c => c.Cliente)
@@ -43,12 +51,19 @@ namespace MecaniCar360.Services
         }
 
         public async Task<ServiceResult<List<CalificacionTrabajo>>>
-            ObtenerTodasAsync()
+            ObtenerTodasAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "ORDEN_VER")) return ServiceResult<List<CalificacionTrabajo>>.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            var limitarAlMecanico = !await _permisos.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId &&
+                    pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.MECANICO);
+
             var calificaciones =
                 await _context.Calificaciones
                     .Include(c => c.Cliente)
                     .Include(c => c.OrdenTrabajo)
+                    .Where(c => !limitarAlMecanico || c.OrdenTrabajo.MecanicoId == personaId)
                     .OrderByDescending(c => c.Fecha)
                     .ToListAsync();
 
@@ -62,10 +77,17 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult> CrearAsync(
             int ordenTrabajoId,
-            int clienteId,
+            int usuarioSolicitanteId,
             int puntuacion,
             string? comentario)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "CLIENTE_CALIFICACION_CREAR")) return ServiceResult.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult.Error("Acceso denegado.");
+            var clienteId = personaId.Value;
+            if (!await _context.OrdenesTrabajo.AnyAsync(o => o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == clienteId))
+                return ServiceResult.Error("La orden no pertenece al cliente autenticado.");
+
             if (puntuacion < 1 || puntuacion > 5)
             {
                 return ServiceResult.Error(

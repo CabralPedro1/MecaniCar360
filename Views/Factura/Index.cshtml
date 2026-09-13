@@ -1,0 +1,40 @@
+﻿@model List<Factura>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Facturas";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+}
+<h2>Facturas</h2>
+<partial name="_Mensajes" />
+<div class="d-flex gap-2 mb-3">
+    <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver</a>
+    @if (await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER"))
+    {
+        <a asp-controller="OrdenTrabajo" asp-action="Index" class="btn btn-outline-primary">Órdenes para facturar</a>
+    }
+</div>
+@if (Model.Count == 0)
+{
+    <div class="alert alert-info">No hay facturas emitidas.</div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead><tr><th>Número</th><th>Orden</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var factura in Model)
+            {
+                var cliente = factura.OrdenTrabajo.IngresoVehiculo.Turno.Cliente;
+                <tr>
+                    <td class="text-break">@factura.NumeroFactura</td><td>@factura.OrdenTrabajoId</td>
+                    <td>@cliente.Nombre @cliente.Apellido</td><td>@factura.FechaEmision.ToString("dd/MM/yyyy HH:mm")</td>
+                    <td>@factura.Total.ToString("C2")</td><td>@factura.Estado</td>
+                    <td><a asp-action="PorId" asp-route-facturaId="@factura.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

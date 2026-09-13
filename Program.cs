@@ -131,6 +131,9 @@ namespace MecaniCar360
             // =====================================
 
             builder.Services.AddScoped<AgendaService>();
+            builder.Services.AddScoped<ModeloService>();
+            builder.Services.AddScoped<EvidenciaTrabajoService>();
+            builder.Services.AddScoped<CalificacionTrabajoService>();
 
             builder.Services.AddScoped<TurnoService>();
 

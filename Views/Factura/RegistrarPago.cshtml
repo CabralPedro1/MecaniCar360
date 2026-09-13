@@ -1,0 +1,63 @@
+﻿@model MecaniCar360.Models.ViewModels.RegistrarPagoViewModel
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Registrar pago";
+    var factura = Model.Factura!;
+    var pagado = factura.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto);
+    var saldo = factura.Total - pagado;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+}
+<h2>Registrar pago</h2>
+<partial name="_Mensajes" />
+<div class="card mb-3"><div class="card-body">
+    <p class="text-break"><strong>Factura:</strong> @factura.NumeroFactura</p>
+    <p><strong>Estado:</strong> @factura.Estado · <strong>Total:</strong> @factura.Total.ToString("C2")</p>
+    <p><strong>Pagado:</strong> @pagado.ToString("C2") · <strong>Saldo actual:</strong> @saldo.ToString("C2")</p>
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    @if (factura.Estado == EstadoFactura.Emitida && saldo > 0)
+    {
+        <form asp-action="RegistrarPago" method="post">
+            @Html.AntiForgeryToken()
+            <input asp-for="FacturaId" type="hidden" />
+            <input asp-for="SaldoEsperado" type="hidden" />
+            <div class="mb-3">
+                <label asp-for="Monto" class="form-label"></label>
+                <input asp-for="Monto" class="form-control" type="text" inputmode="decimal" />
+                <span asp-validation-for="Monto" class="text-danger"></span>
+                <div class="form-text">Puede registrar un pago parcial, sin superar el saldo.</div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="MetodoPago" class="form-label"></label>
+                <select asp-for="MetodoPago" class="form-select">
+                    <option value="@((int)MetodoPago.Efectivo)">Efectivo</option>
+                    <option value="@((int)MetodoPago.TarjetaCredito)">Tarjeta de crédito</option>
+                    <option value="@((int)MetodoPago.TarjetaDebito)">Tarjeta de débito</option>
+                    <option value="@((int)MetodoPago.Transferencia)">Transferencia</option>
+                </select>
+                <span asp-validation-for="MetodoPago" class="text-danger"></span>
+            </div>
+            <button type="submit" class="btn btn-success">Confirmar pago</button>
+        </form>
+    }
+    else
+    {
+        <div class="alert alert-info">Esta factura no admite nuevos pagos.</div>
+    }
+</div></div>
+<div class="d-flex gap-2">
+    @if (await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER"))
+    {
+        <a asp-action="PorId" asp-route-facturaId="@factura.Id" class="btn btn-secondary">Volver a factura</a>
+    }
+    else
+    {
+        <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver</a>
+    }
+    <a asp-action="RegistrarPago" asp-route-facturaId="@factura.Id" class="btn btn-outline-primary">Actualizar saldo</a>
+    @if (await Permisos.TienePermisoAsync(usuarioId, "PAGO_VER"))
+    {
+        <a asp-action="Pagos" asp-route-facturaId="@factura.Id" class="btn btn-outline-secondary">Historial de pagos</a>
+    }
+</div>

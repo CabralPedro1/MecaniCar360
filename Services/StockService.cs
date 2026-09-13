@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -9,18 +9,22 @@ namespace MecaniCar360.Services
     public class StockService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
-        public StockService(MecaniCarContext context)
+        public StockService(MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         // =====================================
         // CONSULTAS
         // =====================================
 
-        public async Task<ServiceResult<List<Repuesto>>> ObtenerRepuestosAsync()
+        public async Task<ServiceResult<List<Repuesto>>> ObtenerRepuestosAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_VER")) return ServiceResult<List<Repuesto>>.Error("Acceso denegado.");
+
             var repuestos = await _context.Repuestos
                 .Include(r => r.Proveedores)
                     .ThenInclude(pr => pr.Proveedor)
@@ -30,8 +34,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Repuesto>>.Ok(repuestos);
         }
 
-        public async Task<ServiceResult<Repuesto>> ObtenerRepuestoAsync(int id)
+        public async Task<ServiceResult<Repuesto>> ObtenerRepuestoAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_VER")) return ServiceResult<Repuesto>.Error("Acceso denegado.");
+
             var repuesto = await ObtenerRepuestoCompletoAsync(id);
 
             if (repuesto == null)
@@ -40,8 +46,10 @@ namespace MecaniCar360.Services
             return ServiceResult<Repuesto>.Ok(repuesto);
         }
 
-        public async Task<ServiceResult<List<MovimientoStock>>> ObtenerMovimientosAsync()
+        public async Task<ServiceResult<List<MovimientoStock>>> ObtenerMovimientosAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MOVIMIENTO")) return ServiceResult<List<MovimientoStock>>.Error("Acceso denegado.");
+
             var movimientos = await _context.MovimientosStock
                 .Include(m => m.Repuesto)
                 .Include(m => m.ProveedorRepuesto)
@@ -54,8 +62,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<MovimientoStock>>.Ok(movimientos);
         }
 
-        public async Task<ServiceResult<List<ProveedorRepuesto>>> ObtenerProveedoresDeRepuestoAsync(int repuestoId)
+        public async Task<ServiceResult<List<ProveedorRepuesto>>> ObtenerProveedoresDeRepuestoAsync(int repuestoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult<List<ProveedorRepuesto>>.Error("Acceso denegado.");
+
             var proveedores = await _context.ProveedorRepuestos
                 .Include(pr => pr.Proveedor)
                 .Where(pr => pr.RepuestoId == repuestoId)
@@ -66,8 +76,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<ProveedorRepuesto>>.Ok(proveedores);
         }
 
-        public async Task<ServiceResult<ProveedorRepuesto>> ObtenerRelacionProveedorAsync(int proveedorRepuestoId)
+        public async Task<ServiceResult<ProveedorRepuesto>> ObtenerRelacionProveedorAsync(int proveedorRepuestoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult<ProveedorRepuesto>.Error("Acceso denegado.");
+
             var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
 
             if (relacion == null)
@@ -76,8 +88,10 @@ namespace MecaniCar360.Services
             return ServiceResult<ProveedorRepuesto>.Ok(relacion);
         }
 
-        public async Task<bool> HayStockAsync(int repuestoId, int cantidad)
+        public async Task<bool> HayStockAsync(int repuestoId, int cantidad, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_VER")) return false;
+
             var repuesto = await ObtenerRepuestoActivoAsync(repuestoId);
 
             return repuesto != null && repuesto.StockActual >= cantidad;
@@ -87,8 +101,12 @@ namespace MecaniCar360.Services
         // ABM REPUESTOS
         // =====================================
 
-        public async Task<ServiceResult> CrearRepuestoAsync(Repuesto repuesto)
+        public async Task<ServiceResult> CrearRepuestoAsync(Repuesto repuesto, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_CREAR")) return ServiceResult.Error("Acceso denegado.");
+            if (repuesto.StockActual != 0 && !await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MOVIMIENTO"))
+                return ServiceResult.Error("El stock inicial requiere permiso para movimientos.");
+
             var validacion = await ValidarRepuestoAsync(repuesto);
 
             if (!validacion.Exitoso)
@@ -99,6 +117,7 @@ namespace MecaniCar360.Services
             repuesto.FechaCreacion = DateTime.UtcNow;
             repuesto.Activo = true;
 
+            repuesto.Id = 0; repuesto.Proveedores = new(); repuesto.Movimientos = new(); repuesto.PresupuestoItems = new();
             _context.Repuestos.Add(repuesto);
 
             await GuardarCambiosAsync();
@@ -106,8 +125,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Repuesto creado correctamente.");
         }
 
-        public async Task<ServiceResult> EditarRepuestoAsync(Repuesto repuesto)
+        public async Task<ServiceResult> EditarRepuestoAsync(Repuesto repuesto, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var existente = await _context.Repuestos.FindAsync(repuesto.Id);
 
             if (existente == null)
@@ -134,8 +155,10 @@ namespace MecaniCar360.Services
             return ServiceResult.Ok("Repuesto actualizado correctamente.");
         }
 
-        public async Task<ServiceResult> CambiarEstadoAsync(int id)
+        public async Task<ServiceResult> CambiarEstadoAsync(int id, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var repuesto = await _context.Repuestos
                 .FirstOrDefaultAsync(r => r.Id == id);
 
@@ -162,6 +185,8 @@ namespace MecaniCar360.Services
             int usuarioId,
             string? observaciones)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
+
             if (cantidad <= 0)
                 return ServiceResult.Error("La cantidad debe ser mayor a cero.");
 
@@ -200,6 +225,8 @@ namespace MecaniCar360.Services
             string? observaciones,
             int? ordenTrabajoId = null)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
+
             if (cantidad <= 0)
                 return ServiceResult.Error("La cantidad debe ser mayor a cero.");
 
@@ -233,6 +260,8 @@ namespace MecaniCar360.Services
             int usuarioId,
             string observaciones)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
+
             if (diferencia == 0)
                 return ServiceResult.Error("Debe indicar una diferencia distinta de cero.");
 
@@ -270,8 +299,10 @@ namespace MecaniCar360.Services
             int proveedorId,
             decimal precioCompra,
             string? codigoProveedor,
-            bool principal)
+            bool principal, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             if (precioCompra <= 0)
                 return ServiceResult.Error("El precio de compra debe ser mayor a cero.");
 
@@ -311,8 +342,10 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult> ActualizarPrecioCompraAsync(
             int proveedorRepuestoId,
-            decimal precio)
+            decimal precio, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             if (precio <= 0)
                 return ServiceResult.Error("El precio debe ser mayor a cero.");
 
@@ -329,8 +362,10 @@ namespace MecaniCar360.Services
         }
 
         public async Task<ServiceResult> CambiarProveedorPrincipalAsync(
-            int proveedorRepuestoId)
+            int proveedorRepuestoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
 
             if (relacion == null)
@@ -346,8 +381,10 @@ namespace MecaniCar360.Services
         }
 
         public async Task<ServiceResult> EliminarProveedorDelRepuestoAsync(
-            int proveedorRepuestoId)
+            int proveedorRepuestoId, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
 
             if (relacion == null)
@@ -397,6 +434,12 @@ namespace MecaniCar360.Services
                 int? mecanicoId,
                 int ordenTrabajoId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "STOCK_MOVIMIENTO")) return (false, 0, cantidadNecesaria, false, "Acceso denegado.");
+            var ordenDestino = await _context.OrdenesTrabajo.AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == ordenTrabajoId);
+            if (ordenDestino == null) return (false, 0, cantidadNecesaria, false, "Orden no encontrada.");
+            mecanicoId = ordenDestino.MecanicoId;
+
             if (cantidadNecesaria <= 0)
             {
                 return (
@@ -642,8 +685,10 @@ namespace MecaniCar360.Services
             bool QuedaBajoMinimo)>
             AnalizarDisponibilidadAsync(
                 int repuestoId,
-                int cantidadNecesaria)
+                int cantidadNecesaria, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "STOCK_VER")) return (false, 0, 0, cantidadNecesaria, cantidadNecesaria, false);
+
             var repuesto =
                 await _context.Repuestos
                     .FirstOrDefaultAsync(r =>
@@ -692,7 +737,7 @@ namespace MecaniCar360.Services
         // AL APROBAR UNA ORDEN
         // =====================================
 
-        public async Task<(
+        private async Task<(
             bool Exitoso,
             int CantidadDescontada,
             int CantidadFaltante,
@@ -949,11 +994,25 @@ namespace MecaniCar360.Services
 
 
         // Participa en la transacción de aprobación; no confirma cambios por su cuenta.
-        public async Task<ServiceResult> ProcesarAprobacionIncrementalAsync(
-            int ordenTrabajoId, int usuarioId, IEnumerable<PresupuestoVersionItem> items)
+        internal async Task<ServiceResult> ProcesarAprobacionIncrementalAsync(
+            int ordenTrabajoId, int usuarioId, int presupuestoVersionId)
         {
             if (_context.Database.CurrentTransaction == null)
                 return ServiceResult.Error("El procesamiento incremental requiere una transacción.");
+            if (!await _permisos.TienePermisoAsync(usuarioId, "CLIENTE_PRESUPUESTO_APROBAR"))
+                return ServiceResult.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+            var version = await _context.PresupuestoVersiones.AsNoTracking().Include(v => v.Items)
+                .FirstOrDefaultAsync(v => v.Id == presupuestoVersionId && v.Presupuesto.OrdenTrabajoId == ordenTrabajoId &&
+                    v.Decision == EstadoPresupuestoVersion.Pendiente && v.Presupuesto.Estado == EstadoPresupuesto.Pendiente &&
+                    v.Presupuesto.OrdenTrabajo.EstadoActual == EstadoOrden.EsperandoAprobacion &&
+                    !v.Presupuesto.OrdenTrabajo.FechaFin.HasValue && v.Presupuesto.OrdenTrabajo.Factura == null);
+            if (version == null || !personaId.HasValue ||
+                (!await _permisos.EsAdministradorAsync(usuarioId) && !await _context.OrdenesTrabajo.AnyAsync(o =>
+                    o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == personaId.Value)) ||
+                await _context.PresupuestoVersiones.AnyAsync(v => v.PresupuestoId == version.PresupuestoId && v.NumeroVersion > version.NumeroVersion))
+                return ServiceResult.Error("No tiene acceso a esta versión vigente.");
+            var items = version.Items;
             var cantidades = items.Where(i => i.RepuestoId.HasValue)
                 .GroupBy(i => i.RepuestoId!.Value)
                 .Select(g => new { RepuestoId = g.Key, Cantidad = g.Sum(i => (long)i.Cantidad) })

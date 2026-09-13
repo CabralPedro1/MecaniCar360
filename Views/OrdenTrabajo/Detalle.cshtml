@@ -1,7 +1,13 @@
-﻿@model MecaniCar360.Models.OrdenTrabajo
+@model MecaniCar360.Models.OrdenTrabajo
+@using System.Security.Claims
+@using MecaniCar360.Models.Enums
+@inject MecaniCar360.Services.PermisoService Permisos
 
 @{
     ViewData["Title"] = $"Orden de Trabajo #{Model.Id}";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verFactura = await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER");
+    var modificarOrden = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
 }
 
 <div class="container mt-4">
@@ -153,13 +159,13 @@
                                 Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Pendiente)
                 {
                     <form asp-controller="OrdenTrabajo"
-                          asp-action="Tomar"
+                          asp-action="TomarOrden"
                           method="post">
 
                         @Html.AntiForgeryToken()
 
                         <input type="hidden"
-                               name="id"
+                               name="ordenTrabajoId"
                                value="@Model.Id" />
 
                         <button type="submit"
@@ -206,7 +212,7 @@
                         @Html.AntiForgeryToken()
 
                         <input type="hidden"
-                               name="id"
+                               name="ordenTrabajoId"
                                value="@Model.Id" />
 
                         <button type="submit"
@@ -230,7 +236,7 @@
                         @Html.AntiForgeryToken()
 
                         <input type="hidden"
-                               name="id"
+                               name="ordenTrabajoId"
                                value="@Model.Id" />
 
                         <input type="number"
@@ -265,7 +271,7 @@
 
 
                 <!-- VER FACTURA -->
-                @if (Model.Factura != null)
+                @if (verFactura && Model.Factura != null)
                 {
                     <a asp-controller="Factura"
                        asp-action="Detalle"
@@ -279,10 +285,11 @@
 
 
                 <!-- ENTREGAR VEHÍCULO -->
-                @if (Model.EstadoActual ==
-                                MecaniCar360.Models.Enums.EstadoOrden.Finalizado ||
-                                Model.EstadoActual ==
-                                MecaniCar360.Models.Enums.EstadoOrden.Rechazado)
+                @if (await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ENTREGAR") &&
+                    Model.Factura?.Estado == EstadoFactura.Pagada &&
+                    Model.Factura.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto) >= Model.Factura.Total &&
+                    Model.IngresoVehiculo.FechaEgreso == null &&
+                    Model.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado)
                 {
                     <form asp-controller="OrdenTrabajo"
                           asp-action="Entregar"
@@ -291,7 +298,7 @@
                         @Html.AntiForgeryToken()
 
                         <input type="hidden"
-                               name="id"
+                               name="ordenTrabajoId"
                                value="@Model.Id" />
 
                         <button type="submit"
@@ -558,9 +565,38 @@
 
 
     <!-- ===================================== -->
+    <!-- COSTO DE DIAGNÓSTICO Y EMISIÓN -->
+    <div class="card mb-4">
+        <div class="card-header"><strong>Diagnóstico/revisión y facturación</strong></div>
+        <div class="card-body">
+            <p><strong>Costo de diagnóstico/revisión:</strong> @(Model.CostoDiagnostico?.ToString("C2") ?? "Sin establecer")</p>
+            @if (modificarOrden && Model.Factura == null && !Model.FechaFin.HasValue &&
+                Model.EstadoActual is EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or
+                    EstadoOrden.Aprobado or EstadoOrden.EnReparacion or EstadoOrden.Rechazado)
+            {
+                <form asp-action="ActualizarCostoDiagnostico" method="post" class="mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ordenTrabajoId" value="@Model.Id" />
+                    <label for="costoDiagnostico" class="form-label">Costo de diagnóstico/revisión</label>
+                    <input id="costoDiagnostico" name="costoDiagnostico" value="@Model.CostoDiagnostico" type="text" inputmode="decimal" class="form-control mb-2" required />
+                    <button type="submit" class="btn btn-outline-primary">Guardar costo</button>
+                </form>
+            }
+            @if (Model.Factura == null && await Permisos.TienePermisoAsync(usuarioId, "FACTURA_CREAR") &&
+                Model.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado)
+            {
+                <p>La orden finalizada se factura desde la última versión aprobada. La rechazada cobra solamente diagnóstico/revisión.</p>
+                <form asp-controller="Factura" asp-action="Emitir" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ordenTrabajoId" value="@Model.Id" />
+                    <button type="submit" class="btn btn-success">Emitir factura</button>
+                </form>
+            }
+        </div>
+    </div>
     <!-- FACTURA -->
     <!-- ===================================== -->
-    @if (Model.Factura != null)
+    @if (verFactura && Model.Factura != null)
     {
         <div class="card mb-4">
 
@@ -637,7 +673,7 @@
                     @Html.AntiForgeryToken()
 
                     <input type="hidden"
-                           name="id"
+                           name="ordenTrabajoId"
                            value="@Model.Id" />
 
                     <div class="mb-3">

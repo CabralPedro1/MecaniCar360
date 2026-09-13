@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Attributes;
+using MecaniCar360.Attributes;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -49,6 +49,7 @@ namespace MecaniCar360.Controllers
         // La patente se decide en el service según exista o no el diagnóstico.
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("DIAGNOSTICO_CREAR", "DIAGNOSTICO_MODIFICAR")]
         public async Task<IActionResult> Guardar(int id, string descripcion, IEnumerable<int>? evidenciaIds = null)
         {
             if (!ObtenerUsuarioId(out var usuarioSolicitanteId)) return Forbid();

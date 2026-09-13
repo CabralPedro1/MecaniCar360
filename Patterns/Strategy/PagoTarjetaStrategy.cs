@@ -7,7 +7,7 @@ namespace MecaniCar360.Patterns.Strategy
     {
         public Task Procesar(Pago pago)
         {
-            // simulamos aprobación
+            // Simulación académica: no se conecta a una pasarela ni realiza un cobro real.
             pago.Estado = EstadoPago.Pagado;
             return Task.CompletedTask;
         }

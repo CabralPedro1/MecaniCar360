@@ -77,6 +77,8 @@ namespace MecaniCar360.Services
         {
             var usuario = await ObtenerUsuarioAsync(usuarioSolicitanteId);
             if (usuario == null) return ServiceResult.Error("Usuario inactivo o inexistente.");
+            if (!await _permisoService.TieneAlgunoAsync(usuarioSolicitanteId, "DIAGNOSTICO_CREAR", "DIAGNOSTICO_MODIFICAR"))
+                return ServiceResult.Error("No tiene permiso para guardar diagnósticos.");
 
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try

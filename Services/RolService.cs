@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -40,8 +40,10 @@ namespace MecaniCar360.Services
             return ServiceResult<List<Rol>>.Ok(roles);
         }
 
-        public async Task<ServiceResult<List<Rol>>> ObtenerActivosAsync()
+        public async Task<ServiceResult<List<Rol>>> ObtenerActivosAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "ROL_VER")) return ServiceResult<List<Rol>>.Error("Acceso denegado.");
+
             var roles = await _context.Roles
                 .Where(r => r.Activo)
                 .OrderBy(r => r.Nombre)
@@ -133,6 +135,7 @@ namespace MecaniCar360.Services
             rol.Nombre = rol.Nombre.Trim().ToUpper();
             rol.FechaCreacion = DateTime.Now;
 
+            rol.Id = 0; rol.Familias = new(); rol.Personas = new();
             _context.Roles.Add(rol);
 
             await _context.SaveChangesAsync();
