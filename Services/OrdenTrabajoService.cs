@@ -10,6 +10,7 @@ namespace MecaniCar360.Services
     public class OrdenTrabajoService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly OrdenStateService _ordenStateService;
         private readonly PermisoService _permisoService;
         private readonly DiagnosticoService _diagnosticoService;
@@ -18,9 +19,10 @@ namespace MecaniCar360.Services
             MecaniCarContext context,
             OrdenStateService ordenStateService,
             PermisoService permisoService,
-            DiagnosticoService diagnosticoService)
+            DiagnosticoService diagnosticoService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _ordenStateService = ordenStateService;
             _permisoService = permisoService;
             _diagnosticoService = diagnosticoService;
@@ -350,6 +352,7 @@ namespace MecaniCar360.Services
             orden.MecanicoId =
                 mecanicoId;
 
+            _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -423,6 +426,7 @@ namespace MecaniCar360.Services
             orden.MecanicoId =
                 mecanicoId;
 
+            _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -509,6 +513,7 @@ namespace MecaniCar360.Services
                     esAdmin ? null : mecanicoId;
             }
 
+            _auditoria.RegistrarOperacion("ORDEN_INICIADA", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -611,6 +616,7 @@ namespace MecaniCar360.Services
                     esAdmin ? null : mecanicoId;
             }
 
+            _auditoria.RegistrarOperacion("ORDEN_FINALIZADA", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
@@ -746,6 +752,7 @@ namespace MecaniCar360.Services
                 ingreso.FechaEgreso =
                     DateTime.Now;
 
+                _auditoria.RegistrarOperacion("VEHICULO_ENTREGADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
@@ -925,6 +932,7 @@ namespace MecaniCar360.Services
                 await _context.Facturas.AnyAsync(f => f.OrdenTrabajoId == orden.Id))
                 return ServiceResult.Error("No se puede modificar el costo fuera del trabajo de diagnóstico/reparación o después de facturar.");
             orden.CostoDiagnostico = costoDiagnostico;
+            _auditoria.RegistrarOperacion("COSTO_DIAGNOSTICO_MODIFICADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
             return ServiceResult.Ok("Costo de diagnóstico/revisión actualizado.");

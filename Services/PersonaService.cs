@@ -8,13 +8,15 @@ namespace MecaniCar360.Services
     public class PersonaService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisoService;
 
         public PersonaService(
             MecaniCarContext context,
-            PermisoService permisoService)
+            PermisoService permisoService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisoService = permisoService;
         }
 
@@ -415,6 +417,7 @@ namespace MecaniCar360.Services
                     OtorgadoPorUsuarioId = usuarioOtorgaId
                 });
 
+            _auditoria.RegistrarOperacion("ROL_ASIGNADO", "Persona", personaId, usuarioOtorgaId, $"Rol #{rolId}.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -479,6 +482,7 @@ namespace MecaniCar360.Services
 
             relacion.FechaBaja = DateTime.Now;
 
+            _auditoria.RegistrarOperacion("ROL_QUITADO", "Persona", personaId, usuarioSolicitanteId, $"Rol #{rolId}.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(

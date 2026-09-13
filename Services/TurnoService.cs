@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -9,6 +9,7 @@ namespace MecaniCar360.Services
     public class TurnoService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly AgendaService _agendaService;
         private readonly PermisoService _permisoService;
         private readonly DominioVehicularService _dominioVehicularService;
@@ -17,9 +18,10 @@ namespace MecaniCar360.Services
             MecaniCarContext context,
             AgendaService agendaService,
             PermisoService permisoService,
-            DominioVehicularService dominioVehicularService)
+            DominioVehicularService dominioVehicularService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _agendaService = agendaService;
             _permisoService = permisoService;
             _dominioVehicularService = dominioVehicularService;
@@ -393,6 +395,7 @@ namespace MecaniCar360.Services
                         : observaciones.Trim()
             };
 
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Turnos.Add(turno);
 
             await _context.SaveChangesAsync();
@@ -412,7 +415,9 @@ namespace MecaniCar360.Services
                     Observaciones = "Turno creado."
                 });
 
+            _auditoria.RegistrarOperacion("TURNO_CREADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno creado correctamente.");
@@ -462,6 +467,7 @@ namespace MecaniCar360.Services
                     Observaciones = "Turno confirmado."
                 });
 
+            _auditoria.RegistrarOperacion("TURNO_CONFIRMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -576,6 +582,7 @@ namespace MecaniCar360.Services
                             : motivo.Trim()
                 });
 
+            _auditoria.RegistrarOperacion("TURNO_CANCELADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -632,6 +639,7 @@ namespace MecaniCar360.Services
                     Observaciones = "Cliente ausente."
                 });
 
+            _auditoria.RegistrarOperacion("CLIENTE_AUSENTE", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -722,6 +730,7 @@ namespace MecaniCar360.Services
                         $"a {nuevaFechaInicio:dd/MM/yyyy HH:mm}."
                 });
 
+            _auditoria.RegistrarOperacion("TURNO_REPROGRAMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(

@@ -9,11 +9,13 @@ namespace MecaniCar360.Services
     public class StockService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
 
-        public StockService(MecaniCarContext context, PermisoService permisos)
+        public StockService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisos = permisos;
         }
 
@@ -1068,6 +1070,8 @@ namespace MecaniCar360.Services
                 OrdenTrabajoId = ordenTrabajoId
             });
 
+            _auditoria.RegistrarOperacion("MOVIMIENTO_STOCK", "Repuesto", repuestoId, usuarioId,
+                $"Tipo: {tipo}; cantidad: {cantidad}; orden: {ordenTrabajoId}.");
             await Task.CompletedTask;
         }
 

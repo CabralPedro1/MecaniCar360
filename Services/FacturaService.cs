@@ -12,10 +12,12 @@ namespace MecaniCar360.Services
     public class FacturaService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
-        public FacturaService(MecaniCarContext context, PermisoService permisos)
+        public FacturaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisos = permisos;
         }
 
@@ -129,6 +131,8 @@ namespace MecaniCar360.Services
                 }
                 _context.Facturas.Add(factura);
                 await _context.SaveChangesAsync();
+                _auditoria.RegistrarOperacion("FACTURA_EMITIDA", "Factura", factura.Id, usuarioId, $"Orden #{orden.Id}; factura #{factura.Id}.");
+                await _context.SaveChangesAsync();
                 await tx.CommitAsync();
                 return ServiceResult<Factura>.Ok(factura, "Factura emitida. Puede registrar el pago.");
             }
@@ -190,6 +194,8 @@ namespace MecaniCar360.Services
                     return ServiceResult<Factura>.Error("El pago no fue confirmado.");
                 _context.Pagos.Add(pago);
                 factura.Estado = pagado + monto >= factura.Total ? EstadoFactura.Pagada : EstadoFactura.Emitida;
+                await _context.SaveChangesAsync();
+                _auditoria.RegistrarOperacion("PAGO_REGISTRADO", "Pago", pago.Id, usuarioId, $"Orden #{orden.Id}; factura #{factura.Id}.");
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
                 return ServiceResult<Factura>.Ok(factura,

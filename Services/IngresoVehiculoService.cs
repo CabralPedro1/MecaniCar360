@@ -10,13 +10,15 @@ namespace MecaniCar360.Services
     public class IngresoVehiculoService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisoService;
 
         public IngresoVehiculoService(
             MecaniCarContext context,
-            PermisoService permisoService)
+            PermisoService permisoService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisoService = permisoService;
         }
 
@@ -296,6 +298,9 @@ namespace MecaniCar360.Services
                 // CONFIRMAR TRANSACCIÓN
                 // =====================================
 
+                _auditoria.RegistrarOperacion("INGRESO_VEHICULO_ORDEN_CREADA", "OrdenTrabajo", orden.Id, usuarioSolicitanteId,
+                    $"Ingreso #{ingreso.Id}; turno #{turno.Id} finalizado.");
+                await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
 

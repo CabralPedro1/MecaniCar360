@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -10,13 +10,15 @@ namespace MecaniCar360.Services
     public class DiagnosticoService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly OrdenStateService _ordenStateService;
         private readonly PermisoService _permisoService;
 
         public DiagnosticoService(MecaniCarContext context,
-            OrdenStateService ordenStateService, PermisoService permisoService)
+            OrdenStateService ordenStateService, PermisoService permisoService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _ordenStateService = ordenStateService;
             _permisoService = permisoService;
         }
@@ -42,6 +44,7 @@ namespace MecaniCar360.Services
             var historial = orden.HistorialEstados.LastOrDefault();
             if (historial != null)
                 historial.MecanicoId = await MecanicoActorAsync(usuario);
+            _auditoria.RegistrarOperacion("DIAGNOSTICO_INICIADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             return ServiceResult.Ok("Diagnóstico iniciado correctamente.");
         }
@@ -143,6 +146,7 @@ namespace MecaniCar360.Services
                         EvidenciaTrabajoId = id
                     }).ToList()
                 });
+                _auditoria.RegistrarOperacion("REVISION_DIAGNOSTICO_GUARDADA", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 return ServiceResult.Ok("Diagnóstico guardado correctamente.");

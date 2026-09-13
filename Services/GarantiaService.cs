@@ -9,11 +9,13 @@ namespace MecaniCar360.Services
     public class GarantiaService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
 
-        public GarantiaService(MecaniCarContext context, PermisoService permisos)
+        public GarantiaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisos = permisos;
         }
 
@@ -223,10 +225,14 @@ namespace MecaniCar360.Services
             // GUARDAR
             // =====================================
 
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Garantias.Add(
                 garantia);
 
             await _context.SaveChangesAsync();
+            _auditoria.RegistrarOperacion("GARANTIA_CREADA", "Garantia", garantia.Id, usuarioId);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult<Garantia>.Ok(
                 garantia);
@@ -566,6 +572,7 @@ namespace MecaniCar360.Services
 
             garantia.Activa = false;
 
+            _auditoria.RegistrarOperacion("GARANTIA_ANULADA", "Garantia", garantia.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(

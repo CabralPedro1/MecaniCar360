@@ -113,6 +113,9 @@ namespace MecaniCar360
             // SESSION
             // =====================================
 
+            builder.Services.AddDistributedMemoryCache();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddSingleton<SessionManager>();
             builder.Services.AddSession(options =>
             {
                 options.IdleTimeout =
@@ -131,6 +134,7 @@ namespace MecaniCar360
             // =====================================
 
             builder.Services.AddScoped<AgendaService>();
+            builder.Services.AddScoped<AuditoriaService>();
             builder.Services.AddScoped<ModeloService>();
             builder.Services.AddScoped<EvidenciaTrabajoService>();
             builder.Services.AddScoped<CalificacionTrabajoService>();
