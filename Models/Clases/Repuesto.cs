@@ -37,6 +37,7 @@ namespace MecaniCar360.Models
         public List<ProveedorRepuesto> Proveedores { get; set; } = new();
 
         public List<MovimientoStock> Movimientos { get; set; } = new();
+        public ICollection<LoteRepuesto> Lotes { get; set; } = new List<LoteRepuesto>();
 
         public List<PresupuestoItem> PresupuestoItems { get; set; } = new();
     }
@@ -79,5 +80,6 @@ namespace MecaniCar360.Models
         public string? CodigoProveedor { get; set; }
 
         public bool Principal { get; set; } = false;
+        public ICollection<LoteRepuesto> Lotes { get; set; } = new List<LoteRepuesto>();
     }
 }

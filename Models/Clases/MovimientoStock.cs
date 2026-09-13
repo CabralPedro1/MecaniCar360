@@ -28,5 +28,6 @@ namespace MecaniCar360.Models
 
         [System.ComponentModel.DataAnnotations.MaxLength(500)]
         public string? Observaciones { get; set; }
+        public ICollection<MovimientoStockLote> Lotes { get; set; } = new List<MovimientoStockLote>();
     }
 }

@@ -1,3 +1,6 @@
+﻿using MecaniCar360.Data;
+using MecaniCar360.Models.Enums;
+using Microsoft.EntityFrameworkCore;
 using MecaniCar360.Attributes;
 using System.Security.Claims;
 using MecaniCar360.Models;
@@ -13,13 +16,17 @@ namespace MecaniCar360.Controllers
     public class StockController : Controller
     {
         private readonly StockService _service;
+        private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
         private readonly ProveedorService _proveedorService;
 
         public StockController(
             StockService service,
-            ProveedorService proveedorService)
+            ProveedorService proveedorService, MecaniCarContext context, PermisoService permisos)
         {
             _service = service;
+            _context = context;
+            _permisos = permisos;
             _proveedorService = proveedorService;
         }
 
@@ -53,6 +60,31 @@ namespace MecaniCar360.Controllers
             if (!resultado.Exitoso)
                 return NotFound();
 
+            var puedeMover = await _permisos.TienePermisoAsync(SolicitanteId(), "STOCK_MOVIMIENTO");
+            ViewData["PuedeMover"] = puedeMover && resultado.Data!.Activo;
+            ViewData["PuedeModificar"] = await _permisos.TienePermisoAsync(SolicitanteId(), "STOCK_MODIFICAR");
+            var ordenes = new List<SelectListItem>();
+            var lotes = new List<SelectListItem>();
+            if (puedeMover && resultado.Data!.Activo)
+            {
+                ordenes = await _context.OrdenesTrabajo.AsNoTracking()
+                    .Where(o => (o.EstadoActual == EstadoOrden.Aprobado || o.EstadoActual == EstadoOrden.EnReparacion)
+                        && !o.FechaFin.HasValue && o.Factura == null)
+                    .OrderBy(o => o.Id)
+                    .Select(o => new SelectListItem { Value = o.Id.ToString(), Text = "OT #" + o.Id + " - " + o.EstadoActual })
+                    .ToListAsync();
+                var disponibles = await _context.LotesRepuesto.AsNoTracking()
+                    .Where(l => l.RepuestoId == id && l.CantidadDisponible < l.CantidadIngresada)
+                    .OrderBy(l => l.FechaIngreso).ThenBy(l => l.Id)
+                    .Select(l => new { l.Id, l.CodigoLote, l.FechaIngreso, l.CantidadIngresada, l.CantidadDisponible,
+                        Proveedor = l.ProveedorRepuesto.Proveedor.Nombre }).ToListAsync();
+                lotes = disponibles.Select(l => new SelectListItem {
+                    Value = l.Id.ToString(),
+                    Text = $"{l.CodigoLote} | {l.FechaIngreso.ToLocalTime():dd/MM/yyyy HH:mm} | Ingresadas: {l.CantidadIngresada} | Disponibles: {l.CantidadDisponible} | {l.Proveedor}"
+                }).ToList();
+            }
+            ViewData["OrdenesSalida"] = ordenes;
+            ViewData["LotesRestitucion"] = lotes;
             return View(resultado.Data);
         }
 
@@ -302,14 +334,21 @@ namespace MecaniCar360.Controllers
             int repuestoId,
             int proveedorRepuestoId,
             int cantidad,
+            decimal precioCompra,
             string? observaciones)
         {
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
+                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+            }
             int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarIngresoAsync(
                 repuestoId,
                 proveedorRepuestoId,
                 cantidad,
+                precioCompra,
                 usuarioId,
                 observaciones);
 
@@ -328,15 +367,22 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> RegistrarSalida(
             int repuestoId,
             int cantidad,
+            int ordenTrabajoId,
             string? observaciones)
         {
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
+                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+            }
             int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarSalidaAsync(
                 repuestoId,
                 cantidad,
                 usuarioId,
-                observaciones);
+                observaciones,
+                ordenTrabajoId);
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -353,15 +399,22 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> RegistrarAjuste(
             int repuestoId,
             int diferencia,
-            string observaciones)
+            string observaciones,
+            int? loteRepuestoId = null)
         {
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
+                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+            }
             int usuarioId = SolicitanteId();
 
             var resultado = await _service.RegistrarAjusteAsync(
                 repuestoId,
                 diferencia,
                 usuarioId,
-                observaciones);
+                observaciones,
+                loteRepuestoId);
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
