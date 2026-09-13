@@ -57,7 +57,8 @@ namespace MecaniCar360.Services
                     u.Persona.Roles.Any(pr =>
                         pr.FechaBaja == null &&
                         pr.Rol.Activo &&
-                        pr.Rol.Nombre == RolesSistema.CLIENTE));
+                        pr.Rol.Nombre == RolesSistema.CLIENTE) &&
+                    !u.Persona.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE));
             }
 
             var usuarios = await query
@@ -355,7 +356,8 @@ namespace MecaniCar360.Services
             }
 
             return await EsCajaEfectivoAsync(usuarioSolicitanteId) &&
-                await EsClienteActivoAsync(personaId);
+                await EsClienteActivoAsync(personaId) &&
+                !await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId && pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE);
         }
 
         private async Task<bool> EsCajaEfectivoAsync(int usuarioId)
@@ -387,7 +389,7 @@ namespace MecaniCar360.Services
             return p => p.Roles.Any(pr =>
                 pr.FechaBaja == null &&
                 pr.Rol.Activo &&
-                pr.Rol.Nombre == RolesSistema.CLIENTE);
+                pr.Rol.Nombre == RolesSistema.CLIENTE) && !p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE);
         }
 
         private async Task<bool> ExisteUsernameAsync(

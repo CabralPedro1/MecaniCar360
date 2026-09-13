@@ -1,11 +1,11 @@
-﻿@model MecaniCar360.Models.ViewModels.DashboardViewModel
+@model MecaniCar360.Models.ViewModels.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
 }
 
 <h2 class="mb-4">Dashboard</h2>
 
-@if (User.IsInRole("ADMIN"))
+@if (ViewData["MostrarResumen"] is true)
 {
     <section class="mb-4">
         <h3>Resumen del taller</h3>
@@ -20,7 +20,7 @@
     </section>
 }
 
-@if (User.IsInRole("CLIENTE"))
+@if (ViewData["MostrarCliente"] is true)
 {
     <section class="mb-4">
         <h3>Mi actividad</h3>
@@ -33,7 +33,7 @@
     </section>
 }
 
-@if (User.IsInRole("MECANICO"))
+@if (ViewData["MostrarMecanico"] is true)
 {
     <section class="mb-4">
         <h3>Trabajo asignado</h3>
@@ -41,7 +41,7 @@
     </section>
 }
 
-@if (User.IsInRole("CAJA"))
+@if (ViewData["MostrarCaja"] is true)
 {
     <section class="mb-4">
         <h3>Caja</h3>
@@ -54,7 +54,7 @@
     </section>
 }
 
-@if (User.IsInRole("STOCK"))
+@if (ViewData["MostrarStock"] is true)
 {
     <section class="mb-4">
         <h3>Stock</h3>

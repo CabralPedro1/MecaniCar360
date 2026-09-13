@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -9,11 +9,13 @@ namespace MecaniCar360.Services
     public class EvidenciaTrabajoService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
 
         public EvidenciaTrabajoService(
-            MecaniCarContext context)
+            MecaniCarContext context, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
         }
 
         // =====================================================
@@ -23,8 +25,12 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult<List<EvidenciaTrabajo>>>
             ObtenerPorOrdenTrabajoAsync(
                 int ordenTrabajoId,
-                int personaSolicitanteId)
+                int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "DIAGNOSTICO_VER")) return ServiceResult<List<EvidenciaTrabajo>>.Error("Acceso denegado.");
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            if (!personaId.HasValue) return ServiceResult<List<EvidenciaTrabajo>>.Error("Acceso denegado.");
+
             var orden =
                 await _context.OrdenesTrabajo
                     .FirstOrDefaultAsync(o =>
@@ -40,7 +46,7 @@ namespace MecaniCar360.Services
             var puedeConsultar =
                 await PuedeAccederOrdenAsync(
                     orden,
-                    personaSolicitanteId);
+                    usuarioSolicitanteId);
 
             if (!puedeConsultar)
             {
@@ -78,6 +84,8 @@ namespace MecaniCar360.Services
             string descripcion,
             string rutaArchivo)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
+
             // =====================================
             // VALIDACIONES BÁSICAS
             // =====================================
@@ -155,7 +163,7 @@ namespace MecaniCar360.Services
             var puedeModificar =
                 await PuedeAgregarEvidenciaAsync(
                     orden,
-                    usuario.PersonaId);
+                    usuarioId);
 
             if (!puedeModificar)
             {
@@ -211,102 +219,16 @@ namespace MecaniCar360.Services
         // MÉTODOS PRIVADOS
         // =====================================================
 
-        private async Task<bool>
-            PuedeAgregarEvidenciaAsync(
-                OrdenTrabajo orden,
-                int personaId)
+        private Task<bool> PuedeAgregarEvidenciaAsync(OrdenTrabajo orden, int usuarioId) =>
+            PuedeAccederOrdenAsync(orden, usuarioId);
+
+        private async Task<bool> PuedeAccederOrdenAsync(OrdenTrabajo orden, int usuarioId)
         {
-            if (await EsAdministradorAsync(
-                personaId))
-            {
-                return true;
-            }
-
-            var esMecanico =
-                await EsMecanicoActivoAsync(
-                    personaId);
-
-            if (!esMecanico)
-            {
-                return false;
-            }
-
-            return orden.MecanicoId ==
-                personaId;
-        }
-
-
-        private async Task<bool>
-            PuedeAccederOrdenAsync(
-                OrdenTrabajo orden,
-                int personaId)
-        {
-            if (await EsAdministradorAsync(
-                personaId))
-            {
-                return true;
-            }
-
-            if (await EsMecanicoActivoAsync(
-                personaId))
-            {
-                return orden.MecanicoId ==
-                    personaId;
-            }
-
-            // El cliente puede consultar evidencias
-            // de sus propias órdenes.
-            return await _context.IngresosVehiculo
-                .AnyAsync(i =>
-                    i.Id == orden.IngresoVehiculoId &&
-                    i.Turno.ClienteId == personaId);
-        }
-
-
-        private async Task<bool>
-            EsAdministradorAsync(
-                int personaId)
-        {
-            return await _context.PersonaRoles
-
-                .Include(pr => pr.Rol)
-
-                .AnyAsync(pr =>
-                    pr.PersonaId ==
-                        personaId &&
-
-                    pr.Rol.Nombre ==
-                        "ADMIN" &&
-
-                    pr.Rol.Activo &&
-
-                    pr.FechaBaja ==
-                        null);
-        }
-
-
-        private async Task<bool>
-            EsMecanicoActivoAsync(
-                int personaId)
-        {
-            return await _context.PersonaRoles
-
-                .Include(pr => pr.Rol)
-                .Include(pr => pr.Persona)
-
-                .AnyAsync(pr =>
-                    pr.PersonaId ==
-                        personaId &&
-
-                    pr.Persona.Activo &&
-
-                    pr.Rol.Nombre ==
-                        "MECANICO" &&
-
-                    pr.Rol.Activo &&
-
-                    pr.FechaBaja ==
-                        null);
+            if (await _permisos.EsAdministradorAsync(usuarioId)) return true;
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+            return personaId.HasValue && orden.MecanicoId == personaId &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId &&
+                    pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.MECANICO);
         }
     }
 }

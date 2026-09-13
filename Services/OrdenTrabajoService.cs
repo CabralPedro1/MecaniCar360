@@ -898,8 +898,57 @@ namespace MecaniCar360.Services
 
 
         // =====================================================
-        // MÉTODOS PRIVADOS
+        // COSTO DE DIAGNÓSTICO / REVISIÓN
         // =====================================================
+
+        public async Task<ServiceResult> ActualizarCostoDiagnosticoAsync(
+            int ordenTrabajoId, decimal costoDiagnostico, int usuarioSolicitanteId)
+        {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(usuarioSolicitanteId, "ORDEN_MODIFICAR");
+            if (usuario == null) return ServiceResult.Error("No tiene permiso para modificar esta orden.");
+            if (costoDiagnostico <= 0 || costoDiagnostico > 9999999999999999.99m ||
+                decimal.Round(costoDiagnostico, 2) != costoDiagnostico)
+                return ServiceResult.Error("Ingrese un costo positivo con hasta dos decimales.");
+
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                .FirstOrDefaultAsync();
+            if (orden == null) return ServiceResult.Error("Orden no encontrada.");
+            await _context.Entry(orden).ReloadAsync();
+            if (!await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                !(orden.MecanicoId == usuario.PersonaId && await EsMecanicoActivoAsync(usuario.PersonaId)))
+                return ServiceResult.Error("Sólo el mecánico asignado o ADMIN puede establecer este costo.");
+            if (orden.FechaFin.HasValue || orden.EstadoActual is not
+                (EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or EstadoOrden.Aprobado or
+                 EstadoOrden.EnReparacion or EstadoOrden.Rechazado) ||
+                await _context.Facturas.AnyAsync(f => f.OrdenTrabajoId == orden.Id))
+                return ServiceResult.Error("No se puede modificar el costo fuera del trabajo de diagnóstico/reparación o después de facturar.");
+            orden.CostoDiagnostico = costoDiagnostico;
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+            return ServiceResult.Ok("Costo de diagnóstico/revisión actualizado.");
+        }
+
+        // MÉTODOS PRIVADOS
+        public async Task<ServiceResult<List<OrdenTrabajo>>> ObtenerPropiasAsync(int usuarioSolicitanteId)
+        {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(usuarioSolicitanteId, "CLIENTE_ORDEN_VER");
+            if (usuario == null) return ServiceResult<List<OrdenTrabajo>>.Error("Acceso denegado.");
+            var ordenes = await _context.OrdenesTrabajo.AsNoTracking()
+                .Where(o => o.IngresoVehiculo.Turno.ClienteId == usuario.PersonaId)
+                .OrderByDescending(o => o.FechaInicio).ToListAsync();
+            return ServiceResult<List<OrdenTrabajo>>.Ok(ordenes);
+        }
+
+        public async Task<ServiceResult<OrdenTrabajo>> ObtenerPropiaAsync(int ordenTrabajoId, int usuarioSolicitanteId)
+        {
+            var usuario = await ObtenerUsuarioAutorizadoAsync(usuarioSolicitanteId, "CLIENTE_ORDEN_VER");
+            if (usuario == null) return ServiceResult<OrdenTrabajo>.Error("Acceso denegado.");
+            var orden = await _context.OrdenesTrabajo.AsNoTracking().FirstOrDefaultAsync(o =>
+                o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == usuario.PersonaId);
+            return orden == null ? ServiceResult<OrdenTrabajo>.Error("Orden no encontrada.") : ServiceResult<OrdenTrabajo>.Ok(orden);
+        }
 
         private async Task<Usuario?> ObtenerUsuarioAutorizadoAsync(
             int usuarioSolicitanteId,

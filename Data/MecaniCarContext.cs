@@ -506,6 +506,11 @@ namespace MecaniCar360.Data
                 .IsUnique();
 
             modelBuilder.Entity<Factura>()
+                .HasOne(f => f.PresupuestoVersionOrigen).WithMany()
+                .HasForeignKey(f => f.PresupuestoVersionOrigenId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Factura>()
                 .Property(f => f.FechaEmision)
                 .HasDefaultValueSql("GETDATE()");
 

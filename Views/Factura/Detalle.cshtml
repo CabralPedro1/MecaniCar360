@@ -1,0 +1,68 @@
+﻿@model Factura
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Detalle de factura";
+    var propia = ViewData["Propia"] is true;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verPagos = propia || await Permisos.TienePermisoAsync(usuarioId, "PAGO_VER");
+    var cobrar = !propia && await Permisos.TienePermisoAsync(usuarioId, "PAGO_REGISTRAR");
+    var totalPagado = Model.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto);
+    var saldo = Model.Total - totalPagado;
+    var turno = Model.OrdenTrabajo.IngresoVehiculo.Turno;
+}
+<h2>Detalle de factura</h2>
+<partial name="_Mensajes" />
+<div class="card mb-3"><div class="card-body">
+    <p class="text-break"><strong>Número:</strong> @Model.NumeroFactura</p>
+    <p><strong>Emisión:</strong> @Model.FechaEmision.ToString("dd/MM/yyyy HH:mm") · <strong>Estado:</strong> @Model.Estado</p>
+    <p><strong>Orden de trabajo:</strong> @Model.OrdenTrabajoId</p>
+    <p><strong>Cliente:</strong> @turno.Cliente.Nombre @turno.Cliente.Apellido · <strong>Vehículo:</strong> @turno.Vehiculo.Patente</p>
+    <p>@Model.Observaciones</p>
+    <div class="table-responsive"><table class="table table-striped">
+        <thead><tr><th>Concepto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+        <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("C2")</td><td>@item.Subtotal.ToString("C2")</td></tr>
+        }
+        </tbody>
+    </table></div>
+    <p class="fs-5"><strong>Total:</strong> @Model.Total.ToString("C2")</p>
+    @if (verPagos || cobrar)
+    {
+        <p><strong>Total pagado:</strong> @totalPagado.ToString("C2") · <strong>Saldo:</strong> @saldo.ToString("C2")</p>
+    }
+</div></div>
+@if (verPagos)
+{
+    <h3 class="h5">Pagos registrados</h3>
+    <partial name="_TablaPagos" model="Model" />
+}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a asp-action="@(propia ? "MisFacturas" : "Index")" class="btn btn-secondary">Volver</a>
+    @if (verPagos)
+    {
+        <a asp-action="@(propia ? "PagosPropios" : "Pagos")" asp-route-facturaId="@Model.Id" class="btn btn-outline-primary">Historial de pagos</a>
+    }
+    @if (cobrar && Model.Estado == EstadoFactura.Emitida && saldo > 0)
+    {
+        <a asp-action="RegistrarPago" asp-route-facturaId="@Model.Id" class="btn btn-success">Registrar pago</a>
+    }
+    @if (!propia && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE"))
+    {
+        <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-outline-secondary">Ver orden</a>
+    }
+    @if (!propia && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ENTREGAR") &&
+        Model.Estado == EstadoFactura.Pagada && totalPagado >= Model.Total &&
+        Model.OrdenTrabajo.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado &&
+        Model.OrdenTrabajo.IngresoVehiculo.FechaEgreso == null)
+    {
+        <form asp-controller="OrdenTrabajo" asp-action="Entregar" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
+            <button class="btn btn-dark" type="submit">Entregar vehículo</button>
+        </form>
+    }
+</div>

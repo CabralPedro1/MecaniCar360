@@ -18,6 +18,18 @@ namespace MecaniCar360.Services
         // VERIFICAR PERMISO
         // =====================================
 
+        public async Task<bool> TieneAlgunoAsync(int usuarioId, params string[] patentes)
+        {
+            foreach (var patente in patentes)
+                if (await TienePermisoAsync(usuarioId, patente)) return true;
+            return false;
+        }
+
+        public Task<int?> ObtenerPersonaActivaIdAsync(int usuarioId) =>
+            _context.Usuarios.AsNoTracking()
+                .Where(u => u.Id == usuarioId && u.Activo && u.Persona.Activo)
+                .Select(u => (int?)u.PersonaId).FirstOrDefaultAsync();
+
         public async Task<bool> EsAdministradorAsync(int usuarioId)
         {
             var usuario =

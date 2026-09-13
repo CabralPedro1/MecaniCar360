@@ -1,0 +1,19 @@
+﻿@model Factura
+@if (Model.Pagos.Count == 0)
+{
+    <div class="alert alert-info">No hay pagos registrados.</div>
+}
+else
+{
+    <div class="table-responsive"><table class="table table-striped">
+        <thead><tr><th>Fecha</th><th>Monto</th><th>Método</th><th>Estado</th><th>Registrado por</th></tr></thead>
+        <tbody>
+        @foreach (var pago in Model.Pagos.OrderByDescending(p => p.FechaPago).ThenByDescending(p => p.Id))
+        {
+            <tr><td>@pago.FechaPago.ToString("dd/MM/yyyy HH:mm")</td><td>@pago.Monto.ToString("C2")</td>
+                <td>@(pago.MetodoPago switch { MecaniCar360.Models.Enums.MetodoPago.TarjetaCredito => "Tarjeta de crédito", MecaniCar360.Models.Enums.MetodoPago.TarjetaDebito => "Tarjeta de débito", _ => pago.MetodoPago.ToString() })</td>
+                <td>@pago.Estado</td><td>@(pago.RegistradoPorUsuario?.Username ?? "—")</td></tr>
+        }
+        </tbody>
+    </table></div>
+}

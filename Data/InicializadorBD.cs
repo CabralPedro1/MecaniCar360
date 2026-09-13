@@ -1,4 +1,4 @@
-﻿using BCrypt.Net;
+using BCrypt.Net;
 using MecaniCar360.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -356,6 +356,7 @@ namespace MecaniCar360.Data
         private static void CrearPatentes(
             MecaniCarContext context)
         {
+            CrearPatente(context, "CLIENTE_CALIFICACION_CREAR");
             // -------------------------------------
             // USUARIOS
             // -------------------------------------
@@ -744,6 +745,10 @@ namespace MecaniCar360.Data
         private static void AsociarPatentesAFamilias(
             MecaniCarContext context)
         {
+            // Calificar no es una consulta de orden: requiere una patente de escritura propia.
+            AsociarPatente(context, "MIS_ORDENES", "CLIENTE_CALIFICACION_CREAR");
+            AsociarPatente(context, "MIS_ORDENES", "GARANTIA_VER_PROPIA");
+
             // -------------------------------------
             // USUARIOS
             // -------------------------------------

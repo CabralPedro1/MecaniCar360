@@ -1,4 +1,6 @@
-﻿using MecaniCar360.Models;
+using MecaniCar360.Attributes;
+using System.Security.Claims;
+using MecaniCar360.Models;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace MecaniCar360.Controllers
 {
-    [Authorize(Roles = "ADMIN,MECANICO")]
+    [Authorize]
     public class ModeloController : Controller
     {
         private readonly ModeloService _service;
@@ -24,9 +26,10 @@ namespace MecaniCar360.Controllers
         // LISTADO
         //====================================
 
+        [Permiso("VEHICULO_VER")]
         public async Task<IActionResult> Index()
         {
-            var resultado = await _service.ObtenerTodosAsync();
+            var resultado = await _service.ObtenerTodosAsync(SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -41,9 +44,10 @@ namespace MecaniCar360.Controllers
         // DETALLE
         //====================================
 
+        [Permiso("VEHICULO_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _service.ObtenerPorIdAsync(id);
+            var resultado = await _service.ObtenerPorIdAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -55,6 +59,7 @@ namespace MecaniCar360.Controllers
         // CREAR
         //====================================
 
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Crear()
         {
             await CargarMarcasAsync();
@@ -64,7 +69,8 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Crear(Modelo modelo)
+        [Permiso("VEHICULO_MODIFICAR")]
+        public async Task<IActionResult> Crear([Bind("Id,Nombre,MarcaId")] Modelo modelo)
         {
             if (!ModelState.IsValid)
             {
@@ -72,7 +78,7 @@ namespace MecaniCar360.Controllers
                 return View(modelo);
             }
 
-            var resultado = await _service.CrearAsync(modelo);
+            var resultado = await _service.CrearAsync(modelo, SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -90,9 +96,10 @@ namespace MecaniCar360.Controllers
         // EDITAR
         //====================================
 
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Editar(int id)
         {
-            var resultado = await _service.ObtenerPorIdAsync(id);
+            var resultado = await _service.ObtenerPorIdAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
                 return NotFound();
@@ -104,7 +111,8 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Editar(Modelo modelo)
+        [Permiso("VEHICULO_MODIFICAR")]
+        public async Task<IActionResult> Editar([Bind("Id,Nombre,MarcaId")] Modelo modelo)
         {
             if (!ModelState.IsValid)
             {
@@ -112,7 +120,7 @@ namespace MecaniCar360.Controllers
                 return View(modelo);
             }
 
-            var resultado = await _service.EditarAsync(modelo);
+            var resultado = await _service.EditarAsync(modelo, SolicitanteId());
 
             if (!resultado.Exitoso)
             {
@@ -132,9 +140,10 @@ namespace MecaniCar360.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> CambiarEstado(int id)
         {
-            var resultado = await _service.CambiarEstadoAsync(id);
+            var resultado = await _service.CambiarEstadoAsync(id, SolicitanteId());
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
@@ -147,7 +156,7 @@ namespace MecaniCar360.Controllers
 
         private async Task CargarMarcasAsync()
         {
-            var resultado = await _marcaService.ObtenerTodosAsync();
+            var resultado = await _marcaService.ObtenerTodosAsync(SolicitanteId());
 
             ViewBag.Marcas = new SelectList(
                 resultado.Data!
@@ -156,5 +165,6 @@ namespace MecaniCar360.Controllers
                 "Id",
                 "Nombre");
         }
+        private int SolicitanteId() => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
     }
 }

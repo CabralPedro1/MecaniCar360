@@ -283,6 +283,9 @@ namespace MecaniCar360.Migrations
                     b.Property<int?>("PresupuestoOrigenId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("PresupuestoVersionOrigenId")
+                        .HasColumnType("int");
+
                     b.Property<string>("QRPago")
                         .HasColumnType("nvarchar(max)");
 
@@ -298,6 +301,8 @@ namespace MecaniCar360.Migrations
                         .IsUnique();
 
                     b.HasIndex("PresupuestoOrigenId");
+
+                    b.HasIndex("PresupuestoVersionOrigenId");
 
                     b.ToTable("Facturas");
                 });
@@ -1552,9 +1557,16 @@ namespace MecaniCar360.Migrations
                         .WithMany()
                         .HasForeignKey("PresupuestoOrigenId");
 
+                    b.HasOne("MecaniCar360.Models.PresupuestoVersion", "PresupuestoVersionOrigen")
+                        .WithMany()
+                        .HasForeignKey("PresupuestoVersionOrigenId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("OrdenTrabajo");
 
                     b.Navigation("PresupuestoOrigen");
+
+                    b.Navigation("PresupuestoVersionOrigen");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.FacturaItem", b =>

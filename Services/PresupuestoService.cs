@@ -205,6 +205,13 @@ namespace MecaniCar360.Services
 
         private async Task<ServiceResult<PresupuestoOperacion>> DecidirAsync(int versionId, int usuarioId, bool aprobar, string? motivo)
         {
+            var solicitante = await UsuarioAutorizadoAsync(usuarioId,
+                aprobar ? "CLIENTE_PRESUPUESTO_APROBAR" : "CLIENTE_PRESUPUESTO_RECHAZAR");
+            if (solicitante == null) return ErrorAcceso();
+            if (!await _permisos.EsAdministradorAsync(usuarioId) &&
+                !await _context.PresupuestoVersiones.AnyAsync(v => v.Id == versionId &&
+                    v.Presupuesto.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId == solicitante.PersonaId))
+                return ErrorAcceso();
             if (!aprobar && (string.IsNullOrWhiteSpace(motivo) || motivo.Trim().Length > 1000))
                 return ServiceResult<PresupuestoOperacion>.Error("Indique un motivo de rechazo de hasta 1000 caracteres.");
             var ordenId = await _context.PresupuestoVersiones.Where(v => v.Id == versionId)
@@ -226,7 +233,7 @@ namespace MecaniCar360.Services
                 if (aprobar)
                 {
                     if (version.Items.Count == 0) return ServiceResult<PresupuestoOperacion>.Error("La versión no contiene ítems.");
-                    var stock = await _stock.ProcesarAprobacionIncrementalAsync(orden.Id, usuario.Id, version.Items);
+                    var stock = await _stock.ProcesarAprobacionIncrementalAsync(orden.Id, usuario.Id, version.Id);
                     if (!stock.Exitoso) return ServiceResult<PresupuestoOperacion>.Error(stock.Mensaje);
                     if (!string.IsNullOrEmpty(stock.Mensaje)) mensaje += " " + stock.Mensaje;
                 }

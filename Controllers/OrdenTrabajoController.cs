@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Attributes;
+using MecaniCar360.Attributes;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Services;
@@ -556,8 +556,42 @@ namespace MecaniCar360.Controllers
 
 
         // =====================================================
-        // HELPER
+        // COSTO DE DIAGNÓSTICO / REVISIÓN
         // =====================================================
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Permiso("ORDEN_MODIFICAR")]
+        public async Task<IActionResult> ActualizarCostoDiagnostico(int ordenTrabajoId, decimal costoDiagnostico)
+        {
+            if (ObtenerUsuarioId() is not int usuarioId) return Forbid();
+            if (!ModelState.IsValid)
+                TempData["Error"] = "Ingrese un costo de diagnóstico válido.";
+            else
+            {
+                var resultado = await _ordenTrabajoService.ActualizarCostoDiagnosticoAsync(
+                    ordenTrabajoId, costoDiagnostico, usuarioId);
+                TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            }
+            return RedirectToAction(nameof(Detalle), new { id = ordenTrabajoId });
+        }
+
+        [HttpGet, Permiso("CLIENTE_ORDEN_VER")]
+        public async Task<IActionResult> MisOrdenes()
+        {
+            var resultado = await _ordenTrabajoService.ObtenerPropiasAsync(ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) return Forbid();
+            return Json(resultado.Data!.Select(o => new { o.Id, o.EstadoActual, o.FechaInicio, o.FechaFin }));
+        }
+
+        [HttpGet, Permiso("CLIENTE_ORDEN_VER")]
+        public async Task<IActionResult> Propia(int id)
+        {
+            var resultado = await _ordenTrabajoService.ObtenerPropiaAsync(id, ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) return NotFound();
+            var o = resultado.Data!;
+            return Json(new { o.Id, o.EstadoActual, o.FechaInicio, o.FechaFin });
+        }
 
         private int? ObtenerUsuarioId()
         {

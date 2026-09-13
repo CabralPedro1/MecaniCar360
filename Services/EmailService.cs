@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Mail;
 
 namespace MecaniCar360.Services
@@ -16,7 +16,7 @@ namespace MecaniCar360.Services
         // ENVIAR CORREO
         // =====================================
 
-        public async Task EnviarCorreoAsync(
+        internal async Task EnviarCorreoAsync(
             string destino,
             string asunto,
             string cuerpo,

@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MecaniCar360.Attributes;
 using MecaniCar360.Models;
 using MecaniCar360.Models.ViewModels;
@@ -230,9 +230,10 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [HttpGet]
+        [Permiso("VEHICULO_VER", "VEHICULO_CREAR", "VEHICULO_MODIFICAR")]
         public async Task<JsonResult> ObtenerModelos(int marcaId)
         {
-            var resultado = await _vehiculoService.ObtenerModelosPorMarcaAsync(marcaId);
+            var resultado = await _vehiculoService.ObtenerModelosPorMarcaAsync(marcaId, ObtenerUsuarioActualId() ?? 0);
 
             if (!resultado.Exitoso)
                 return Json(new List<object>());
@@ -250,10 +251,10 @@ namespace MecaniCar360.Controllers
 
         private async Task CargarMarcasAsync(int? seleccionada = null)
         {
-            var resultado = await _marcaService.ObtenerTodosAsync();
+            var resultado = await _marcaService.ObtenerTodosAsync(ObtenerUsuarioActualId() ?? 0);
 
             ViewBag.Marcas = new SelectList(
-                resultado.Data!
+                (resultado.Data ?? new List<Marca>())
                     .Where(m => m.Activo)
                     .OrderBy(m => m.Nombre),
                 "Id",
@@ -268,7 +269,7 @@ namespace MecaniCar360.Controllers
             if (marcaId.HasValue)
             {
                 var resultado = await _vehiculoService
-                    .ObtenerModelosPorMarcaAsync(marcaId.Value);
+                    .ObtenerModelosPorMarcaAsync(marcaId.Value, ObtenerUsuarioActualId() ?? 0);
 
                 if (resultado.Exitoso)
                     modelos = resultado.Data!;
@@ -279,6 +280,23 @@ namespace MecaniCar360.Controllers
                 "Id",
                 "Nombre",
                 seleccionado);
+        }
+
+        [HttpGet, Permiso("CLIENTE_VEHICULO_VER")]
+        public async Task<IActionResult> MisVehiculos()
+        {
+            var resultado = await _vehiculoService.ObtenerVehiculosPropiosAsync(ObtenerUsuarioActualId() ?? 0);
+            if (!resultado.Exitoso) return Forbid();
+            return Json(resultado.Data!.Select(v => new { v.Id, v.Patente, v.Anio, Marca = v.Marca.Nombre, Modelo = v.Modelo.Nombre }));
+        }
+
+        [HttpGet, Permiso("CLIENTE_VEHICULO_VER")]
+        public async Task<IActionResult> Propio(int id)
+        {
+            var resultado = await _vehiculoService.ObtenerVehiculoPropioAsync(ObtenerUsuarioActualId() ?? 0, id);
+            if (!resultado.Exitoso) return NotFound();
+            var v = resultado.Data!;
+            return Json(new { v.Id, v.Patente, v.Anio, v.Color, Marca = v.Marca.Nombre, Modelo = v.Modelo.Nombre });
         }
 
         private int? ObtenerUsuarioActualId()

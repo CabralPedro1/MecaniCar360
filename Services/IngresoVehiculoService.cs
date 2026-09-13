@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -383,8 +383,10 @@ namespace MecaniCar360.Services
         // =====================================
 
         public async Task<bool> VehiculoEstaEnTallerAsync(
-            int vehiculoId)
+            int vehiculoId, int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "INGRESO_VER")) return false;
+
             return await _context.IngresosVehiculo
                 .AnyAsync(i =>
                     i.Turno.VehiculoId == vehiculoId &&

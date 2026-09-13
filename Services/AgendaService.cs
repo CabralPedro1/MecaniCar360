@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -9,13 +9,15 @@ namespace MecaniCar360.Services
     public class AgendaService
     {
         private readonly MecaniCarContext _context;
+        private readonly PermisoService _permisos;
         private readonly IConfiguration _configuration;
 
         public AgendaService(
             MecaniCarContext context,
-            IConfiguration configuration)
+            IConfiguration configuration, PermisoService permisos)
         {
             _context = context;
+            _permisos = permisos;
             _configuration = configuration;
         }
 
@@ -89,8 +91,10 @@ namespace MecaniCar360.Services
         public async Task<ServiceResult<List<Turno>>>
             ObtenerTurnosDelPeriodoAsync(
                 DateTime desde,
-                DateTime hasta)
+                DateTime hasta, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "TURNO_VER")) return ServiceResult<List<Turno>>.Error("Acceso denegado.");
+
             if (desde >= hasta)
             {
                 return ServiceResult<List<Turno>>.Error(
@@ -117,7 +121,7 @@ namespace MecaniCar360.Services
         // VALIDAR DISPONIBILIDAD
         // =====================================
 
-        public async Task<ServiceResult>
+        internal async Task<ServiceResult>
             ValidarDisponibilidadAsync(
                 DateTime fechaInicio)
         {
@@ -127,7 +131,7 @@ namespace MecaniCar360.Services
         }
 
 
-        public async Task<ServiceResult>
+        internal async Task<ServiceResult>
             ValidarDisponibilidadAsync(
                 DateTime fechaInicio,
                 int turnoIdExcluir)
@@ -270,8 +274,10 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<DateTime>>>
             ObtenerHorariosDisponiblesAsync(
-                DateTime fecha)
+                DateTime fecha, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TieneAlgunoAsync(usuarioSolicitanteId, "TURNO_VER", "TURNO_CREAR", "TURNO_MODIFICAR", "CLIENTE_TURNO_CREAR")) return ServiceResult<List<DateTime>>.Error("Acceso denegado.");
+
             var turnosPorFranja =
                 ObtenerTurnosPorFranja();
 
@@ -377,8 +383,10 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<Turno>>>
             ObtenerAgendaDelDiaAsync(
-                DateTime fecha)
+                DateTime fecha, int usuarioSolicitanteId)
         {
+            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "TURNO_VER")) return ServiceResult<List<Turno>>.Error("Acceso denegado.");
+
             var desde =
                 fecha.Date;
 
@@ -388,7 +396,7 @@ namespace MecaniCar360.Services
             return await
                 ObtenerTurnosDelPeriodoAsync(
                     desde,
-                    hasta);
+                    hasta, usuarioSolicitanteId);
         }
     }
 }

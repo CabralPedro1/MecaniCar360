@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -45,8 +45,10 @@ namespace MecaniCar360.Services
         }
 
 
-        public async Task<ServiceResult<List<Persona>>> ObtenerActivasAsync()
+        public async Task<ServiceResult<List<Persona>>> ObtenerActivasAsync(int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PERSONA_VER")) return ServiceResult<List<Persona>>.Error("Acceso denegado.");
+
             var personas = await _context.Personas
                 .Include(p => p.Roles)
                     .ThenInclude(pr => pr.Rol)
@@ -103,8 +105,10 @@ namespace MecaniCar360.Services
 
 
         public async Task<ServiceResult<Persona>> ObtenerPorDniAsync(
-            string dni)
+            string dni, int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PERSONA_VER")) return ServiceResult<Persona>.Error("Acceso denegado.");
+
             var persona = await ObtenerPersonaPorDniAsync(dni);
 
             if (persona == null)
@@ -116,8 +120,10 @@ namespace MecaniCar360.Services
 
 
         public async Task<ServiceResult<List<Persona>>> ObtenerPorRolAsync(
-            string nombreRol)
+            string nombreRol, int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PERSONA_VER")) return ServiceResult<List<Persona>>.Error("Acceso denegado.");
+
             nombreRol = nombreRol.Trim().ToUpper();
 
             var personas = await _context.Personas
@@ -137,16 +143,16 @@ namespace MecaniCar360.Services
         }
 
 
-        public Task<ServiceResult<List<Persona>>> ObtenerMecanicosAsync()
-            => ObtenerPorRolAsync(RolesSistema.MECANICO);
+        public Task<ServiceResult<List<Persona>>> ObtenerMecanicosAsync(int usuarioSolicitanteId)
+            => ObtenerPorRolAsync(RolesSistema.MECANICO, usuarioSolicitanteId);
 
 
-        public Task<ServiceResult<List<Persona>>> ObtenerClientesAsync()
-            => ObtenerPorRolAsync(RolesSistema.CLIENTE);
+        public Task<ServiceResult<List<Persona>>> ObtenerClientesAsync(int usuarioSolicitanteId)
+            => ObtenerPorRolAsync(RolesSistema.CLIENTE, usuarioSolicitanteId);
 
 
-        public Task<ServiceResult<List<Persona>>> ObtenerAdministrativosAsync()
-            => ObtenerPorRolAsync(RolesSistema.ADMIN);
+        public Task<ServiceResult<List<Persona>>> ObtenerAdministrativosAsync(int usuarioSolicitanteId)
+            => ObtenerPorRolAsync(RolesSistema.ADMIN, usuarioSolicitanteId);
 
 
         // =============================
@@ -171,6 +177,9 @@ namespace MecaniCar360.Services
 
             persona.Dni = persona.Dni.Trim();
 
+            persona.Id = 0;
+            persona.Usuario = null;
+            persona.Roles = new();
             _context.Personas.Add(persona);
 
             await _context.SaveChangesAsync();
@@ -184,6 +193,10 @@ namespace MecaniCar360.Services
             Persona persona,
             int usuarioSolicitanteId)
         {
+            if (!await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == persona.Id && pr.FechaBaja == null && pr.Rol.Nombre == RolesSistema.ADMIN))
+                return ServiceResult.Error("Sólo ADMIN puede administrar esta persona.");
+
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "PERSONA_MODIFICAR"))
@@ -227,6 +240,10 @@ namespace MecaniCar360.Services
             int id,
             int usuarioSolicitanteId)
         {
+            if (!await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == id && pr.FechaBaja == null && pr.Rol.Nombre == RolesSistema.ADMIN))
+                return ServiceResult.Error("Sólo ADMIN puede administrar esta persona.");
+
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "PERSONA_DESACTIVAR"))
@@ -258,6 +275,10 @@ namespace MecaniCar360.Services
             int id,
             int usuarioSolicitanteId)
         {
+            if (!await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == id && pr.FechaBaja == null && pr.Rol.Nombre == RolesSistema.ADMIN))
+                return ServiceResult.Error("Sólo ADMIN puede administrar esta persona.");
+
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "PERSONA_DESACTIVAR"))
@@ -322,8 +343,10 @@ namespace MecaniCar360.Services
 
         public async Task<bool> TieneRolAsync(
             int personaId,
-            string nombreRol)
+            string nombreRol, int usuarioSolicitanteId)
         {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "ROL_VER")) return false;
+
             nombreRol = nombreRol.Trim().ToUpper();
 
             return await _context.PersonaRoles.AnyAsync(pr =>

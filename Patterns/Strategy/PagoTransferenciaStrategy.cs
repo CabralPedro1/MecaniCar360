@@ -7,7 +7,7 @@ namespace MecaniCar360.Patterns.Strategy
     {
         public Task Procesar(Pago pago)
         {
-            // podría quedar pendiente hasta validar
+            // Simulación académica: no verifica una transferencia bancaria real.
             pago.Estado = EstadoPago.Pagado;
             return Task.CompletedTask;
         }
