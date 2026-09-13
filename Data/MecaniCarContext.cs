@@ -93,6 +93,8 @@ namespace MecaniCar360.Data
         public DbSet<Proveedor> Proveedores { get; set; }
         public DbSet<ProveedorRepuesto> ProveedorRepuestos { get; set; }
         public DbSet<MovimientoStock> MovimientosStock { get; set; }
+        public DbSet<LoteRepuesto> LotesRepuesto { get; set; }
+        public DbSet<MovimientoStockLote> MovimientosStockLote { get; set; }
 
 
         // =============================
@@ -674,6 +676,65 @@ namespace MecaniCar360.Data
                 .HasForeignKey(a => a.UsuarioId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Repuesto>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_Repuestos_StockActual", "[StockActual] >= 0");
+                t.HasCheckConstraint("CK_Repuestos_StockMinimo", "[StockMinimo] >= 0");
+            });
+
+            modelBuilder.Entity<ProveedorRepuesto>()
+                .HasAlternateKey(pr => new { pr.Id, pr.RepuestoId });
+            modelBuilder.Entity<ProveedorRepuesto>()
+                .HasIndex(pr => pr.RepuestoId)
+                .IsUnique().HasFilter("[Principal] = 1");
+
+            modelBuilder.Entity<MovimientoStock>()
+                .HasOne(m => m.RealizadoPorUsuario).WithMany()
+                .HasForeignKey(m => m.RealizadoPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<MovimientoStock>().ToTable(t =>
+            {
+                t.HasCheckConstraint("CK_MovimientosStock_Cantidad", "[Cantidad] <> 0");
+                // Valores actuales del enum: IngresoCompra=0, EgresoOrdenTrabajo=1, Ajuste=2.
+                t.HasCheckConstraint("CK_MovimientosStock_TipoDatos",
+                    "([Tipo] = 0 AND [Cantidad] > 0 AND [ProveedorRepuestoId] IS NOT NULL) OR " +
+                    "([Tipo] = 1 AND [Cantidad] < 0 AND [OrdenTrabajoId] IS NOT NULL) OR " +
+                    "([Tipo] = 2 AND [Cantidad] <> 0)");
+            });
+
+            modelBuilder.Entity<LoteRepuesto>(entity =>
+            {
+                entity.HasKey(l => l.Id);
+                entity.Property(l => l.CodigoLote).IsRequired().HasMaxLength(50);
+                entity.Property(l => l.PrecioCompra).HasPrecision(18, 2);
+                entity.HasIndex(l => l.CodigoLote).IsUnique();
+                entity.HasIndex(l => new { l.RepuestoId, l.FechaIngreso, l.Id });
+                entity.HasOne(l => l.Repuesto).WithMany(r => r.Lotes)
+                    .HasForeignKey(l => l.RepuestoId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(l => l.ProveedorRepuesto).WithMany(pr => pr.Lotes)
+                    .HasForeignKey(l => new { l.ProveedorRepuestoId, l.RepuestoId })
+                    .HasPrincipalKey(pr => new { pr.Id, pr.RepuestoId })
+                    .OnDelete(DeleteBehavior.Restrict);
+                entity.ToTable(t =>
+                {
+                    t.HasCheckConstraint("CK_LotesRepuesto_CantidadIngresada", "[CantidadIngresada] > 0");
+                    t.HasCheckConstraint("CK_LotesRepuesto_CantidadDisponible",
+                        "[CantidadDisponible] >= 0 AND [CantidadDisponible] <= [CantidadIngresada]");
+                    t.HasCheckConstraint("CK_LotesRepuesto_PrecioCompra", "[PrecioCompra] > 0");
+                    t.HasCheckConstraint("CK_LotesRepuesto_CodigoLote", "LEN(LTRIM(RTRIM([CodigoLote]))) > 0");
+                });
+            });
+
+            modelBuilder.Entity<MovimientoStockLote>(entity =>
+            {
+                entity.HasKey(d => new { d.MovimientoStockId, d.LoteRepuestoId });
+                entity.HasIndex(d => d.LoteRepuestoId);
+                entity.HasOne(d => d.MovimientoStock).WithMany(m => m.Lotes)
+                    .HasForeignKey(d => d.MovimientoStockId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(d => d.LoteRepuesto).WithMany(l => l.Movimientos)
+                    .HasForeignKey(d => d.LoteRepuestoId).OnDelete(DeleteBehavior.Restrict);
+                entity.ToTable(t => t.HasCheckConstraint("CK_MovimientosStockLote_Cantidad", "[Cantidad] > 0"));
+            });
 
             modelBuilder.Entity<Auditoria>().HasIndex(a => a.Fecha);
 

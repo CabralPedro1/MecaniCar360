@@ -2,6 +2,8 @@
 
 @{
     ViewData["Title"] = "Detalle del Repuesto";
+    var ordenes = ViewData["OrdenesSalida"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
+    var lotes = ViewData["LotesRestitucion"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
 }
 
 <h2>Detalle del Repuesto</h2>
@@ -140,6 +142,8 @@
 
 </div>
 
+@if (ViewData["PuedeMover"] is true)
+{
 <div class="row">
 
     <div class="col-md-4">
@@ -152,7 +156,7 @@
 
             <div class="card-body">
 
-                <form asp-action="RegistrarIngreso">
+                <form asp-action="RegistrarIngreso" method="post">
 
                     @Html.AntiForgeryToken()
 
@@ -164,10 +168,11 @@
 
                         <label>Proveedor</label>
 
-                        <select name="proveedorRepuestoId"
+                        <select name="proveedorRepuestoId" required
                                 class="form-select">
+                            <option value="">Seleccione un proveedor activo</option>
 
-                            @foreach (var proveedor in Model.Proveedores)
+                            @foreach (var proveedor in Model.Proveedores.Where(p => p.Proveedor.Activo))
                             {
                                 <option value="@proveedor.Id">
                                     @proveedor.Proveedor.Nombre -
@@ -186,7 +191,7 @@
 
                         <input type="number"
                                name="cantidad"
-                               min="1"
+                               min="1" step="1" max="2147483647" required
                                class="form-control" />
 
                     </div>
@@ -195,9 +200,15 @@
 
                         <label>Observaciones</label>
 
-                        <textarea name="observaciones"
+                        <textarea name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="precioCompra">Precio unitario real de compra</label>
+                        <input id="precioCompra" name="precioCompra" type="number" min="0.01" step="0.01" required class="form-control" />
+                        <small>Confirme el precio de este ingreso. El precio del proveedor se muestra sólo como referencia.</small>
                     </div>
 
                     <button class="btn btn-success w-100">
@@ -222,7 +233,7 @@
 
             <div class="card-body">
 
-                <form asp-action="RegistrarSalida">
+                <form asp-action="RegistrarSalida" method="post">
 
                     @Html.AntiForgeryToken()
 
@@ -236,7 +247,7 @@
 
                         <input type="number"
                                name="cantidad"
-                               min="1"
+                               min="1" step="1" max="2147483647" required
                                class="form-control" />
 
                     </div>
@@ -245,9 +256,17 @@
 
                         <label>Observaciones</label>
 
-                        <textarea name="observaciones"
+                        <textarea name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="ordenTrabajoId">Orden de trabajo</label>
+                        <select id="ordenTrabajoId" name="ordenTrabajoId" asp-items="ordenes" required class="form-select">
+                            <option value="">Seleccione una OT aprobada o en reparación</option>
+                        </select>
+                        @if (!ordenes.Any()) { <p>No hay órdenes habilitadas para salida.</p> }
                     </div>
 
                     <button class="btn btn-warning w-100">
@@ -272,7 +291,7 @@
 
             <div class="card-body">
 
-                <form asp-action="RegistrarAjuste">
+                <form asp-action="RegistrarAjuste" method="post">
 
                     @Html.AntiForgeryToken()
 
@@ -285,7 +304,7 @@
                         <label>Diferencia (+/-)</label>
 
                         <input type="number"
-                               name="diferencia"
+                               id="diferencia" name="diferencia" step="1" min="-2147483647" max="2147483647" required
                                class="form-control" />
 
                     </div>
@@ -294,9 +313,19 @@
 
                         <label>Motivo</label>
 
-                        <textarea name="observaciones"
+                        <textarea required name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="loteRepuestoId">Lote de origen para restitución</label>
+                        <select id="loteRepuestoId" name="loteRepuestoId" asp-items="lotes" class="form-select">
+                            <option value="">Seleccione el lote si la diferencia es positiva</option>
+                        </select>
+                        <p>Para restar unidades no elija lote: se consumen primero los ingresos más antiguos (FIFO).</p>
+                        <p>Para restituir unidades debe identificar físicamente su lote de origen. Sólo se muestran lotes con capacidad de restitución.</p>
+                        @if (!lotes.Any()) { <p>No hay lotes que admitan restitución.</p> }
                     </div>
 
                     <button class="btn btn-primary w-100">
@@ -313,6 +342,7 @@
 
 </div>
 
+}
 <hr />
 
 <h3>Últimos movimientos</h3>
@@ -369,6 +399,8 @@ else
 
 <div class="mt-4">
 
+    @if (ViewData["PuedeModificar"] is true)
+    {
     <a asp-action="Editar"
        asp-route-id="@Model.Id"
        class="btn btn-warning">
@@ -382,9 +414,28 @@ else
         Administrar proveedores
 
     </a>
+    }
     <a asp-action="Index"
        class="btn btn-secondary">
         Volver
     </a>
 
 </div>
+@section Scripts {
+    <script>
+        (() => {
+            const diferencia = document.getElementById('diferencia');
+            const lote = document.getElementById('loteRepuestoId');
+            if (!diferencia || !lote) return;
+            const actualizar = () => {
+                const valor = diferencia.valueAsNumber;
+                diferencia.setCustomValidity(valor === 0 ? 'La diferencia no puede ser cero.' : '');
+                lote.required = valor > 0;
+                lote.disabled = valor < 0;
+                if (valor < 0) lote.value = '';
+            };
+            diferencia.addEventListener('input', actualizar);
+            actualizar();
+        })();
+    </script>
+}

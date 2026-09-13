@@ -108,8 +108,8 @@ namespace MecaniCar360.Services
                 return ServiceResult<PresupuestoOperacion>.Error("Ingrese descripción, cantidad positiva y precio válido con hasta dos decimales.");
             return await EditarAsync(presupuestoId, usuarioSolicitanteId, async presupuesto =>
             {
-                if (repuestoId.HasValue && !await _context.Repuestos.AnyAsync(r => r.Id == repuestoId.Value))
-                    return ServiceResult.Error("Repuesto no encontrado.");
+                if (repuestoId.HasValue && !await _context.Repuestos.AnyAsync(r => r.Id == repuestoId.Value && r.Activo))
+                    return ServiceResult.Error("Repuesto no encontrado o inactivo.");
                 var subtotal = cantidad * precioUnitario;
                 if (presupuesto.CalcularTotal() + subtotal > 9999999999999999.99m)
                     return ServiceResult.Error("El total excede el importe admitido.");

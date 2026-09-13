@@ -478,6 +478,59 @@ namespace MecaniCar360.Migrations
                     b.ToTable("IngresosVehiculo");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.LoteRepuesto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CantidadDisponible")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CantidadIngresada")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CodigoLote")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("FechaIngreso")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("PrecioCompra")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ProveedorRepuestoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RepuestoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CodigoLote")
+                        .IsUnique();
+
+                    b.HasIndex("ProveedorRepuestoId", "RepuestoId");
+
+                    b.HasIndex("RepuestoId", "FechaIngreso", "Id");
+
+                    b.ToTable("LotesRepuesto", t =>
+                        {
+                            t.HasCheckConstraint("CK_LotesRepuesto_CantidadDisponible", "[CantidadDisponible] >= 0 AND [CantidadDisponible] <= [CantidadIngresada]");
+
+                            t.HasCheckConstraint("CK_LotesRepuesto_CantidadIngresada", "[CantidadIngresada] > 0");
+
+                            t.HasCheckConstraint("CK_LotesRepuesto_CodigoLote", "LEN(LTRIM(RTRIM([CodigoLote]))) > 0");
+
+                            t.HasCheckConstraint("CK_LotesRepuesto_PrecioCompra", "[PrecioCompra] > 0");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Marca", b =>
                 {
                     b.Property<int>("Id")
@@ -584,7 +637,33 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RepuestoId");
 
-                    b.ToTable("MovimientosStock");
+                    b.ToTable("MovimientosStock", t =>
+                        {
+                            t.HasCheckConstraint("CK_MovimientosStock_Cantidad", "[Cantidad] <> 0");
+
+                            t.HasCheckConstraint("CK_MovimientosStock_TipoDatos", "([Tipo] = 0 AND [Cantidad] > 0 AND [ProveedorRepuestoId] IS NOT NULL) OR ([Tipo] = 1 AND [Cantidad] < 0 AND [OrdenTrabajoId] IS NOT NULL) OR ([Tipo] = 2 AND [Cantidad] <> 0)");
+                        });
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.MovimientoStockLote", b =>
+                {
+                    b.Property<int>("MovimientoStockId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LoteRepuestoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Cantidad")
+                        .HasColumnType("int");
+
+                    b.HasKey("MovimientoStockId", "LoteRepuestoId");
+
+                    b.HasIndex("LoteRepuestoId");
+
+                    b.ToTable("MovimientosStockLote", t =>
+                        {
+                            t.HasCheckConstraint("CK_MovimientosStockLote_Cantidad", "[Cantidad] > 0");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Notificacion", b =>
@@ -1118,7 +1197,9 @@ namespace MecaniCar360.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("RepuestoId");
+                    b.HasIndex("RepuestoId")
+                        .IsUnique()
+                        .HasFilter("[Principal] = 1");
 
                     b.HasIndex("ProveedorId", "RepuestoId")
                         .IsUnique();
@@ -1178,7 +1259,12 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("SKU")
                         .IsUnique();
 
-                    b.ToTable("Repuestos");
+                    b.ToTable("Repuestos", t =>
+                        {
+                            t.HasCheckConstraint("CK_Repuestos_StockActual", "[StockActual] >= 0");
+
+                            t.HasCheckConstraint("CK_Repuestos_StockMinimo", "[StockMinimo] >= 0");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Rol", b =>
@@ -1659,6 +1745,26 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Turno");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.LoteRepuesto", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.Repuesto", "Repuesto")
+                        .WithMany("Lotes")
+                        .HasForeignKey("RepuestoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.ProveedorRepuesto", "ProveedorRepuesto")
+                        .WithMany("Lotes")
+                        .HasForeignKey("ProveedorRepuestoId", "RepuestoId")
+                        .HasPrincipalKey("Id", "RepuestoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ProveedorRepuesto");
+
+                    b.Navigation("Repuesto");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Modelo", b =>
                 {
                     b.HasOne("MecaniCar360.Models.Marca", "Marca")
@@ -1684,7 +1790,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Usuario", "RealizadoPorUsuario")
                         .WithMany()
                         .HasForeignKey("RealizadoPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MecaniCar360.Models.Repuesto", "Repuesto")
@@ -1700,6 +1806,25 @@ namespace MecaniCar360.Migrations
                     b.Navigation("RealizadoPorUsuario");
 
                     b.Navigation("Repuesto");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.MovimientoStockLote", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.LoteRepuesto", "LoteRepuesto")
+                        .WithMany("Movimientos")
+                        .HasForeignKey("LoteRepuestoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.MovimientoStock", "MovimientoStock")
+                        .WithMany("Lotes")
+                        .HasForeignKey("MovimientoStockId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LoteRepuesto");
+
+                    b.Navigation("MovimientoStock");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Notificacion", b =>
@@ -2078,6 +2203,11 @@ namespace MecaniCar360.Migrations
                     b.Navigation("OrdenTrabajo");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.LoteRepuesto", b =>
+                {
+                    b.Navigation("Movimientos");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Marca", b =>
                 {
                     b.Navigation("Modelos");
@@ -2086,6 +2216,11 @@ namespace MecaniCar360.Migrations
             modelBuilder.Entity("MecaniCar360.Models.Modelo", b =>
                 {
                     b.Navigation("Vehiculos");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.MovimientoStock", b =>
+                {
+                    b.Navigation("Lotes");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.OrdenTrabajo", b =>
@@ -2138,8 +2273,15 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Repuestos");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.ProveedorRepuesto", b =>
+                {
+                    b.Navigation("Lotes");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Repuesto", b =>
                 {
+                    b.Navigation("Lotes");
+
                     b.Navigation("Movimientos");
 
                     b.Navigation("PresupuestoItems");
