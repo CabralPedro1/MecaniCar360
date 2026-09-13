@@ -669,6 +669,14 @@ namespace MecaniCar360.Data
                 .Property(a => a.Fecha)
                 .HasDefaultValueSql("GETDATE()");
 
+            modelBuilder.Entity<Auditoria>()
+                .HasOne(a => a.Usuario).WithMany()
+                .HasForeignKey(a => a.UsuarioId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Auditoria>().HasIndex(a => a.Fecha);
+
 
             // =============================
             // NOTIFICACIONES

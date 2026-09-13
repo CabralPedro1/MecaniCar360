@@ -11,15 +11,17 @@ namespace MecaniCar360.Services
     public class UsuarioService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisoService;
         private readonly EmailService _emailService;
 
         public UsuarioService(
             MecaniCarContext context,
             PermisoService permisoService,
-            EmailService emailService)
+            EmailService emailService, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisoService = permisoService;
             _emailService = emailService;
         }
@@ -209,6 +211,8 @@ namespace MecaniCar360.Services
             {
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
+                _auditoria.RegistrarOperacion("USUARIO_CREADO", "Usuario", usuario.Id, usuarioSolicitanteId);
+                await _context.SaveChangesAsync();
 
                 await _emailService.EnviarCorreoAsync(
                     emailLogin,
@@ -227,7 +231,7 @@ namespace MecaniCar360.Services
                 await transaction.RollbackAsync();
 
                 return ServiceResult.Error(
-                    "No se pudo crear la cuenta porque no fue posible enviar las credenciales por email.");
+                    "No se pudo completar el alta de la cuenta.");
             }
         }
 
@@ -271,6 +275,7 @@ namespace MecaniCar360.Services
             usuario.Username = username;
             usuario.EmailLogin = emailLogin;
 
+            _auditoria.RegistrarOperacion("USUARIO_MODIFICADO", "Usuario", usuario.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -322,6 +327,7 @@ namespace MecaniCar360.Services
             }
 
             usuario.Activo = !usuario.Activo;
+            _auditoria.RegistrarOperacion(usuario.Activo ? "USUARIO_ACTIVADO" : "USUARIO_DESACTIVADO", "Usuario", usuario.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(

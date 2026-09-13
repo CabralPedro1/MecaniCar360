@@ -52,10 +52,12 @@ namespace MecaniCar360.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
-                    b.Property<int>("UsuarioId")
+                    b.Property<int?>("UsuarioId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Fecha");
 
                     b.HasIndex("UsuarioId");
 
@@ -1427,8 +1429,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Usuario", "Usuario")
                         .WithMany()
                         .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Usuario");
                 });

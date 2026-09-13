@@ -13,6 +13,7 @@ namespace MecaniCar360.Services
     public class PresupuestoService
     {
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
         private readonly StockService _stock;
         private readonly OrdenStateService _estados;
@@ -21,9 +22,10 @@ namespace MecaniCar360.Services
 
         public PresupuestoService(MecaniCarContext context, PermisoService permisos,
             StockService stock, OrdenStateService estados, OrdenSubject observer,
-            ILogger<PresupuestoService> logger)
+            ILogger<PresupuestoService> logger, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
             _permisos = permisos;
             _stock = stock;
             _estados = estados;
@@ -94,6 +96,7 @@ namespace MecaniCar360.Services
                     Estado = EstadoPresupuesto.Modificado, Total = 0,
                     FechaUltimaModificacion = DateTime.Now
                 });
+                _auditoria.RegistrarOperacion("PRESUPUESTO_CREADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
                 return ServiceResult<PresupuestoOperacion>.Ok(new PresupuestoOperacion(orden.Id), "Presupuesto creado.");
             });
 
@@ -193,6 +196,8 @@ namespace MecaniCar360.Services
                 presupuesto.MotivoRechazo = null;
                 presupuesto.FechaUltimaModificacion = ahora;
                 await CambiarEstadoAsync(orden, new EstadoEsperandoAprobacionHandler(), usuario, true);
+                _auditoria.RegistrarOperacion("PRESUPUESTO_ENVIADO", "Presupuesto", presupuesto.Id, usuarioSolicitanteId,
+                    $"Versión {numero}; orden #{orden.Id}.");
                 return ServiceResult<PresupuestoOperacion>.Ok(new PresupuestoOperacion(orden.Id), "Nueva versión enviada al cliente.");
             }, "El presupuesto está disponible para su aprobación.");
         }
@@ -247,6 +252,8 @@ namespace MecaniCar360.Services
                 version.Presupuesto.FechaUltimaModificacion = ahora;
                 await CambiarEstadoAsync(orden,
                     aprobar ? new EstadoAprobadoHandler() : new EstadoRechazadoHandler(), usuario, false);
+                _auditoria.RegistrarOperacion(aprobar ? "PRESUPUESTO_APROBADO" : "PRESUPUESTO_RECHAZADO",
+                    "PresupuestoVersion", version.Id, usuarioId, $"Orden #{orden.Id}; versión {version.NumeroVersion}.");
                 return ServiceResult<PresupuestoOperacion>.Ok(new PresupuestoOperacion(orden.Id), mensaje);
             }, aprobar ? "El presupuesto fue aprobado." : "El presupuesto fue rechazado. Se detiene la reparación.");
         }
@@ -345,9 +352,13 @@ namespace MecaniCar360.Services
 
         private async Task CambiarEstadoAsync(OrdenTrabajo orden, IEstadoOrdenHandler handler, Usuario usuario, bool tecnico)
         {
+            var anterior = orden.EstadoActual;
             _estados.CambiarEstado(orden, handler);
             orden.HistorialEstados.Last().MecanicoId =
                 tecnico && !await _permisos.EsAdministradorAsync(usuario.Id) ? usuario.PersonaId : null;
+            if (anterior != orden.EstadoActual)
+                _auditoria.RegistrarOperacion("CAMBIO_ESTADO_ORDEN", "OrdenTrabajo", orden.Id, usuario.Id,
+                    $"Estado: {anterior} -> {orden.EstadoActual}.");
         }
 
         private static ServiceResult<PresupuestoOperacion> ErrorAcceso() => ServiceResult<PresupuestoOperacion>.Error("No tiene permisos sobre este presupuesto.");

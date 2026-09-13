@@ -13,13 +13,19 @@ namespace MecaniCar360.Controllers
     {
         private readonly AccountService _accountService;
         private readonly EmailService _emailService;
+        private readonly SessionManager _sessionManager;
+        private readonly AuditoriaService _auditoria;
 
         public AccountController(
             AccountService accountService,
-            EmailService emailService)
+            EmailService emailService,
+            SessionManager sessionManager,
+            AuditoriaService auditoria)
         {
             _accountService = accountService;
             _emailService = emailService;
+            _sessionManager = sessionManager;
+            _auditoria = auditoria;
         }
 
         // =====================================
@@ -41,15 +47,21 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
+                await _auditoria.RegistrarLoginFallidoAsync();
                 ViewBag.Error = resultado.Mensaje;
                 return View();
             }
 
             var identity = _accountService.CrearIdentity(resultado);
+            var principal = new ClaimsPrincipal(identity);
 
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
-                new ClaimsPrincipal(identity));
+                principal);
+
+            HttpContext.User = principal;
+            _sessionManager.IniciarSesion();
+            await _auditoria.RegistrarLoginExitosoAsync();
 
             if (resultado.Usuario!.PrimerLogin)
                 return RedirectToAction(nameof(CompletarDatos));
@@ -184,7 +196,15 @@ namespace MecaniCar360.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync();
+            try
+            {
+                await _auditoria.RegistrarLogoutAsync();
+            }
+            finally
+            {
+                _sessionManager.CerrarSesion();
+                await HttpContext.SignOutAsync();
+            }
 
             return RedirectToAction(nameof(Login));
         }
