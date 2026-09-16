@@ -687,7 +687,8 @@ namespace MecaniCar360.Data
                 .HasAlternateKey(pr => new { pr.Id, pr.RepuestoId });
             modelBuilder.Entity<ProveedorRepuesto>()
                 .HasIndex(pr => pr.RepuestoId)
-                .IsUnique().HasFilter("[Principal] = 1");
+                .IsUnique().HasFilter("[Principal] = 1 AND [Activo] = 1");
+            modelBuilder.Entity<ProveedorRepuesto>().Property(pr => pr.Activo).HasDefaultValue(true);
 
             modelBuilder.Entity<MovimientoStock>()
                 .HasOne(m => m.RealizadoPorUsuario).WithMany()

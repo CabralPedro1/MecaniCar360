@@ -195,7 +195,7 @@ namespace MecaniCar360.Services
                 var estado = await BloquearInventarioAsync(repuestoId);
                 if (!estado.Exitoso) return ServiceResult.Error(estado.Mensaje);
                 var inventario = estado.Data!;
-                if (!await _context.ProveedorRepuestos.AsNoTracking().AnyAsync(pr => pr.Id == proveedorRepuestoId &&
+                if (!await _context.ProveedorRepuestos.AsNoTracking().AnyAsync(pr => pr.Id == proveedorRepuestoId && pr.Activo &&
                     pr.RepuestoId == repuestoId && pr.Proveedor.Activo))
                     return ServiceResult.Error("La asociación no corresponde al repuesto o el proveedor está inactivo.");
                 if ((long)inventario.Repuesto.StockActual + cantidad > int.MaxValue)

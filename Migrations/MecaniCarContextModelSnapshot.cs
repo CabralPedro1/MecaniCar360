@@ -1179,9 +1179,17 @@ namespace MecaniCar360.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Activo")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
                     b.Property<string>("CodigoProveedor")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("FechaBaja")
+                        .HasColumnType("datetime2");
 
                     b.Property<decimal>("PrecioCompraActual")
                         .HasColumnType("decimal(18,2)");
@@ -1199,7 +1207,7 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RepuestoId")
                         .IsUnique()
-                        .HasFilter("[Principal] = 1");
+                        .HasFilter("[Principal] = 1 AND [Activo] = 1");
 
                     b.HasIndex("ProveedorId", "RepuestoId")
                         .IsUnique();

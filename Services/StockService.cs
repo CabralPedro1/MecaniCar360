@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -25,7 +25,7 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<Repuesto>>> ObtenerRepuestosAsync(int usuarioSolicitanteId)
         {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_VER")) return ServiceResult<List<Repuesto>>.Error("Acceso denegado.");
+            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_VER") || !await UsuarioAutorizadoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<List<Repuesto>>.Error("Acceso denegado.");
 
             var repuestos = await _context.Repuestos
                 .Include(r => r.Proveedores)
@@ -38,7 +38,7 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<Repuesto>> ObtenerRepuestoAsync(int id, int usuarioSolicitanteId)
         {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_VER")) return ServiceResult<Repuesto>.Error("Acceso denegado.");
+            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_VER") || !await UsuarioAutorizadoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<Repuesto>.Error("Acceso denegado.");
 
             var repuesto = await ObtenerRepuestoCompletoAsync(id);
 
@@ -50,7 +50,7 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<MovimientoStock>>> ObtenerMovimientosAsync(int usuarioSolicitanteId)
         {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MOVIMIENTO")) return ServiceResult<List<MovimientoStock>>.Error("Acceso denegado.");
+            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MOVIMIENTO") || !await UsuarioAutorizadoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<List<MovimientoStock>>.Error("Acceso denegado.");
 
             var movimientos = await _context.MovimientosStock
                 .Include(m => m.Repuesto)
@@ -66,7 +66,7 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<List<ProveedorRepuesto>>> ObtenerProveedoresDeRepuestoAsync(int repuestoId, int usuarioSolicitanteId)
         {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult<List<ProveedorRepuesto>>.Error("Acceso denegado.");
+            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR") || !await UsuarioAutorizadoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<List<ProveedorRepuesto>>.Error("Acceso denegado.");
 
             var proveedores = await _context.ProveedorRepuestos
                 .Include(pr => pr.Proveedor)
@@ -80,7 +80,7 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult<ProveedorRepuesto>> ObtenerRelacionProveedorAsync(int proveedorRepuestoId, int usuarioSolicitanteId)
         {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult<ProveedorRepuesto>.Error("Acceso denegado.");
+            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR") || !await UsuarioAutorizadoAsync(usuarioSolicitanteId, "PROVEEDOR_VER")) return ServiceResult<ProveedorRepuesto>.Error("Acceso denegado.");
 
             var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
 
@@ -102,133 +102,6 @@ namespace MecaniCar360.Services
 
         // =====================================
         // ASOCIACIONES CON PROVEEDORES
-        // =====================================
-
-        public async Task<ServiceResult> AgregarProveedorARepuestoAsync(
-            int repuestoId,
-            int proveedorId,
-            decimal precioCompra,
-            string? codigoProveedor,
-            bool principal, int usuarioSolicitanteId)
-        {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
-
-            if (!PrecioValido(precioCompra) || codigoProveedor?.Length > 50 || repuestoId <= 0 || proveedorId <= 0)
-                return ServiceResult.Error("El precio de compra debe ser mayor a cero.");
-
-            var repuesto = await ObtenerRepuestoActivoAsync(repuestoId);
-
-            if (repuesto == null)
-                return ServiceResult.Error("Repuesto no encontrado.");
-
-            var proveedor = await ObtenerProveedorActivoAsync(proveedorId);
-
-            if (proveedor == null)
-                return ServiceResult.Error("Proveedor no encontrado.");
-
-            bool existe = await _context.ProveedorRepuestos.AnyAsync(pr =>
-                pr.RepuestoId == repuestoId &&
-                pr.ProveedorId == proveedorId);
-
-            if (existe)
-                return ServiceResult.Error("Ese proveedor ya está asociado al repuesto.");
-
-            if (principal)
-                await QuitarProveedorPrincipalAsync(repuestoId);
-
-            _context.ProveedorRepuestos.Add(new ProveedorRepuesto
-            {
-                RepuestoId = repuestoId,
-                ProveedorId = proveedorId,
-                PrecioCompraActual = precioCompra,
-                CodigoProveedor = codigoProveedor?.Trim(),
-                Principal = principal
-            });
-
-            await GuardarCambiosAsync();
-
-            return ServiceResult.Ok("Proveedor agregado correctamente.");
-        }
-
-        public async Task<ServiceResult> ActualizarPrecioCompraAsync(
-            int proveedorRepuestoId,
-            decimal precio, int usuarioSolicitanteId)
-        {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
-
-            if (!PrecioValido(precio) || proveedorRepuestoId <= 0)
-                return ServiceResult.Error("El precio debe ser mayor a cero.");
-
-            var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
-
-            if (relacion == null)
-                return ServiceResult.Error("Relación no encontrada.");
-
-            relacion.PrecioCompraActual = precio;
-
-            await GuardarCambiosAsync();
-
-            return ServiceResult.Ok("Precio actualizado correctamente.");
-        }
-
-        public async Task<ServiceResult> CambiarProveedorPrincipalAsync(
-            int proveedorRepuestoId, int usuarioSolicitanteId)
-        {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
-
-            var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
-
-            if (relacion == null)
-                return ServiceResult.Error("Relación no encontrada.");
-
-            await QuitarProveedorPrincipalAsync(relacion.RepuestoId);
-
-            relacion.Principal = true;
-
-            await GuardarCambiosAsync();
-
-            return ServiceResult.Ok("Proveedor principal actualizado.");
-        }
-
-        public async Task<ServiceResult> EliminarProveedorDelRepuestoAsync(
-            int proveedorRepuestoId, int usuarioSolicitanteId)
-        {
-            if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "STOCK_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
-
-            var relacion = await ObtenerRelacionProveedorCompletaAsync(proveedorRepuestoId);
-
-            if (relacion == null)
-                return ServiceResult.Error("Relación no encontrada.");
-
-            var relaciones = await _context.ProveedorRepuestos
-                .Where(pr => pr.RepuestoId == relacion.RepuestoId)
-                .OrderBy(pr => pr.Id)
-                .ToListAsync();
-
-            if (relaciones.Count == 1)
-                return ServiceResult.Error("El repuesto debe tener al menos un proveedor.");
-
-            bool eraPrincipal = relacion.Principal;
-
-            _context.ProveedorRepuestos.Remove(relacion);
-
-            if (eraPrincipal)
-            {
-                var nuevoPrincipal = relaciones
-                    .FirstOrDefault(p => p.Id != relacion.Id);
-
-                if (nuevoPrincipal != null)
-                    nuevoPrincipal.Principal = true;
-            }
-
-            await GuardarCambiosAsync();
-
-            return ServiceResult.Ok("Proveedor desvinculado correctamente.");
-        }
-
-
-        // =====================================
-        // CONSULTA DE DISPONIBILIDAD
         // =====================================
 
         public async Task<(
@@ -432,21 +305,6 @@ namespace MecaniCar360.Services
 
         
 
-
-        private async Task QuitarProveedorPrincipalAsync(int repuestoId)
-        {
-            var principales = await _context.ProveedorRepuestos
-                .Where(pr => pr.RepuestoId == repuestoId && pr.Principal)
-                .ToListAsync();
-
-            foreach (var proveedor in principales)
-                proveedor.Principal = false;
-        }
-
-        private async Task GuardarCambiosAsync()
-        {
-            await _context.SaveChangesAsync();
-        }
 
     }
 }

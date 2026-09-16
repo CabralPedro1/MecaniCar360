@@ -80,6 +80,8 @@ namespace MecaniCar360.Models
         public string? CodigoProveedor { get; set; }
 
         public bool Principal { get; set; } = false;
+        public bool Activo { get; set; } = true;
+        public DateTime? FechaBaja { get; set; }
         public ICollection<LoteRepuesto> Lotes { get; set; } = new List<LoteRepuesto>();
     }
 }

@@ -37,6 +37,8 @@ namespace MecaniCar360.Controllers
         [Permiso("STOCK_VER")]
         public async Task<IActionResult> Index()
         {
+            if (!await _permisos.TienePermisoAsync(SolicitanteId(), "PROVEEDOR_VER"))
+                return await ConsultaTecnica(null);
             var resultado = await _service.ObtenerRepuestosAsync(SolicitanteId());
 
             if (!resultado.Exitoso)
@@ -55,6 +57,8 @@ namespace MecaniCar360.Controllers
         [Permiso("STOCK_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
+            if (!await _permisos.TienePermisoAsync(SolicitanteId(), "PROVEEDOR_VER"))
+                return await ConsultaTecnica(id);
             var resultado = await _service.ObtenerRepuestoAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
@@ -127,7 +131,7 @@ namespace MecaniCar360.Controllers
                 Proveedores = proveedores,
 
                 ProveedoresDisponibles = disponibles
-                    .Where(p => !proveedores.Any(pr => pr.ProveedorId == p.Id))
+                    .Where(p => p.Activo && !proveedores.Any(pr => pr.ProveedorId == p.Id && pr.Activo))
                     .Select(p => new SelectListItem
                     {
                         Value = p.Id.ToString(),
@@ -426,6 +430,7 @@ namespace MecaniCar360.Controllers
         // ======================================
 
         [Permiso("STOCK_MOVIMIENTO")]
+        [Permiso("PROVEEDOR_VER")]
         public async Task<IActionResult> Movimientos()
         {
             var resultado = await _service.ObtenerMovimientosAsync(SolicitanteId());
@@ -442,6 +447,15 @@ namespace MecaniCar360.Controllers
         // ======================================
         // MÉTODOS PRIVADOS
         // ======================================
+
+        // Contrato técnico JSON: no entrega entidades comerciales a las vistas administrativas.
+        private async Task<IActionResult> ConsultaTecnica(int? id)
+        {
+            var resultado = await _service.ObtenerRepuestosTecnicosAsync(SolicitanteId(), id);
+            if (!resultado.Exitoso) return Forbid();
+            if (id.HasValue) return resultado.Data!.Count == 0 ? NotFound() : Json(resultado.Data[0]);
+            return Json(resultado.Data);
+        }
 
         private async Task CargarProveedores()
         {
