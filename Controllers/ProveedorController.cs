@@ -1,4 +1,4 @@
-using MecaniCar360.Attributes;
+﻿using MecaniCar360.Attributes;
 using System.Security.Claims;
 using MecaniCar360.Models;
 using MecaniCar360.Services;
@@ -26,6 +26,11 @@ namespace MecaniCar360.Controllers
         {
             var resultado = await _service.ObtenerTodosAsync(SolicitanteId());
 
+            if (!resultado.Exitoso)
+            {
+                TempData["Error"] = resultado.Mensaje;
+                return View(new List<Proveedor>());
+            }
             return View(resultado.Data);
         }
 
