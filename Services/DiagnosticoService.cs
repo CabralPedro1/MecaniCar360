@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -83,11 +83,13 @@ namespace MecaniCar360.Services
             if (!await _permisoService.TieneAlgunoAsync(usuarioSolicitanteId, "DIAGNOSTICO_CREAR", "DIAGNOSTICO_MODIFICAR"))
                 return ServiceResult.Error("No tiene permiso para guardar diagnósticos.");
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
             {
-                var orden = await _context.OrdenesTrabajo.FirstOrDefaultAsync(o => o.Id == ordenTrabajoId);
+                var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                    $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}").FirstOrDefaultAsync();
                 if (orden == null) return ServiceResult.Error("Orden de trabajo no encontrada.");
+                await _context.Entry(orden).ReloadAsync();
                 var diagnostico = await _context.Diagnosticos.FirstOrDefaultAsync(d => d.OrdenTrabajoId == ordenTrabajoId);
                 var patente = diagnostico == null ? "DIAGNOSTICO_CREAR" : "DIAGNOSTICO_MODIFICAR";
                 if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, patente))
@@ -154,6 +156,7 @@ namespace MecaniCar360.Services
             catch
             {
                 await transaction.RollbackAsync();
+                _context.ChangeTracker.Clear();
                 throw;
             }
         }

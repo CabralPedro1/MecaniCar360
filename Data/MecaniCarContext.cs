@@ -489,6 +489,12 @@ namespace MecaniCar360.Data
                 .IsUnique();
 
             modelBuilder.Entity<CalificacionTrabajo>()
+                .HasOne(c => c.Cliente).WithMany().HasForeignKey(c => c.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<CalificacionTrabajo>().ToTable(t =>
+                t.HasCheckConstraint("CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5"));
+
+            modelBuilder.Entity<CalificacionTrabajo>()
                 .Property(c => c.Fecha)
                 .HasDefaultValueSql("GETDATE()");
 
