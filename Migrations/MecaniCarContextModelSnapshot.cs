@@ -97,7 +97,10 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("OrdenTrabajoId")
                         .IsUnique();
 
-                    b.ToTable("Calificaciones");
+                    b.ToTable("Calificaciones", t =>
+                        {
+                            t.HasCheckConstraint("CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Diagnostico", b =>
@@ -1533,7 +1536,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Persona", "Cliente")
                         .WithMany()
                         .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MecaniCar360.Models.OrdenTrabajo", "OrdenTrabajo")
