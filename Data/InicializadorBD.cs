@@ -1,14 +1,25 @@
 using BCrypt.Net;
+using MecaniCar360.Helpers;
 using MecaniCar360.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace MecaniCar360.Data
 {
     public static class InicializadorBD
     {
         public static void Inicializar(
-            MecaniCarContext context)
+            MecaniCarContext context, IConfiguration configuration)
         {
+            // Exists/HasTables sólo inspeccionan la base: no crean esquema ni datos.
+            var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
+            var tieneTablas = databaseCreator.Exists() && databaseCreator.HasTables();
+            var bootstrapPassword = tieneTablas
+                ? ValidarBootstrap(context, configuration)
+                : ValidarPasswordBootstrap(configuration);
+
+            // Sólo migrar después de validar la instalación y, si corresponde, el secreto.
             context.Database.Migrate();
 
             // =====================================
@@ -45,7 +56,8 @@ namespace MecaniCar360.Data
             // ADMINISTRADOR
             // =====================================
 
-            CrearAdministrador(context);
+            if (bootstrapPassword != null)
+                CrearAdministrador(context, bootstrapPassword);
 
             context.SaveChanges();
         }
@@ -1444,20 +1456,36 @@ namespace MecaniCar360.Data
         // ADMINISTRADOR
         // =====================================================
 
-        private static void CrearAdministrador(
-            MecaniCarContext context)
+        private static string? ValidarBootstrap(MecaniCarContext context, IConfiguration configuration)
         {
-            var existe =
-                context.Usuarios.Any(
-                    u =>
-                        u.Username ==
-                        "admin");
+            // Una cuenta ADMIN identificable sigue siendo existente aunque esté suspendida.
+            // No habilitarla ni crear un reemplazo por cambios de username/estado.
+            var administradorExistente = context.Usuarios.Any(u =>
+                u.Persona.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
+                    pr.Rol.Nombre == RolesSistema.ADMIN));
+            if (administradorExistente) return null;
 
-            if (existe)
-            {
-                return;
-            }
+            if (context.Usuarios.Any() || context.Personas.Any() || context.PersonaRoles.Any())
+                throw new InvalidOperationException(
+                    "Bootstrap ADMIN: la instalación contiene cuentas o personas sin un administrador identificable. Se requiere revisión explícita; no se crearon cuentas.");
 
+            return ValidarPasswordBootstrap(configuration);
+        }
+
+        private static string ValidarPasswordBootstrap(IConfiguration configuration)
+        {
+            var password = configuration["BootstrapAdmin:Password"];
+            if (string.IsNullOrWhiteSpace(password))
+                throw new InvalidOperationException(
+                    "Falta la configuración BootstrapAdmin:Password para crear el administrador inicial.");
+            if (!PasswordValidator.EsValida(password, out _))
+                throw new InvalidOperationException(
+                    "La configuración BootstrapAdmin:Password no cumple la política de contraseñas.");
+            return password;
+        }
+
+        private static void CrearAdministrador(MecaniCarContext context, string bootstrapPassword)
+        {
             var rolAdmin =
                 context.Roles
                     .First(
@@ -1510,8 +1538,7 @@ namespace MecaniCar360.Data
 
                     PasswordHash =
                         BCrypt.Net.BCrypt
-                            .HashPassword(
-                                "admin123"),
+                            .HashPassword(bootstrapPassword),
 
                     PrimerLogin =
                         true,

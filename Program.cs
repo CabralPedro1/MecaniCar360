@@ -243,7 +243,7 @@ namespace MecaniCar360
                             MecaniCarContext>();
 
                 InicializadorBD.Inicializar(
-                    context);
+                    context, builder.Configuration);
             }
 
 
