@@ -26,21 +26,34 @@ namespace MecaniCar360.Services
             ArgumentException.ThrowIfNullOrWhiteSpace(asunto);
             ArgumentException.ThrowIfNullOrWhiteSpace(cuerpo);
 
-            using var smtp = new SmtpClient(
-                _config["Smtp:Host"],
-                int.Parse(_config["Smtp:Port"]!));
+            var host = _config["Smtp:Host"];
+            var user = _config["Smtp:User"];
+            var password = _config["Smtp:Password"];
+            if (string.IsNullOrWhiteSpace(host))
+                throw new InvalidOperationException("Falta la configuración Smtp:Host.");
+            if (!int.TryParse(_config["Smtp:Port"], out var port) || port < 1 || port > 65535)
+                throw new InvalidOperationException("La configuración Smtp:Port falta o no es un puerto válido.");
+            if (string.IsNullOrWhiteSpace(user))
+                throw new InvalidOperationException("Falta la configuración Smtp:User.");
+            if (string.IsNullOrWhiteSpace(password))
+                throw new InvalidOperationException("Falta la configuración Smtp:Password.");
+            if (!MailAddress.TryCreate(user, "MecaniCar360", out var remitente))
+                throw new InvalidOperationException("La configuración Smtp:User no es un remitente válido.");
+
+            var enableSsl = true;
+            if (_config["Smtp:EnableSsl"] is string ssl && !bool.TryParse(ssl, out enableSsl))
+                throw new InvalidOperationException("La configuración Smtp:EnableSsl no es válida.");
+
+            using var smtp = new SmtpClient(host, port);
 
             smtp.Credentials = new NetworkCredential(
-                _config["Smtp:User"],
-                _config["Smtp:Password"]);
+                user, password);
 
-            smtp.EnableSsl = true;
+            smtp.EnableSsl = enableSsl;
 
             using var mail = new MailMessage
             {
-                From = new MailAddress(
-                    _config["Smtp:User"]!,
-                    "MecaniCar360"),
+                From = remitente,
 
                 Subject = asunto,
                 Body = cuerpo,
