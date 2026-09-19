@@ -1,0 +1,47 @@
+@model MecaniCar360.Models.Turno
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Registrar ingreso";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verIngreso = await Permisos.TienePermisoAsync(usuarioId, "INGRESO_VER");
+    var disponible = Model.IngresoVehiculo == null && (Model.Estado == EstadoTurno.Pendiente || Model.Estado == EstadoTurno.Confirmado);
+}
+<h2>Registrar ingreso</h2>
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<dl>
+<dt>Turno</dt><dd>#@Model.Id — @Model.FechaInicio.ToString("dd/MM/yyyy HH:mm") — @Model.Estado</dd>
+<dt>Vehículo</dt><dd>@Model.Vehiculo.Patente — @Model.Vehiculo.Marca.Nombre @Model.Vehiculo.Modelo.Nombre</dd>
+<dt>Cliente del turno</dt><dd>@Model.Cliente.Nombre @Model.Cliente.Apellido</dd>
+<dt>Motivo</dt><dd>@Model.Motivo</dd>
+</dl>
+@if (Model.IngresoVehiculo != null) {
+    <div class="alert alert-info">Este turno ya tiene un ingreso registrado.</div>
+    @if (verIngreso) {
+        <a asp-action="PorTurno" asp-route-turnoId="@Model.Id" class="btn btn-info">Ver ingreso existente</a>
+    }
+}
+else if (!disponible) {
+    <div class="alert alert-warning">El estado del turno no permite registrar un ingreso.</div>
+}
+else {
+<form asp-action="Registrar" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="turnoId" value="@Model.Id" />
+    <div class="form-check mb-3">
+        <input id="clienteEspera" name="clienteEspera" type="checkbox" value="true" checked="@(ViewData["ClienteEspera"] is true)" class="form-check-input" />
+        <input name="clienteEspera" type="hidden" value="false" />
+        <label for="clienteEspera" class="form-check-label">El cliente espera en el taller</label>
+        @Html.ValidationMessage("clienteEspera", null, new { @class = "text-danger" })
+    </div>
+    <div class="mb-3">
+        <label for="observaciones" class="form-label">Observaciones de recepción</label>
+        <textarea id="observaciones" name="observaciones" class="form-control">@ViewData["Observaciones"]</textarea>
+        @Html.ValidationMessage("observaciones", null, new { @class = "text-danger" })
+    </div>
+    <button type="submit" class="btn btn-primary">Registrar ingreso y crear orden</button>
+</form>
+}
+<a asp-controller="Turno" asp-action="Detalle" asp-route-id="@Model.Id" class="btn btn-secondary mt-3">Volver al turno</a>
+@if (verIngreso) { <a asp-action="EnTaller" class="btn btn-outline-secondary mt-3">Vehículos en taller</a> }

@@ -11,11 +11,17 @@ namespace MecaniCar360.Controllers
     public class IngresoVehiculoController : Controller
     {
         private readonly IngresoVehiculoService _ingresoService;
+        private readonly TurnoService _turnoService;
+        private readonly PermisoService _permisos;
 
         public IngresoVehiculoController(
-            IngresoVehiculoService ingresoService)
+            IngresoVehiculoService ingresoService,
+            TurnoService turnoService,
+            PermisoService permisos)
         {
             _ingresoService = ingresoService;
+            _turnoService = turnoService;
+            _permisos = permisos;
         }
 
 
@@ -86,28 +92,8 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Registrar(
             int turnoId)
         {
-            var usuarioId = ObtenerUsuarioId();
-            var resultado =
-                await _ingresoService
-                    .ObtenerPorTurnoAsync(
-                        turnoId,
-                        usuarioId);
-
-            if (resultado.Exitoso)
-            {
-                return RedirectToAction(
-                    nameof(Detalle),
-                    new
-                    {
-                        id =
-                            resultado.Data!.Id
-                    });
-            }
-
-            ViewBag.TurnoId =
-                turnoId;
-
-            return View();
+            if (!ModelState.IsValid || turnoId <= 0) return BadRequest("Turno inválido.");
+            return await MostrarRegistroAsync(turnoId);
         }
 
 
@@ -122,6 +108,11 @@ namespace MecaniCar360.Controllers
             var usuarioId =
                 ObtenerUsuarioId();
 
+            if (turnoId <= 0) return BadRequest("Turno inválido.");
+            ViewData["ClienteEspera"] = clienteEspera;
+            ViewData["Observaciones"] = observaciones;
+            if (!ModelState.IsValid) return await MostrarRegistroAsync(turnoId);
+
             var resultado =
                 await _ingresoService
                     .RegistrarIngresoYCrearOrdenAsync(
@@ -132,32 +123,26 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return RedirectToAction(
-                    "Detalle",
-                    "Turno",
-                    new
-                    {
-                        id = turnoId
-                    });
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await MostrarRegistroAsync(turnoId);
             }
 
             TempData["Ok"] =
                 resultado.Mensaje;
 
-            // Después del ingreso,
-            // vamos directamente a la OT.
+            if (await _permisos.TienePermisoAsync(usuarioId, "INGRESO_VER"))
+                return RedirectToAction(nameof(Detalle), new { id = resultado.Data!.IngresoVehiculoId });
+            // Registrar no concede implícitamente acceso de lectura al ingreso ni a la OT.
+            return Content(resultado.Mensaje);
+        }
 
-            return RedirectToAction(
-                "Detalle",
-                "OrdenTrabajo",
-                new
-                {
-                    id =
-                        resultado.Data!.Id
-                });
+        private async Task<IActionResult> MostrarRegistroAsync(int turnoId)
+        {
+            var usuarioId = ObtenerUsuarioId();
+            if (!await _permisos.TienePermisoAsync(usuarioId, "TURNO_VER")) return Forbid();
+            var turno = await _turnoService.ObtenerPorIdAsync(turnoId, usuarioId);
+            if (!turno.Exitoso || turno.Data == null) return NotFound();
+            return View("Registrar", turno.Data);
         }
 
 

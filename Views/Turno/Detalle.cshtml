@@ -10,6 +10,21 @@ var abierto = Model.Estado == EstadoTurno.Pendiente || Model.Estado == EstadoTur
 }
 <h2>Turno #@Model.Id</h2>
 <partial name="_Mensajes" />
+@if (Model.IngresoVehiculo != null)
+{
+    if (await Permisos.TienePermisoAsync(usuarioId, "INGRESO_VER"))
+    {
+        <a asp-controller="IngresoVehiculo" asp-action="PorTurno" asp-route-turnoId="@Model.Id" class="btn btn-info mb-3">Ver ingreso</a>
+    }
+}
+else if (abierto && await Permisos.TienePermisoAsync(usuarioId, "INGRESO_REGISTRAR"))
+{
+    <a asp-controller="IngresoVehiculo" asp-action="Registrar" asp-route-turnoId="@Model.Id" class="btn btn-primary mb-3">Registrar ingreso</a>
+}
+@if (await Permisos.TienePermisoAsync(usuarioId, "INGRESO_VER"))
+{
+    <a asp-controller="IngresoVehiculo" asp-action="EnTaller" class="btn btn-outline-secondary mb-3">Vehículos en taller</a>
+}
 <div class="card mb-3"><div class="card-body"><dl>
 <dt>Fecha y hora</dt><dd>@Model.FechaInicio.ToString("dd/MM/yyyy HH:mm")</dd>
 <dt>Cliente</dt><dd>@Model.Cliente.Apellido, @Model.Cliente.Nombre</dd>
