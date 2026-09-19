@@ -1,6 +1,7 @@
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
+using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Patterns.State;
 using Microsoft.EntityFrameworkCore;
@@ -89,7 +90,7 @@ namespace MecaniCar360.Services
         // MECÁNICO solo las asignadas a él.
         // -----------------------------------------------------
 
-        public async Task<ServiceResult<OrdenTrabajo>>
+        public async Task<ServiceResult<OrdenTrabajoDetalleViewModel>>
             ObtenerPorIdAsync(
                 int id,
                 int usuarioSolicitanteId)
@@ -98,17 +99,23 @@ namespace MecaniCar360.Services
                 usuarioSolicitanteId, "ORDEN_VER_DETALLE");
 
             if (usuario == null)
-                return ServiceResult<OrdenTrabajo>.Error(
+                return ServiceResult<OrdenTrabajoDetalleViewModel>.Error(
                     "Usuario inactivo o sin permisos para esta operación.");
 
             var personaId = usuario.PersonaId;
 
             var orden =
-                await ObtenerOrdenCompletaAsync(id);
+                await _context.OrdenesTrabajo.AsNoTracking()
+                    .Where(o => o.Id == id)
+                    .Select(o => new OrdenTrabajo
+                    {
+                        Id = o.Id, MecanicoId = o.MecanicoId,
+                        EstadoActual = o.EstadoActual, FechaFin = o.FechaFin
+                    }).FirstOrDefaultAsync();
 
             if (orden == null)
             {
-                return ServiceResult<OrdenTrabajo>.Error(
+                return ServiceResult<OrdenTrabajoDetalleViewModel>.Error(
                     "Orden de trabajo no encontrada.");
             }
 
@@ -130,7 +137,7 @@ namespace MecaniCar360.Services
                       orden.EstadoActual == EstadoOrden.Pendiente &&
                       !orden.FechaFin.HasValue))
                 {
-                    return ServiceResult<OrdenTrabajo>.Error(
+                    return ServiceResult<OrdenTrabajoDetalleViewModel>.Error(
                         "No tiene acceso a esta orden de trabajo.");
                 }
 
@@ -1022,9 +1029,13 @@ namespace MecaniCar360.Services
                     .Select(v => (EstadoPresupuestoVersion?)v.Decision).FirstOrDefault()
                     == EstadoPresupuestoVersion.Aprobado);
 
-        private async Task<ServiceResult<OrdenTrabajo>> CompletarDiagnosticoVisibleAsync(
+        private async Task<ServiceResult<OrdenTrabajoDetalleViewModel>> CompletarDiagnosticoVisibleAsync(
             OrdenTrabajo orden, int usuarioSolicitanteId)
         {
+            var completa = await ObtenerOrdenCompletaAsync(orden.Id);
+            if (completa == null)
+                return ServiceResult<OrdenTrabajoDetalleViewModel>.Error("Orden de trabajo no encontrada.");
+            orden = completa;
             var resultado = await _diagnosticoService.ObtenerAsync(orden.Id, usuarioSolicitanteId);
             orden.Diagnostico = resultado.Exitoso ? resultado.Data : null;
             // No cargar presupuesto por permiso de orden. La vista obtiene sólo el resumen
@@ -1045,7 +1056,48 @@ namespace MecaniCar360.Services
                             MotivoRechazo = p.MotivoRechazo
                         }).FirstOrDefaultAsync();
             }
-            return ServiceResult<OrdenTrabajo>.Ok(orden);
+            var verFactura = await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "FACTURA_VER");
+            var modificar = await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "ORDEN_MODIFICAR");
+            var emitir = await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "FACTURA_CREAR");
+            var entregar = await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "ORDEN_ENTREGAR");
+            var facturas = _context.Facturas.AsNoTracking().Where(f => f.OrdenTrabajoId == orden.Id);
+            // Existencia interna para acciones: nunca confundir falta de permiso con inexistencia.
+            var existeFactura = (modificar || emitir) && await facturas.AnyAsync();
+            var facturaResumen = verFactura ? await facturas.Select(f => new FacturaOrdenResumen
+            {
+                NumeroFactura = f.NumeroFactura, Estado = f.Estado, Total = f.Total
+            }).FirstOrDefaultAsync() : null;
+            // ORDEN_ENTREGAR no concede lectura de pagos: devolver exclusivamente la decision.
+            var puedeEntregar = entregar && orden.IngresoVehiculo.FechaEgreso == null &&
+                orden.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado &&
+                await facturas.AnyAsync(f => f.Estado == EstadoFactura.Pagada &&
+                    (f.Pagos.Where(p => p.Estado == EstadoPago.Pagado)
+                        .Sum(p => (decimal?)p.Monto) ?? 0) >= f.Total);
+            var model = new OrdenTrabajoDetalleViewModel
+            {
+                Id = orden.Id, EstadoActual = orden.EstadoActual, Urgencia = orden.Urgencia,
+                FechaInicio = orden.FechaInicio, FechaFin = orden.FechaFin,
+                CostoDiagnostico = orden.CostoDiagnostico, Observaciones = orden.Observaciones,
+                ClienteNombre = orden.IngresoVehiculo.Turno.Cliente.Nombre,
+                ClienteApellido = orden.IngresoVehiculo.Turno.Cliente.Apellido,
+                VehiculoMarca = orden.IngresoVehiculo.Turno.Vehiculo.Marca.Nombre,
+                VehiculoModelo = orden.IngresoVehiculo.Turno.Vehiculo.Modelo.Nombre,
+                VehiculoPatente = orden.IngresoVehiculo.Turno.Vehiculo.Patente,
+                Mecanico = orden.Mecanico == null ? null : new(orden.Mecanico.Nombre, orden.Mecanico.Apellido),
+                HistorialEstados = orden.HistorialEstados.Select(h => new EstadoOrdenDetalle(h.Fecha, h.Estado,
+                    h.Mecanico == null ? null : new(h.Mecanico.Nombre, h.Mecanico.Apellido))).ToList(),
+                Diagnostico = orden.Diagnostico == null ? null : new(orden.Diagnostico.DescripcionActual, orden.Diagnostico.FechaUltimaModificacion),
+                Presupuesto = orden.Presupuesto == null ? null : new(orden.Presupuesto.Estado, orden.Presupuesto.Total,
+                    orden.Presupuesto.FechaUltimaModificacion, orden.Presupuesto.MotivoRechazo),
+                FacturaResumen = facturaResumen, PuedeVerFactura = verFactura,
+                PuedeEntregar = puedeEntregar,
+                PuedeEmitirFactura = emitir && !existeFactura &&
+                    orden.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado,
+                PuedeEditarCosto = modificar && !existeFactura && !orden.FechaFin.HasValue &&
+                    orden.EstadoActual is EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or
+                        EstadoOrden.Aprobado or EstadoOrden.EnReparacion or EstadoOrden.Rechazado
+            };
+            return ServiceResult<OrdenTrabajoDetalleViewModel>.Ok(model);
         }
 
         private async Task<OrdenTrabajo?>
@@ -1070,9 +1122,6 @@ namespace MecaniCar360.Services
                         .ThenInclude(t => t.Cliente)
 
                 .Include(o => o.Mecanico)
-
-                .Include(o => o.Factura)
-                    .ThenInclude(f => f!.Pagos)
 
                 .Include(o => o.HistorialEstados)
                     .ThenInclude(h => h.Mecanico)

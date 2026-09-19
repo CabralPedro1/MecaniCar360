@@ -1,13 +1,8 @@
-@model MecaniCar360.Models.OrdenTrabajo
-@using System.Security.Claims
+@model MecaniCar360.Models.ViewModels.OrdenTrabajoDetalleViewModel
 @using MecaniCar360.Models.Enums
-@inject MecaniCar360.Services.PermisoService Permisos
 
 @{
     ViewData["Title"] = $"Orden de Trabajo #{Model.Id}";
-    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
-    var verFactura = await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER");
-    var modificarOrden = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
 }
 
 <div class="container mt-4">
@@ -54,21 +49,21 @@
                     <p>
                         <strong>Cliente:</strong><br />
 
-                        @Model.IngresoVehiculo.Turno.Cliente.Nombre
-                        @Model.IngresoVehiculo.Turno.Cliente.Apellido
+                        @Model.ClienteNombre
+                        @Model.ClienteApellido
                     </p>
 
                     <p>
                         <strong>Vehículo:</strong><br />
 
-                        @Model.IngresoVehiculo.Turno.Vehiculo.Marca
-                        @Model.IngresoVehiculo.Turno.Vehiculo.Modelo
+                        @Model.VehiculoMarca
+                        @Model.VehiculoModelo
                     </p>
 
                     <p>
                         <strong>Patente:</strong><br />
 
-                        @Model.IngresoVehiculo.Turno.Vehiculo.Patente
+                        @Model.VehiculoPatente
                     </p>
 
                 </div>
@@ -271,7 +266,7 @@
 
 
                 <!-- VER FACTURA -->
-                @if (verFactura && Model.Factura != null)
+                @if (Model.PuedeVerFactura && Model.FacturaResumen != null)
                 {
                     <a asp-controller="Factura"
                        asp-action="Detalle"
@@ -285,11 +280,7 @@
 
 
                 <!-- ENTREGAR VEHÍCULO -->
-                @if (await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ENTREGAR") &&
-                    Model.Factura?.Estado == EstadoFactura.Pagada &&
-                    Model.Factura.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto) >= Model.Factura.Total &&
-                    Model.IngresoVehiculo.FechaEgreso == null &&
-                    Model.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado)
+                @if (Model.PuedeEntregar)
                 {
                     <form asp-controller="OrdenTrabajo"
                           asp-action="Entregar"
@@ -570,9 +561,7 @@
         <div class="card-header"><strong>Diagnóstico/revisión y facturación</strong></div>
         <div class="card-body">
             <p><strong>Costo de diagnóstico/revisión:</strong> @(Model.CostoDiagnostico?.ToString("C2") ?? "Sin establecer")</p>
-            @if (modificarOrden && Model.Factura == null && !Model.FechaFin.HasValue &&
-                Model.EstadoActual is EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or
-                    EstadoOrden.Aprobado or EstadoOrden.EnReparacion or EstadoOrden.Rechazado)
+            @if (Model.PuedeEditarCosto)
             {
                 <form asp-action="ActualizarCostoDiagnostico" method="post" class="mb-3">
                     @Html.AntiForgeryToken()
@@ -582,8 +571,7 @@
                     <button type="submit" class="btn btn-outline-primary">Guardar costo</button>
                 </form>
             }
-            @if (Model.Factura == null && await Permisos.TienePermisoAsync(usuarioId, "FACTURA_CREAR") &&
-                Model.EstadoActual is EstadoOrden.Finalizado or EstadoOrden.Rechazado)
+            @if (Model.PuedeEmitirFactura)
             {
                 <p>La orden finalizada se factura desde la última versión aprobada. La rechazada cobra solamente diagnóstico/revisión.</p>
                 <form asp-controller="Factura" asp-action="Emitir" method="post">
@@ -596,7 +584,7 @@
     </div>
     <!-- FACTURA -->
     <!-- ===================================== -->
-    @if (verFactura && Model.Factura != null)
+    @if (Model.PuedeVerFactura && Model.FacturaResumen != null)
     {
         <div class="card mb-4">
 
@@ -608,17 +596,17 @@
 
                 <p>
                     <strong>Número:</strong>
-                    @Model.Factura.NumeroFactura
+                    @Model.FacturaResumen.NumeroFactura
                 </p>
 
                 <p>
                     <strong>Estado:</strong>
-                    @Model.Factura.Estado
+                    @Model.FacturaResumen.Estado
                 </p>
 
                 <p>
                     <strong>Total:</strong>
-                    $ @Model.Factura.Total.ToString("N2")
+                    $ @Model.FacturaResumen.Total.ToString("N2")
                 </p>
 
                 <a asp-controller="Factura"
