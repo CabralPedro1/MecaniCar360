@@ -182,9 +182,13 @@ namespace MecaniCar360.Services
             persona.Id = 0;
             persona.Usuario = null;
             persona.Roles = new();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Personas.Add(persona);
 
             await _context.SaveChangesAsync();
+            _auditoria.RegistrarOperacion("PERSONA_CREADA", "Persona", persona.Id, usuarioSolicitanteId);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Persona creada correctamente.");
@@ -231,6 +235,8 @@ namespace MecaniCar360.Services
             // ActivarAsync / DesactivarAsync.
             // No lo modificamos desde la edición general.
 
+            _auditoria.RegistrarOperacion("PERSONA_MODIFICADA", "Persona", existente.Id, usuarioSolicitanteId,
+                "Persona modificada.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -266,6 +272,7 @@ namespace MecaniCar360.Services
 
             persona.Activo = true;
 
+            _auditoria.RegistrarOperacion("PERSONA_ACTIVADA", "Persona", persona.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(
@@ -350,6 +357,7 @@ namespace MecaniCar360.Services
 
             persona.Activo = false;
 
+            _auditoria.RegistrarOperacion("PERSONA_DESACTIVADA", "Persona", persona.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
 
