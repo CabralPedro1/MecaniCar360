@@ -7,11 +7,16 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using System.Globalization;
 
 namespace MecaniCar360
 {
     public class Program
     {
+        public const string LoginRateLimitPolicy = "LoginPorIp";
+
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +27,35 @@ namespace MecaniCar360
             // =====================================
 
             builder.Services.AddControllersWithViews();
+
+            // Cuota por proceso. Configurar proxies confiables antes de usar la IP tras un proxy.
+            builder.Services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.AddPolicy(LoginRateLimitPolicy, context =>
+                {
+                    var ip = context.Connection.RemoteIpAddress;
+                    if (ip?.IsIPv4MappedToIPv6 == true) ip = ip.MapToIPv4();
+                    return RateLimitPartition.GetTokenBucketLimiter(ip?.ToString() ?? "unknown",
+                        _ => new TokenBucketRateLimiterOptions
+                        {
+                            TokenLimit = 20,
+                            TokensPerPeriod = 1,
+                            ReplenishmentPeriod = TimeSpan.FromSeconds(3),
+                            QueueLimit = 0,
+                            AutoReplenishment = true
+                        });
+                });
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+                        context.HttpContext.Response.Headers.RetryAfter =
+                            Math.Max(1, Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
+                    context.HttpContext.Response.ContentType = "text/plain; charset=utf-8";
+                    await context.HttpContext.Response.WriteAsync(
+                        "Demasiados intentos. Espere antes de volver a intentar.", cancellationToken);
+                };
+            });
 
 
             // =====================================
@@ -274,6 +308,8 @@ namespace MecaniCar360
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            app.UseRateLimiter();
 
 
             // =====================================
