@@ -1,0 +1,13 @@
+@model IEnumerable<MecaniCar360.Models.Turno>
+@if (!Model.Any()) { <p class="mt-3">No hay turnos para mostrar.</p> }
+else {
+<div class="table-responsive mt-3"><table class="table table-striped">
+<thead><tr><th>Fecha</th><th>Hora</th><th>Cliente</th><th>Vehículo</th><th>Estado</th><th>Motivo</th><th></th></tr></thead>
+<tbody>
+@foreach (var t in Model) {
+<tr><td>@t.FechaInicio.ToString("dd/MM/yyyy")</td><td>@t.FechaInicio.ToString("HH:mm")</td>
+<td>@t.Cliente.Apellido, @t.Cliente.Nombre</td><td>@t.Vehiculo.Patente</td><td>@t.Estado</td><td>@t.Motivo</td>
+<td><a asp-action="Detalle" asp-route-id="@t.Id" class="btn btn-sm btn-info">Detalle</a></td></tr>
+}
+</tbody></table></div>
+}

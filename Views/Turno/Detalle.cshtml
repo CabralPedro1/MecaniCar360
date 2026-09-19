@@ -1,0 +1,50 @@
+@model MecaniCar360.Models.Turno
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+ViewData["Title"] = "Detalle de turno";
+int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+var modificar = await Permisos.TienePermisoAsync(usuarioId, "TURNO_MODIFICAR");
+var abierto = Model.Estado == EstadoTurno.Pendiente || Model.Estado == EstadoTurno.Confirmado;
+}
+<h2>Turno #@Model.Id</h2>
+<partial name="_Mensajes" />
+<div class="card mb-3"><div class="card-body"><dl>
+<dt>Fecha y hora</dt><dd>@Model.FechaInicio.ToString("dd/MM/yyyy HH:mm")</dd>
+<dt>Cliente</dt><dd>@Model.Cliente.Apellido, @Model.Cliente.Nombre</dd>
+<dt>Vehículo</dt><dd>@Model.Vehiculo.Patente — @Model.Vehiculo.Marca.Nombre @Model.Vehiculo.Modelo.Nombre</dd>
+<dt>Estado</dt><dd>@Model.Estado</dd><dt>Tipo</dt><dd>@Model.Tipo</dd>
+<dt>Motivo</dt><dd>@Model.Motivo</dd><dt>Observaciones</dt><dd>@(Model.Observaciones ?? "—")</dd>
+<dt>Creado</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>
+</dl></div></div>
+@if (Model.Estado == EstadoTurno.Pendiente && await Permisos.TienePermisoAsync(usuarioId, "TURNO_CONFIRMAR")) {
+<form asp-action="Confirmar" method="post" class="mb-3" onsubmit="return confirm('¿Confirmar turno?');">
+@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
+<button type="submit" class="btn btn-success">Confirmar</button></form>
+}
+@if (abierto && Model.IngresoVehiculo == null && await Permisos.TienePermisoAsync(usuarioId, "TURNO_CANCELAR")) {
+<form asp-action="Cancelar" method="post" class="mb-3" onsubmit="return confirm('¿Cancelar turno?');">
+@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
+<label for="motivo-cancelacion">Motivo de cancelación (opcional)</label><input id="motivo-cancelacion" name="motivo" class="form-control" />
+<button type="submit" class="btn btn-danger">Cancelar turno</button></form>
+}
+@if (modificar && Model.Estado == EstadoTurno.Confirmado && Model.FechaInicio <= DateTime.Now) {
+<form asp-action="ClienteAusente" method="post" class="mb-3" onsubmit="return confirm('¿Marcar cliente ausente?');">
+@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
+<button type="submit" class="btn btn-warning">Cliente ausente</button></form>
+}
+@if (modificar && abierto && Model.IngresoVehiculo == null) {
+<h3>Reprogramar</h3>
+<form asp-action="Reprogramar" method="post" class="mb-3">
+@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
+<label for="fecha-turno">Nueva fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio.ToString("yyyy-MM-dd")" class="form-control" required />
+<label for="horario-turno">Nuevo horario</label><select id="horario-turno" name="nuevaFechaInicio" class="form-select" required><option value="">Seleccione horario</option></select>
+<p id="aviso-horarios" role="status" class="text-danger"></p>
+<button type="submit" class="btn btn-primary">Reprogramar</button></form>
+}
+<a asp-action="Index" class="btn btn-secondary">Volver al listado</a>
+<a asp-action="Agenda" asp-route-fecha="@Model.FechaInicio.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Ver agenda del día</a>
+@section Scripts {
+@if (modificar && abierto && Model.IngresoVehiculo == null) { <partial name="_HorariosScript" /> }
+}

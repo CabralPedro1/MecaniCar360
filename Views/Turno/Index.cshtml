@@ -1,104 +1,11 @@
-﻿@model MecaniCar360.Models.ViewModels.CalendarioViewModel
-
-<h2 class="mb-4">
-    Calendario de Turnos - @Model.Fecha.ToString("dd/MM/yyyy")
-</h2>
-
-<div class="mb-3">
-    <a class="btn btn-primary" href="/Turno/Crear">
-        Nuevo Turno
-    </a>
-</div>
-
-<table class="table table-bordered table-hover">
-    <thead class="table-dark">
-        <tr>
-            <th style="width:120px;">Hora</th>
-            <th>Turnos</th>
-            <th style="width:200px;">Capacidad</th>
-        </tr>
-    </thead>
-
-    <tbody>
-
-        @foreach (var h in Model.Horarios)
-        {
-            <tr>
-                <!-- HORA -->
-                <td>
-                    <strong>@h.Hora.ToString("HH:mm")</strong>
-                </td>
-
-                <!-- TURNOS -->
-                <td>
-                    @if (h.Turnos.Any())
-                    {
-                        foreach (var t in h.Turnos)
-                        {
-                            <div class="card mb-2">
-                                <div class="card-body p-2">
-
-                                    <strong>🚗 @t.Vehiculo.Patente</strong><br />
-                                    👤 @t.Cliente.Nombre<br />
-                                    ⏰ @t.FechaInicio.ToString("HH:mm")
-
-                                    <div class="mt-2">
-
-                                        @if (t.IngresoVehiculo?.OrdenTrabajo != null)
-                                        {
-                                            <!-- YA TIENE ORDEN -->
-                                            <a href="/OrdenTrabajo/Detalle/@t.IngresoVehiculo.OrdenTrabajo.Id"
-                                               class="btn btn-sm btn-dark">
-                                                Ver Orden
-                                            </a>
-                                        }
-                                        else
-                                        {
-                                            <!-- INGRESAR VEHICULO -->
-                                            <a asp-controller="IngresoVehiculo"
-                                               asp-action="Registrar"
-                                               asp-route-turnoId="@t.Id"
-                                               class="btn btn-sm btn-success">
-                                                Ingresar
-                                            </a>
-                                        }
-
-                                    </div>
-
-                                </div>
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <span class="text-muted">Sin turnos</span>
-                    }
-                </td>
-
-                <!-- CAPACIDAD -->
-                <td>
-                    @{
-                        var porcentaje = h.CapacidadTotal == 0
-                        ? 0
-                        : (h.Ocupados * 100) / h.CapacidadTotal;
-
-                        var color = porcentaje > 80
-                        ? "bg-danger"
-                        : porcentaje > 50
-                        ? "bg-warning"
-                        : "bg-success";
-                    }
-
-                    <div class="progress">
-                        <div class="progress-bar @color"
-                             style="width:@porcentaje%">
-
-                            @h.Ocupados / @h.CapacidadTotal
-                        </div>
-                    </div>
-                </td>
-            </tr>
-        }
-
-    </tbody>
-</table>
+@model IEnumerable<MecaniCar360.Models.Turno>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{ ViewData["Title"] = "Turnos"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId); }
+<h2>Turnos</h2>
+<partial name="_Mensajes" />
+<a asp-action="Agenda" class="btn btn-secondary">Agenda</a>
+@if (await Permisos.TienePermisoAsync(usuarioId, "TURNO_CREAR")) {
+<a asp-action="Crear" class="btn btn-primary">Crear turno</a>
+}
+<partial name="_Lista" model="Model" />

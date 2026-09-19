@@ -1,0 +1,42 @@
+<script>
+(() => {
+    const fecha = document.getElementById('fecha-turno');
+    const horario = document.getElementById('horario-turno');
+    const aviso = document.getElementById('aviso-horarios');
+    let solicitud;
+    async function cargar() {
+        solicitud?.abort();
+        const actual = solicitud = new AbortController();
+        const seleccionado = horario.dataset.seleccionado;
+        horario.dataset.seleccionado = '';
+        horario.replaceChildren(new Option('Seleccione horario', ''));
+        horario.disabled = true;
+        aviso.textContent = '';
+        if (!fecha.value) return;
+        try {
+            const url = new URL('@Url.Action("HorariosDisponibles", "Turno")', window.location.origin);
+            url.searchParams.set('fecha', fecha.value);
+            const response = await fetch(url, { signal: actual.signal });
+            if (!response.ok || response.redirected) throw new Error();
+            const data = await response.json();
+            if (!data.exitoso || !Array.isArray(data.horarios)) throw new Error();
+            if (solicitud !== actual) return;
+            data.horarios.forEach(h => horario.add(new Option(h.hora, h.valor)));
+            if (data.horarios.some(h => h.valor === seleccionado)) horario.value = seleccionado;
+            horario.disabled = false;
+            aviso.textContent = data.horarios.length ? '' : 'No hay horarios disponibles.';
+        } catch (error) {
+            if (error.name !== 'AbortError' && solicitud === actual)
+                aviso.textContent = 'No se pudieron cargar los horarios. Vuelva a seleccionar la fecha.';
+        }
+    }
+    fecha.addEventListener('change', cargar);
+    horario.form.addEventListener('submit', event => {
+        if (horario.disabled || !horario.value) {
+            event.preventDefault();
+            aviso.textContent = 'Seleccione un horario disponible antes de guardar.';
+        }
+    });
+    cargar();
+})();
+</script>
