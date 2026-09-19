@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace MecaniCar360.Controllers
@@ -41,8 +42,16 @@ namespace MecaniCar360.Controllers
         [AllowAnonymous]
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting(Program.LoginRateLimitPolicy)]
         public async Task<IActionResult> Login(string username, string password)
         {
+            if (!ModelState.IsValid || string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                ViewBag.Error = "Usuario o contraseña incorrectos.";
+                return View();
+            }
+
             var resultado = await _accountService.LoginAsync(username, password);
 
             if (!resultado.Exitoso)

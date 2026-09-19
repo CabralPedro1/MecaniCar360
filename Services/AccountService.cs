@@ -11,6 +11,10 @@ namespace MecaniCar360.Services
 {
     public class AccountService
     {
+        // Hash ficticio precomputado de un valor aleatorio descartado, coste 11.
+        // Nunca autentica: su verificación sólo aproxima el coste del caso inexistente/inactivo.
+        private const string DummyPasswordHash = "$2a$11$/hMq7CVS2c4GIr4L3Un9KOk82Q5S7XYwehDng396O9eKwb0BeHHDC";
+
         private readonly MecaniCarContext _context;
 
         public AccountService(MecaniCarContext context)
@@ -30,6 +34,7 @@ namespace MecaniCar360.Services
 
             if (usuario == null)
             {
+                _ = BCrypt.Net.BCrypt.Verify(password, DummyPasswordHash);
                 resultado.Mensaje = "Usuario o contraseña incorrectos.";
                 return resultado;
             }
