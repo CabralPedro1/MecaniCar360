@@ -316,16 +316,20 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "Usuario inactivo o sin permisos para esta operación.");
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                .FirstOrDefaultAsync();
 
             if (orden == null)
             {
                 return ServiceResult.Error(
                     "Orden de trabajo no encontrada.");
             }
+
+            // Refresh any previously tracked instance while holding the OT lock.
+            await _context.Entry(orden).ReloadAsync();
 
             if (orden.FechaFin.HasValue ||
                 orden.EstadoActual == EstadoOrden.Finalizado ||
@@ -354,6 +358,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Mecánico asignado correctamente.");
@@ -386,16 +391,20 @@ namespace MecaniCar360.Services
                     "La persona seleccionada no es un mecánico activo.");
             }
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
+                .FirstOrDefaultAsync();
 
             if (orden == null)
             {
                 return ServiceResult.Error(
                     "Orden de trabajo no encontrada.");
             }
+
+            // Refresh any previously tracked instance while holding the OT lock.
+            await _context.Entry(orden).ReloadAsync();
 
             if (orden.FechaFin.HasValue)
             {
@@ -428,6 +437,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Orden tomada correctamente.");
