@@ -1431,6 +1431,11 @@ namespace MecaniCar360.Migrations
                     b.Property<bool>("PrimerLogin")
                         .HasColumnType("bit");
 
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<DateTime?>("TokenRecuperacionExpira")
                         .HasColumnType("datetime2");
 

@@ -139,6 +139,7 @@ namespace MecaniCar360.Controllers
                 return View(model);
             }
 
+            await RenovarSesionAsync(resultado.Data!);
             TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(CompletarDatosExito));
@@ -176,9 +177,18 @@ namespace MecaniCar360.Controllers
                 return View(model);
             }
 
+            await RenovarSesionAsync(resultado.Data!);
             TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(CompletarDatosExito));
+        }
+
+        private async Task RenovarSesionAsync(ClaimsIdentity identity)
+        {
+            var principal = new ClaimsPrincipal(identity);
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            HttpContext.User = principal;
+            _sessionManager.IniciarSesion();
         }
 
         [Authorize]

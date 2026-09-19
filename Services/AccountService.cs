@@ -62,7 +62,7 @@ namespace MecaniCar360.Services
         {
             var usuario = await ObtenerUsuarioCompletoAsync(id);
 
-            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
+            if (usuario == null || !usuario.Activo || usuario.Persona == null || !usuario.Persona.Activo)
                 return ServiceResult<Usuario>.Error("Usuario no encontrado.");
 
             return ServiceResult<Usuario>.Ok(usuario);
@@ -72,23 +72,25 @@ namespace MecaniCar360.Services
         // COMPLETAR DATOS
         // =====================================
 
-        public async Task<ServiceResult> CompletarDatosAsync(
+        public async Task<ServiceResult<ClaimsIdentity>> CompletarDatosAsync(
             CompletarDatosViewModel model,
             int usuarioId)
         {
-            var usuario = await ObtenerUsuarioCompletoAsync(usuarioId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var usuario = await BloquearUsuarioAsync(usuarioId);
 
-            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
-                return ServiceResult.Error("Usuario no encontrado.");
+            if (usuario == null || !usuario.Activo || usuario.Persona == null || !usuario.Persona.Activo)
+                return ServiceResult<ClaimsIdentity>.Error("Usuario no encontrado.");
 
             if (!usuario.PrimerLogin)
-                return ServiceResult.Error(
+                return ServiceResult<ClaimsIdentity>.Error(
                     "El primer ingreso ya fue completado.");
 
             var validacion = ValidarCompletarDatos(model);
 
             if (!validacion.Exitoso)
-                return validacion;
+                return ServiceResult<ClaimsIdentity>.Error(validacion.Mensaje);
 
             usuario.Persona.Telefono = model.Telefono;
 
@@ -97,25 +99,30 @@ namespace MecaniCar360.Services
 
             usuario.PrimerLogin = false;
 
+            usuario.SecurityStamp = Guid.NewGuid().ToString("N");
+            var identity = await CrearIdentityActualAsync(usuario);
             await GuardarCambiosAsync();
+            await transaction.CommitAsync();
 
-            return ServiceResult.Ok("Datos actualizados correctamente.");
+            return ServiceResult<ClaimsIdentity>.Ok(identity, "Datos actualizados correctamente.");
         }
 
-        public async Task<ServiceResult> CambiarContraseñaAsync(
+        public async Task<ServiceResult<ClaimsIdentity>> CambiarContraseñaAsync(
             CambiarContraseñaViewModel model,
             int usuarioId)
         {
-            var usuario = await ObtenerUsuarioCompletoAsync(usuarioId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var usuario = await BloquearUsuarioAsync(usuarioId);
 
-            if (usuario == null || !usuario.Activo || !usuario.Persona.Activo)
-                return ServiceResult.Error("Usuario no encontrado.");
+            if (usuario == null || !usuario.Activo || usuario.Persona == null || !usuario.Persona.Activo)
+                return ServiceResult<ClaimsIdentity>.Error("Usuario no encontrado.");
 
             if (!BCrypt.Net.BCrypt.Verify(
                 model.ContraseñaActual,
                 usuario.PasswordHash))
             {
-                return ServiceResult.Error(
+                return ServiceResult<ClaimsIdentity>.Error(
                     "La contraseña actual no es válida.");
             }
 
@@ -124,14 +131,17 @@ namespace MecaniCar360.Services
                 out string error);
 
             if (!validacion)
-                return ServiceResult.Error(error);
+                return ServiceResult<ClaimsIdentity>.Error(error);
 
             usuario.PasswordHash = BCrypt.Net.BCrypt.HashPassword(
                 model.NuevaContraseña);
 
+            usuario.SecurityStamp = Guid.NewGuid().ToString("N");
+            var identity = await CrearIdentityActualAsync(usuario);
             await GuardarCambiosAsync();
+            await transaction.CommitAsync();
 
-            return ServiceResult.Ok(
+            return ServiceResult<ClaimsIdentity>.Ok(identity,
                 "Contraseña actualizada correctamente.");
         }
 
@@ -147,7 +157,8 @@ namespace MecaniCar360.Services
             {
                 new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                 new Claim(ClaimTypes.Name, usuario.Username),
-                new Claim("PersonaId", usuario.PersonaId.ToString())
+                new Claim("PersonaId", usuario.PersonaId.ToString()),
+                new Claim(Usuario.SecurityStampClaim, usuario.SecurityStamp)
             };
 
             claims.AddRange(
@@ -161,6 +172,26 @@ namespace MecaniCar360.Services
         // =====================================
         // MÉTODOS PRIVADOS - CONSULTAS
         // =====================================
+
+        private async Task<Usuario?> BloquearUsuarioAsync(int usuarioId)
+        {
+            var usuario = await _context.Usuarios.FromSqlInterpolated(
+                $"SELECT * FROM [Usuarios] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {usuarioId}")
+                .FirstOrDefaultAsync();
+            if (usuario == null) return null;
+            await _context.Entry(usuario).ReloadAsync();
+            await _context.Entry(usuario).Reference(u => u.Persona).LoadAsync();
+            if (usuario.Persona != null) await _context.Entry(usuario.Persona).ReloadAsync();
+            return usuario;
+        }
+
+        private async Task<ClaimsIdentity> CrearIdentityActualAsync(Usuario usuario)
+        {
+            var roles = await _context.PersonaRoles.AsNoTracking()
+                .Where(pr => pr.PersonaId == usuario.PersonaId && pr.FechaBaja == null && pr.Rol.Activo)
+                .Select(pr => pr.Rol.Nombre).ToListAsync();
+            return CrearIdentity(new LoginResult { Usuario = usuario, Roles = roles });
+        }
 
         private async Task<Usuario?> ObtenerUsuarioPorUsernameAsync(string username)
         {
