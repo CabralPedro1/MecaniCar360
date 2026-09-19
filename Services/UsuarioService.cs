@@ -294,6 +294,20 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar el estado de usuarios.");
             }
 
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await _permisoService.BloquearAdministradoresAsync();
+
+            // Revalidar la autoridad con el estado actualizado bajo el mutex.
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "USUARIO_DESACTIVAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar el estado de usuarios.");
+            }
+
+
             var usuario = await ObtenerUsuarioInternoAsync(id);
 
             if (usuario == null)
@@ -329,6 +343,7 @@ namespace MecaniCar360.Services
             usuario.Activo = !usuario.Activo;
             _auditoria.RegistrarOperacion(usuario.Activo ? "USUARIO_ACTIVADO" : "USUARIO_DESACTIVADO", "Usuario", usuario.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 usuario.Activo

@@ -289,6 +289,24 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar el estado de una persona.");
             }
 
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await _permisoService.BloquearAdministradoresAsync();
+
+            // Revalidar la autoridad con el estado actualizado bajo el mutex.
+            if (!await _permisoService.EsAdministradorAsync(usuarioSolicitanteId) &&
+                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == id && pr.FechaBaja == null && pr.Rol.Nombre == RolesSistema.ADMIN))
+                return ServiceResult.Error("Sólo ADMIN puede administrar esta persona.");
+
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "PERSONA_DESACTIVAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para modificar el estado de una persona.");
+            }
+
+
             var persona = await ObtenerPersonaAsync(id);
 
             if (persona == null)
@@ -333,6 +351,7 @@ namespace MecaniCar360.Services
             persona.Activo = false;
 
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Persona desactivada correctamente.");
@@ -438,6 +457,20 @@ namespace MecaniCar360.Services
                     "No posee permisos para quitar roles.");
             }
 
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await _permisoService.BloquearAdministradoresAsync();
+
+            // Revalidar la autoridad con el estado actualizado bajo el mutex.
+            if (!await _permisoService.TienePermisoAsync(
+                usuarioSolicitanteId,
+                "ROL_MODIFICAR"))
+            {
+                return ServiceResult.Error(
+                    "No posee permisos para quitar roles.");
+            }
+
+
             var relacion = await _context.PersonaRoles
                 .Include(pr => pr.Rol)
                 .FirstOrDefaultAsync(pr =>
@@ -484,6 +517,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("ROL_QUITADO", "Persona", personaId, usuarioSolicitanteId, $"Rol #{rolId}.");
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Rol removido correctamente.");
