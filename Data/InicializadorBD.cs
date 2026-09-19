@@ -120,7 +120,6 @@ namespace MecaniCar360.Data
             }
             else
             {
-                rol.Activo = true;
                 rol.EsRolCliente =
                     esRolCliente;
             }
