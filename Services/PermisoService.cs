@@ -39,6 +39,28 @@ namespace MecaniCar360.Services
             return usuario != null && EsAdministrador(usuario);
         }
 
+        internal async Task BloquearAdministradoresAsync()
+        {
+            if (_context.Database.CurrentTransaction == null)
+                throw new InvalidOperationException("La proteccion ADMIN requiere una transaccion activa.");
+
+            var rol = await _context.Roles.FromSqlInterpolated(
+                $"SELECT * FROM [Roles] WITH (UPDLOCK, HOLDLOCK) WHERE [Nombre] = {RolesSistema.ADMIN}")
+                .AsNoTracking().SingleOrDefaultAsync();
+            if (rol == null)
+                throw new InvalidOperationException("No existe el rol ADMIN requerido para proteger administradores.");
+
+            // Refrescar el grafo de seguridad consultado antes de esperar el mutex.
+            // No descartar escrituras pendientes del caller ni limpiar el ChangeTracker.
+            var entradas = _context.ChangeTracker.Entries().Where(e =>
+                e.Entity is Usuario or Persona or PersonaRol or Rol or
+                    Familia or RolFamilia or FamiliaPatente or Patente).ToList();
+            if (entradas.Any(e => e.State != EntityState.Unchanged))
+                throw new InvalidOperationException("La proteccion ADMIN requiere entidades de seguridad sin cambios pendientes.");
+            foreach (var entrada in entradas)
+                await entrada.ReloadAsync();
+        }
+
         public async Task<bool> EsAdministradorEfectivoPersonaAsync(
             int personaId)
         {
