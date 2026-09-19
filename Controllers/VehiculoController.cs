@@ -15,15 +15,18 @@ namespace MecaniCar360.Controllers
         private readonly VehiculoService _vehiculoService;
         private readonly DominioVehicularService _dominioVehicularService;
         private readonly MarcaService _marcaService;
+        private readonly PersonaService _personaService;
 
         public VehiculoController(
             VehiculoService vehiculoService,
             DominioVehicularService dominioVehicularService,
-            MarcaService marcaService)
+            MarcaService marcaService,
+            PersonaService personaService)
         {
             _vehiculoService = vehiculoService;
             _dominioVehicularService = dominioVehicularService;
             _marcaService = marcaService;
+            _personaService = personaService;
         }
 
         // =====================================
@@ -31,15 +34,37 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Permiso("VEHICULO_VER")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index([FromQuery] int? personaId = null)
         {
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)
                 return Unauthorized();
 
-            var resultado = await _vehiculoService
-                .ObtenerTodosAsync(usuarioId.Value);
+            if (!ModelState.IsValid ||
+                (Request.Query.ContainsKey(nameof(personaId)) && !personaId.HasValue) ||
+                (personaId.HasValue && personaId.Value <= 0))
+                return BadRequest("La persona indicada no es válida.");
+
+            if (personaId.HasValue)
+            {
+                var persona = await _personaService.ObtenerPorIdAsync(personaId.Value, usuarioId.Value);
+                if (!persona.Exitoso || persona.Data == null)
+                    return NotFound();
+                if (!persona.Data.Activo)
+                    return BadRequest("La persona indicada está inactiva.");
+            }
+
+            var resultado = personaId.HasValue
+                ? await _dominioVehicularService.ObtenerVehiculosDePersonaAsync(personaId.Value, usuarioId.Value)
+                : await _vehiculoService.ObtenerTodosAsync(usuarioId.Value);
+
+            ViewData["PersonaId"] = personaId;
+            if (!resultado.Exitoso)
+            {
+                ViewData["Error"] = resultado.Mensaje;
+                return View(new List<Vehiculo>());
+            }
 
             return View(resultado.Data);
         }
@@ -49,7 +74,7 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Permiso("VEHICULO_VER")]
-        public async Task<IActionResult> Detalle(int id)
+        public async Task<IActionResult> Detalle(int id, int? personaId = null)
         {
             var usuarioId = ObtenerUsuarioActualId();
 
@@ -62,6 +87,7 @@ namespace MecaniCar360.Controllers
             if (!resultado.Exitoso)
                 return NotFound();
 
+            ViewData["PersonaId"] = personaId > 0 ? personaId : null;
             return View(resultado.Data);
         }
 
@@ -72,6 +98,8 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_CREAR")]
         public async Task<IActionResult> Crear(int personaId)
         {
+            if (personaId <= 0)
+                return BadRequest("Seleccione una persona para registrar su vehículo.");
             await CargarMarcasAsync();
             await CargarModelosAsync();
 
@@ -86,6 +114,9 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_CREAR")]
         public async Task<IActionResult> Crear(VehiculoViewModel model)
         {
+            PrepararValidacionFormulario();
+            if (model.PersonaId <= 0)
+                ModelState.AddModelError(nameof(model.PersonaId), "Seleccione una persona válida.");
             if (!ModelState.IsValid)
             {
                 await CargarMarcasAsync(model.Vehiculo.MarcaId);
@@ -162,6 +193,7 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Editar(VehiculoViewModel model)
         {
+            PrepararValidacionFormulario();
             if (!ModelState.IsValid)
             {
                 await CargarMarcasAsync(model.Vehiculo.MarcaId);
@@ -194,10 +226,7 @@ namespace MecaniCar360.Controllers
 
             TempData["Ok"] = resultado.Mensaje;
 
-            return RedirectToAction(
-                "Detalle",
-                "Persona",
-                new { id = model.PersonaId });
+            return RedirectToAction(nameof(Detalle), new { id = model.Vehiculo.Id, personaId = model.PersonaId > 0 ? (int?)model.PersonaId : null });
         }
 
         // =====================================
@@ -219,10 +248,7 @@ namespace MecaniCar360.Controllers
 
             TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
 
-            return RedirectToAction(
-                "Detalle",
-                "Persona",
-                new { id = personaId });
+            return RedirectToAction(nameof(Detalle), new { id, personaId = personaId > 0 ? (int?)personaId : null });
         }
 
         // =====================================
@@ -231,12 +257,13 @@ namespace MecaniCar360.Controllers
 
         [HttpGet]
         [Permiso("VEHICULO_VER", "VEHICULO_CREAR", "VEHICULO_MODIFICAR")]
-        public async Task<JsonResult> ObtenerModelos(int marcaId)
+        public async Task<IActionResult> ObtenerModelos(int marcaId)
         {
             var resultado = await _vehiculoService.ObtenerModelosPorMarcaAsync(marcaId, ObtenerUsuarioActualId() ?? 0);
 
             if (!resultado.Exitoso)
-                return Json(new List<object>());
+                return StatusCode(StatusCodes.Status403Forbidden,
+                    new { mensaje = "No se pudieron cargar los modelos." });
 
             return Json(resultado.Data!.Select(m => new
             {
@@ -252,6 +279,8 @@ namespace MecaniCar360.Controllers
         private async Task CargarMarcasAsync(int? seleccionada = null)
         {
             var resultado = await _marcaService.ObtenerTodosAsync(ObtenerUsuarioActualId() ?? 0);
+            if (!resultado.Exitoso)
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
 
             ViewBag.Marcas = new SelectList(
                 (resultado.Data ?? new List<Marca>())
@@ -273,6 +302,8 @@ namespace MecaniCar360.Controllers
 
                 if (resultado.Exitoso)
                     modelos = resultado.Data!;
+                else
+                    ModelState.AddModelError(string.Empty, resultado.Mensaje);
             }
 
             ViewBag.Modelos = new SelectList(
@@ -280,6 +311,14 @@ namespace MecaniCar360.Controllers
                 "Id",
                 "Nombre",
                 seleccionado);
+        }
+
+        private void PrepararValidacionFormulario()
+        {
+            // El formulario envía las FK; el service valida existencia y relación del catálogo.
+            // Estas navegaciones EF no son campos editables ni datos requeridos del cliente.
+            ModelState.Remove("Vehiculo.Marca");
+            ModelState.Remove("Vehiculo.Modelo");
         }
 
         [HttpGet, Permiso("CLIENTE_VEHICULO_VER")]

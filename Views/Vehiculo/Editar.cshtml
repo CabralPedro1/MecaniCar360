@@ -1,0 +1,57 @@
+@model VehiculoViewModel
+@{ ViewData["Title"] = "Editar vehículo"; }
+<h2>Editar vehículo</h2>
+<form asp-action="Editar" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    <input asp-for="PersonaId" type="hidden" />
+    <input asp-for="Vehiculo.Id" type="hidden" />
+    <div class="row">
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Patente" class="form-label">Patente</label><input asp-for="Vehiculo.Patente" class="form-control" /><span asp-validation-for="Vehiculo.Patente" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Vin" class="form-label">VIN</label><input asp-for="Vehiculo.Vin" class="form-control" /><span asp-validation-for="Vehiculo.Vin" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Anio" class="form-label">Año</label><input asp-for="Vehiculo.Anio" class="form-control" /><span asp-validation-for="Vehiculo.Anio" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Color" class="form-label">Color</label><input asp-for="Vehiculo.Color" class="form-control" /><span asp-validation-for="Vehiculo.Color" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Motor" class="form-label">Motor</label><input asp-for="Vehiculo.Motor" class="form-control" /><span asp-validation-for="Vehiculo.Motor" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Version" class="form-label">Versión</label><input asp-for="Vehiculo.Version" class="form-control" /><span asp-validation-for="Vehiculo.Version" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.Kilometraje" class="form-label">Kilometraje</label><input asp-for="Vehiculo.Kilometraje" class="form-control" /><span asp-validation-for="Vehiculo.Kilometraje" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.MarcaId" class="form-label">Marca</label><select asp-for="Vehiculo.MarcaId" asp-items="ViewBag.Marcas" class="form-select" required><option value="">Seleccione marca</option></select><span asp-validation-for="Vehiculo.MarcaId" class="text-danger"></span></div>
+        <div class="col-md-6 mb-3"><label asp-for="Vehiculo.ModeloId" class="form-label">Modelo</label><select asp-for="Vehiculo.ModeloId" asp-items="ViewBag.Modelos" class="form-select" required><option value="">Seleccione modelo</option></select><span asp-validation-for="Vehiculo.ModeloId" class="text-danger"></span></div>
+    </div>
+    <p id="aviso-modelos" class="text-danger" role="status"></p>
+    <button class="btn btn-primary" type="submit">Guardar</button>
+    <a asp-action="Detalle" asp-route-id="@Model.Vehiculo.Id" asp-route-personaId="@(Model.PersonaId > 0 ? (int?)Model.PersonaId : null)" class="btn btn-secondary">Cancelar</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const marca = document.getElementById('Vehiculo_MarcaId');
+            const modelo = document.getElementById('Vehiculo_ModeloId');
+            const aviso = document.getElementById('aviso-modelos');
+            let solicitud;
+            marca.addEventListener('change', async () => {
+                solicitud?.abort();
+                solicitud = new AbortController();
+                const actual = solicitud;
+                modelo.replaceChildren(new Option('Seleccione un modelo', ''));
+                aviso.textContent = '';
+                if (!marca.value) { modelo.disabled = false; return; }
+                modelo.disabled = true;
+                try {
+                    const url = new URL('@Url.Action("ObtenerModelos", "Vehiculo")', window.location.origin);
+                    url.searchParams.set('marcaId', marca.value);
+                    const response = await fetch(url, { signal: actual.signal });
+                    if (!response.ok || response.redirected) throw new Error();
+                    const datos = await response.json();
+                    if (!Array.isArray(datos)) throw new Error();
+                    datos.forEach(m => modelo.add(new Option(m.nombre, m.id)));
+                    if (!datos.length) aviso.textContent = 'No hay modelos activos disponibles para esta marca.';
+                } catch (error) {
+                    if (error.name !== 'AbortError') aviso.textContent = 'No se pudieron cargar los modelos. Vuelva a seleccionar la marca.';
+                } finally {
+                    if (solicitud === actual) modelo.disabled = false;
+                }
+            });
+        })();
+    </script>
+}
