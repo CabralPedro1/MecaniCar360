@@ -284,6 +284,8 @@ namespace MecaniCar360
 
             app.UseAuthentication();
 
+            app.UseMiddleware<MecaniCar360.Middleware.PrimerLoginMiddleware>();
+
             app.UseAuthorization();
 
 
