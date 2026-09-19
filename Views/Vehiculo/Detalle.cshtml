@@ -1,0 +1,55 @@
+@model MecaniCar360.Models.Vehiculo
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Detalle de vehículo";
+    var personaId = ViewData["PersonaId"] as int?;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var editar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
+}
+<h2>Vehículo @Model.Patente</h2>
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success" role="status">@ok</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+<div class="card mb-3"><div class="card-body">
+    <dl class="row">
+        <dt class="col-sm-4">Marca / Modelo</dt><dd class="col-sm-8">@Model.Marca?.Nombre / @Model.Modelo?.Nombre</dd>
+        <dt class="col-sm-4">Año</dt><dd class="col-sm-8">@Model.Anio</dd>
+        <dt class="col-sm-4">VIN</dt><dd class="col-sm-8">@(Model.Vin ?? "—")</dd>
+        <dt class="col-sm-4">Color</dt><dd class="col-sm-8">@(Model.Color ?? "—")</dd>
+        <dt class="col-sm-4">Motor</dt><dd class="col-sm-8">@(Model.Motor ?? "—")</dd>
+        <dt class="col-sm-4">Versión</dt><dd class="col-sm-8">@(Model.Version ?? "—")</dd>
+        <dt class="col-sm-4">Kilometraje</dt><dd class="col-sm-8">@(Model.Kilometraje?.ToString() ?? "—")</dd>
+        <dt class="col-sm-4">Estado</dt><dd class="col-sm-8">@(Model.Activo ? "Activo" : "Inactivo")</dd>
+        <dt class="col-sm-4">Titular actual</dt>
+        <dd class="col-sm-8">
+            @foreach (var d in Model.DominiosVehiculares.Where(d => d.FechaHasta == null))
+            {
+                <div>@d.Persona?.Nombre @d.Persona?.Apellido</div>
+            }
+            @if (!Model.DominiosVehiculares.Any(d => d.FechaHasta == null))
+            {
+                <span>Sin titularidad vigente.</span>
+            }
+        </dd>
+    </dl>
+</div></div>
+@if (editar)
+{
+    @if (Model.Activo)
+    {
+        <a asp-action="Editar" asp-route-id="@Model.Id" asp-route-personaId="@personaId" class="btn btn-warning">Editar</a>
+    }
+    <form asp-action="CambiarEstado" method="post" class="d-inline" onsubmit="return confirm('¿Confirma el cambio de estado del vehículo?');">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <input type="hidden" name="personaId" value="@(personaId ?? 0)" />
+        <button type="submit" class="btn btn-outline-warning">@(Model.Activo ? "Desactivar" : "Activar")</button>
+    </form>
+}
+<a asp-action="Index" asp-route-personaId="@personaId" class="btn btn-secondary">Volver</a>

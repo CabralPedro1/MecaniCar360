@@ -5,6 +5,29 @@
 }
 
 <h2>Detalle de Persona</h2>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@if (TempData["Ok"] is string ok)
+{
+    <div class="alert alert-success" role="status">@ok</div>
+}
+@if (TempData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+}
+<div class="mb-3">
+    @if (await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_VER"))
+    {
+        <a asp-controller="Vehiculo" asp-action="Index" asp-route-personaId="@Model.Id" class="btn btn-info">Ver vehículos</a>
+    }
+    @if (Model.Activo && await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_CREAR"))
+    {
+        <a asp-controller="Vehiculo" asp-action="Crear" asp-route-personaId="@Model.Id" class="btn btn-primary">Agregar vehículo</a>
+    }
+</div>
 
 <hr />
 

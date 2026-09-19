@@ -1,0 +1,67 @@
+@model IEnumerable<MecaniCar360.Models.Vehiculo>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Vehículos";
+    var personaId = ViewData["PersonaId"] as int?;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var crear = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_CREAR");
+    var editar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
+    var verPersona = await Permisos.TienePermisoAsync(usuarioId, "PERSONA_VER");
+}
+<h2>Vehículos</h2>
+@if (ViewData["Error"] is string error)
+{
+    <div class="alert alert-danger" role="alert">@error</div>
+}
+@if (personaId.HasValue)
+{
+    <p>Vehículos activos con titularidad vigente de la Persona #@personaId.</p>
+    <a asp-action="Index" class="btn btn-outline-secondary mb-3">Ver todos, incluidos inactivos</a>
+    @if (crear)
+    {
+        <a asp-action="Crear" asp-route-personaId="@personaId" class="btn btn-primary mb-3">Agregar vehículo</a>
+    }
+    @if (verPersona)
+    {
+        <a asp-controller="Persona" asp-action="Detalle" asp-route-id="@personaId" class="btn btn-secondary mb-3">Volver a Persona</a>
+    }
+}
+else if (crear && verPersona)
+{
+    <a asp-controller="Persona" asp-action="Index" class="btn btn-primary mb-3">Seleccionar persona para agregar vehículo</a>
+}
+@if (!Model.Any() && ViewData["Error"] == null)
+{
+    <div class="alert alert-info">No hay vehículos para mostrar.</div>
+}
+else if (Model.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>Patente</th><th>Marca</th><th>Modelo</th><th>Año</th><th>Estado</th><th>Titular actual</th><th>Acciones</th></tr></thead>
+            <tbody>
+            @foreach (var v in Model)
+            {
+                <tr>
+                    <td>@v.Patente</td><td>@v.Marca?.Nombre</td><td>@v.Modelo?.Nombre</td><td>@v.Anio</td>
+                    <td>@(v.Activo ? "Activo" : "Inactivo")</td>
+                    <td>
+                        @foreach (var d in v.DominiosVehiculares.Where(d => d.FechaHasta == null))
+                        {
+                            <div>@d.Persona?.Nombre @d.Persona?.Apellido</div>
+                        }
+                    </td>
+                    <td>
+                        <a asp-action="Detalle" asp-route-id="@v.Id" asp-route-personaId="@personaId" class="btn btn-sm btn-info">Detalle</a>
+                        @if (editar && v.Activo)
+                        {
+                            <a asp-action="Editar" asp-route-id="@v.Id" asp-route-personaId="@personaId" class="btn btn-sm btn-warning">Editar</a>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
