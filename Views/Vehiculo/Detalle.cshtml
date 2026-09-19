@@ -53,3 +53,10 @@
     </form>
 }
 <a asp-action="Index" asp-route-personaId="@personaId" class="btn btn-secondary">Volver</a>
+@if (Model.Activo && await Permisos.TienePermisoAsync(usuarioId, "TURNO_CREAR"))
+{
+    foreach (var dominio in Model.DominiosVehiculares.Where(d => d.FechaHasta == null && d.Persona != null && d.Persona.Activo))
+    {
+        <a asp-controller="Turno" asp-action="Crear" asp-route-clienteId="@dominio.PersonaId" asp-route-vehiculoId="@Model.Id" class="btn btn-primary">Crear turno para @dominio.Persona.Nombre @dominio.Persona.Apellido</a>
+    }
+}

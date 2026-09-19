@@ -14,13 +14,19 @@ namespace MecaniCar360.Controllers
     {
         private readonly TurnoService _turnoService;
         private readonly AgendaService _agendaService;
+        private readonly PersonaService _personaService;
+        private readonly DominioVehicularService _dominioService;
 
         public TurnoController(
             TurnoService turnoService,
-            AgendaService agendaService)
+            AgendaService agendaService,
+            PersonaService personaService,
+            DominioVehicularService dominioService)
         {
             _turnoService = turnoService;
             _agendaService = agendaService;
+            _personaService = personaService;
+            _dominioService = dominioService;
         }
 
         // =====================================
@@ -68,6 +74,8 @@ namespace MecaniCar360.Controllers
         [Permiso("TURNO_VER")]
         public async Task<IActionResult> Agenda(DateTime? fecha)
         {
+            if (!ModelState.IsValid || fecha?.Date == DateTime.MaxValue.Date)
+                return BadRequest("Fecha inválida.");
             var dia = fecha?.Date ?? DateTime.Today;
 
             var resultado =
@@ -96,10 +104,12 @@ namespace MecaniCar360.Controllers
 
         [HttpGet]
         [Permiso("TURNO_CREAR")]
-        public IActionResult Crear(
+        public async Task<IActionResult> Crear(
             int? clienteId = null,
             int? vehiculoId = null)
         {
+            if (!ModelState.IsValid || clienteId <= 0 || vehiculoId <= 0)
+                return BadRequest("Contexto de turno inválido.");
             var model = new CrearTurnoViewModel
             {
                 ClienteId = clienteId ?? 0,
@@ -110,6 +120,7 @@ namespace MecaniCar360.Controllers
                     .AddHours(8)
             };
 
+            await CargarSelectoresAsync(model);
             return View(model);
         }
 
@@ -125,7 +136,10 @@ namespace MecaniCar360.Controllers
             CrearTurnoViewModel model)
         {
             if (!ModelState.IsValid)
+            {
+                await CargarSelectoresAsync(model);
                 return View(model);
+            }
 
             // ---------------------------------
             // USUARIO ACTUAL
@@ -152,6 +166,7 @@ namespace MecaniCar360.Controllers
                     string.Empty,
                     resultado.Mensaje);
 
+                await CargarSelectoresAsync(model);
                 return View(model);
             }
 
@@ -248,6 +263,11 @@ namespace MecaniCar360.Controllers
             int id,
             DateTime nuevaFechaInicio)
         {
+            if (!ModelState.IsValid || nuevaFechaInicio == default)
+            {
+                TempData["Error"] = "Seleccione una fecha y un horario válidos.";
+                return RedirectToAction(nameof(Detalle), new { id });
+            }
             var resultado =
                 await _turnoService.ReprogramarAsync(
                     id,
@@ -273,6 +293,8 @@ namespace MecaniCar360.Controllers
         public async Task<JsonResult> HorariosDisponibles(
      DateTime fecha)
         {
+            if (!ModelState.IsValid || fecha == default || fecha.Date == DateTime.MaxValue.Date)
+                return new JsonResult(new { exitoso = false, mensaje = "Fecha inválida." }) { StatusCode = 400 };
             var resultado =
                 await _agendaService
                     .ObtenerHorariosDisponiblesAsync(
@@ -308,6 +330,38 @@ namespace MecaniCar360.Controllers
         // =====================================
         // MÉTODOS PRIVADOS
         // =====================================
+
+        private async Task CargarSelectoresAsync(CrearTurnoViewModel model)
+        {
+            var personas = await _personaService.ObtenerActivasAsync(SolicitanteId());
+            if (!personas.Exitoso) ModelState.AddModelError(string.Empty, personas.Mensaje);
+            if (personas.Exitoso && model.ClienteId > 0 && !personas.Data!.Any(p => p.Id == model.ClienteId))
+                ModelState.AddModelError(nameof(model.ClienteId), "Seleccione una persona activa disponible.");
+            ViewBag.Clientes = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(
+                (personas.Data ?? new List<Persona>()).Select(p => new { p.Id, Nombre = p.Apellido + ", " + p.Nombre }),
+                "Id", "Nombre", model.ClienteId);
+            var vehiculos = new List<Vehiculo>();
+            if (model.ClienteId > 0)
+            {
+                var resultado = await _dominioService.ObtenerVehiculosDePersonaAsync(model.ClienteId, SolicitanteId());
+                if (!resultado.Exitoso) ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                else vehiculos = resultado.Data!;
+            }
+            if (model.VehiculoId > 0 && !vehiculos.Any(v => v.Id == model.VehiculoId))
+                ModelState.AddModelError(nameof(model.VehiculoId), "Seleccione un vehículo disponible para esa persona.");
+            ViewBag.Vehiculos = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(vehiculos, "Id", "Patente", model.VehiculoId);
+        }
+
+        [HttpGet, Permiso("TURNO_CREAR")]
+        public async Task<IActionResult> VehiculosDeCliente(int clienteId)
+        {
+            if (!ModelState.IsValid || clienteId <= 0) return BadRequest("Cliente inválido.");
+            var persona = await _personaService.ObtenerPorIdAsync(clienteId, SolicitanteId());
+            if (!persona.Exitoso || persona.Data == null || !persona.Data.Activo) return NotFound();
+            var resultado = await _dominioService.ObtenerVehiculosDePersonaAsync(clienteId, SolicitanteId());
+            if (!resultado.Exitoso) return StatusCode(403, new { mensaje = "No se pudieron cargar los vehículos." });
+            return Json(resultado.Data!.Select(v => new { id = v.Id, patente = v.Patente }));
+        }
 
         private int ObtenerUsuarioId()
         {

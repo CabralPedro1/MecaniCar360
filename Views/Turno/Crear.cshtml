@@ -1,0 +1,63 @@
+@model MecaniCar360.Models.ViewModels.CrearTurnoViewModel
+@using MecaniCar360.Models.Enums
+@{ ViewData["Title"] = "Crear turno"; }
+<h2>Crear turno</h2>
+<form asp-action="Crear" method="post">
+@Html.AntiForgeryToken()
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<div class="mb-3"><label asp-for="ClienteId">Cliente / Persona</label>
+<select asp-for="ClienteId" asp-items="ViewBag.Clientes" class="form-select" required><option value="">Seleccione persona</option></select>
+<span asp-validation-for="ClienteId" class="text-danger"></span></div>
+<div class="mb-3"><label asp-for="VehiculoId">Vehículo</label>
+<select asp-for="VehiculoId" asp-items="ViewBag.Vehiculos" class="form-select" required><option value="">Seleccione vehículo</option></select>
+<span asp-validation-for="VehiculoId" class="text-danger"></span><p id="aviso-vehiculos" role="status" class="text-danger"></p></div>
+<div class="mb-3"><label asp-for="Tipo">Tipo</label><select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoTurno>()" class="form-select"></select><span asp-validation-for="Tipo" class="text-danger"></span></div>
+<div class="mb-3"><label for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio.ToString("yyyy-MM-dd")" class="form-control" required /></div>
+<div class="mb-3"><label for="horario-turno">Horario</label>
+<select asp-for="FechaInicio" id="horario-turno" data-seleccionado="@Model.FechaInicio.ToString("yyyy-MM-ddTHH:mm")" class="form-select" required><option value="">Seleccione horario</option></select>
+<span asp-validation-for="FechaInicio" class="text-danger"></span><p id="aviso-horarios" role="status" class="text-danger"></p></div>
+<div class="mb-3"><label asp-for="Motivo"></label><textarea asp-for="Motivo" class="form-control"></textarea><span asp-validation-for="Motivo" class="text-danger"></span></div>
+<div class="mb-3"><label asp-for="Observaciones"></label><textarea asp-for="Observaciones" class="form-control"></textarea><span asp-validation-for="Observaciones" class="text-danger"></span></div>
+<button class="btn btn-primary" type="submit">Guardar</button><a asp-action="Index" class="btn btn-secondary">Volver</a>
+</form>
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<partial name="_HorariosScript" />
+<script>
+(() => {
+    const cliente = document.getElementById('ClienteId');
+    const vehiculo = document.getElementById('VehiculoId');
+    const aviso = document.getElementById('aviso-vehiculos');
+    let solicitud;
+    cliente.addEventListener('change', async () => {
+        solicitud?.abort();
+        const actual = solicitud = new AbortController();
+        vehiculo.replaceChildren(new Option('Seleccione vehículo', ''));
+        vehiculo.disabled = true;
+        aviso.textContent = '';
+        if (!cliente.value) return;
+        try {
+            const url = new URL('@Url.Action("VehiculosDeCliente", "Turno")', window.location.origin);
+            url.searchParams.set('clienteId', cliente.value);
+            const response = await fetch(url, { signal: actual.signal });
+            if (!response.ok || response.redirected) throw new Error();
+            const data = await response.json();
+            if (!Array.isArray(data)) throw new Error();
+            if (solicitud !== actual) return;
+            data.forEach(v => vehiculo.add(new Option(v.patente, v.id)));
+            vehiculo.disabled = false;
+            aviso.textContent = data.length ? '' : 'No hay vehículos activos con titularidad vigente.';
+        } catch (error) {
+            if (error.name !== 'AbortError' && solicitud === actual)
+                aviso.textContent = 'No se pudieron cargar los vehículos. Vuelva a seleccionar la persona.';
+        }
+    });
+    vehiculo.form.addEventListener('submit', event => {
+        if (vehiculo.disabled || !vehiculo.value) {
+            event.preventDefault();
+            aviso.textContent = 'Seleccione un vehículo antes de guardar.';
+        }
+    });
+})();
+</script>
+}
