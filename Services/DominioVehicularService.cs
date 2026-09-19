@@ -9,15 +9,17 @@ public class DominioVehicularService
     private readonly MecaniCarContext _context;
     private readonly VehiculoService _vehiculoService;
     private readonly PermisoService _permisoService;
+    private readonly AuditoriaService _auditoria;
 
     public DominioVehicularService(
         MecaniCarContext context,
         VehiculoService vehiculoService,
-        PermisoService permisoService)
+        PermisoService permisoService, AuditoriaService auditoria)
     {
         _context = context;
         _vehiculoService = vehiculoService;
         _permisoService = permisoService;
+        _auditoria = auditoria;
     }
 
     // CONSULTAS
@@ -190,6 +192,8 @@ public class DominioVehicularService
                 FechaDesde = ahora
             });
 
+            _auditoria.RegistrarOperacion("TITULARIDAD_TRANSFERIDA", "Vehiculo", vehiculoId, usuarioSolicitanteId,
+                $"Titularidad transferida de Persona {dominiosActivos[0].PersonaId} a Persona {nuevaPersonaId}.");
             await GuardarCambiosAsync();
 
             await transaction.CommitAsync();
@@ -235,6 +239,8 @@ public class DominioVehicularService
         foreach (var dominio in dominiosActivos)
             dominio.FechaHasta = ahora;
 
+        _auditoria.RegistrarOperacion("TITULARIDAD_FINALIZADA", "Vehiculo", vehiculoId, usuarioSolicitanteId,
+            $"Titularidad finalizada para Persona {dominiosActivos[0].PersonaId}.");
         await GuardarCambiosAsync();
 
         return ServiceResult.Ok("Titularidad finalizada correctamente.");

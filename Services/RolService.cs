@@ -9,13 +9,15 @@ namespace MecaniCar360.Services
     {
         private readonly MecaniCarContext _context;
         private readonly PermisoService _permisoService;
+        private readonly AuditoriaService _auditoria;
 
         public RolService(
             MecaniCarContext context,
-            PermisoService permisoService)
+            PermisoService permisoService, AuditoriaService auditoria)
         {
             _context = context;
             _permisoService = permisoService;
+            _auditoria = auditoria;
         }
 
         // =============================
@@ -136,9 +138,13 @@ namespace MecaniCar360.Services
             rol.FechaCreacion = DateTime.Now;
 
             rol.Id = 0; rol.Familias = new(); rol.Personas = new();
+            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Roles.Add(rol);
 
             await _context.SaveChangesAsync();
+            _auditoria.RegistrarOperacion("ROL_CREADO", "Rol", rol.Id, usuarioSolicitanteId);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok("Rol creado correctamente.");
         }
@@ -180,6 +186,8 @@ namespace MecaniCar360.Services
             existente.Nombre = rol.Nombre.Trim().ToUpper();
             existente.EsRolCliente = rol.EsRolCliente;
 
+            _auditoria.RegistrarOperacion("ROL_MODIFICADO", "Rol", existente.Id, usuarioSolicitanteId,
+                "Rol modificado.");
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok("Rol actualizado correctamente.");
@@ -212,6 +220,8 @@ namespace MecaniCar360.Services
 
             rol.Activo = !rol.Activo;
 
+            _auditoria.RegistrarOperacion(rol.Activo ? "ROL_ACTIVADO" : "ROL_DESACTIVADO",
+                "Rol", rol.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
 
             return ServiceResult.Ok(

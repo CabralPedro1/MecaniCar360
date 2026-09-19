@@ -16,10 +16,12 @@ namespace MecaniCar360.Services
         private const string DummyPasswordHash = "$2a$11$/hMq7CVS2c4GIr4L3Un9KOk82Q5S7XYwehDng396O9eKwb0BeHHDC";
 
         private readonly MecaniCarContext _context;
+        private readonly AuditoriaService _auditoria;
 
-        public AccountService(MecaniCarContext context)
+        public AccountService(MecaniCarContext context, AuditoriaService auditoria)
         {
             _context = context;
+            _auditoria = auditoria;
         }
 
         // =====================================
@@ -106,6 +108,8 @@ namespace MecaniCar360.Services
 
             usuario.SecurityStamp = Guid.NewGuid().ToString("N");
             var identity = await CrearIdentityActualAsync(usuario);
+            _auditoria.RegistrarOperacion("PRIMER_LOGIN_COMPLETADO", "Usuario", usuario.Id, usuarioId,
+                "Primer ingreso completado.");
             await GuardarCambiosAsync();
             await transaction.CommitAsync();
 
@@ -143,6 +147,8 @@ namespace MecaniCar360.Services
 
             usuario.SecurityStamp = Guid.NewGuid().ToString("N");
             var identity = await CrearIdentityActualAsync(usuario);
+            _auditoria.RegistrarOperacion("PASSWORD_CAMBIADA", "Usuario", usuario.Id, usuarioId,
+                "Contraseña modificada.");
             await GuardarCambiosAsync();
             await transaction.CommitAsync();
 
