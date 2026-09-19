@@ -1,0 +1,32 @@
+@model IEnumerable<MecaniCar360.Models.IngresoVehiculo>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Vehículos en taller";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verOrden = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE");
+    var error = TempData["Error"] as string;
+}
+<h2>Vehículos en taller</h2>
+<p>Ingresos sin fecha de egreso registrada.</p>
+@if (error != null) { <div class="alert alert-danger" role="alert">@error</div> }
+else if (!Model.Any()) { <div class="alert alert-info">No hay vehículos actualmente en taller.</div> }
+else {
+<div class="table-responsive"><table class="table table-striped">
+<thead><tr><th>Ingreso</th><th>Fecha</th><th>Vehículo</th><th>Cliente del turno</th><th>Cliente espera</th><th>Acciones</th></tr></thead>
+<tbody>
+@foreach (var ingreso in Model) {
+<tr>
+<td>#@ingreso.Id</td><td>@ingreso.FechaIngreso.ToString("dd/MM/yyyy HH:mm")</td>
+<td>@ingreso.Turno.Vehiculo.Patente — @ingreso.Turno.Vehiculo.Marca.Nombre @ingreso.Turno.Vehiculo.Modelo.Nombre</td>
+<td>@ingreso.Turno.Cliente.Nombre @ingreso.Turno.Cliente.Apellido</td><td>@(ingreso.ClienteEspera ? "Sí" : "No")</td>
+<td>
+<a asp-action="Detalle" asp-route-id="@ingreso.Id" class="btn btn-sm btn-info">Detalle de ingreso</a>
+@if (verOrden && ingreso.OrdenTrabajo != null) {
+<a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@ingreso.OrdenTrabajo.Id" class="btn btn-sm btn-primary">Ver orden #@ingreso.OrdenTrabajo.Id</a>
+}
+</td></tr>
+}
+</tbody></table></div>
+}
+@if (await Permisos.TienePermisoAsync(usuarioId, "TURNO_VER")) { <a asp-controller="Turno" asp-action="Index" class="btn btn-secondary">Turnos</a> }
