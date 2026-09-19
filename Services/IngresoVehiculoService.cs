@@ -124,7 +124,20 @@ namespace MecaniCar360.Services
             }
 
             await using var transaction =
-                await _context.Database.BeginTransactionAsync();
+                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
+            var entidadesPrevias = _context.ChangeTracker.Entries()
+                .Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
+            Turno? turnoOperacion = null;
+
+            void DesvincularOperacionRevertida()
+            {
+                // No limpiar entidades ajenas al registro que acaba de revertirse.
+                foreach (var entry in _context.ChangeTracker.Entries().ToList())
+                    if (!entidadesPrevias.Contains(entry.Entity) ||
+                        ReferenceEquals(entry.Entity, turnoOperacion))
+                        entry.State = EntityState.Detached;
+            }
 
             try
             {
@@ -132,10 +145,9 @@ namespace MecaniCar360.Services
                 // BUSCAR TURNO
                 // =====================================
 
-                var turno = await _context.Turnos
-                    .Include(t => t.IngresoVehiculo)
-                    .FirstOrDefaultAsync(t =>
-                        t.Id == turnoId);
+                var turno = await _context.Turnos.FromSqlInterpolated(
+                    $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}")
+                    .FirstOrDefaultAsync();
 
                 if (turno == null)
                 {
@@ -147,6 +159,9 @@ namespace MecaniCar360.Services
                 // =====================================
                 // VALIDAR ESTADO
                 // =====================================
+
+                turnoOperacion = turno;
+                await _context.Entry(turno).ReloadAsync();
 
                 if (turno.Estado == EstadoTurno.Cancelado)
                 {
@@ -178,7 +193,7 @@ namespace MecaniCar360.Services
                 // EVITAR DOBLE INGRESO
                 // =====================================
 
-                if (turno.IngresoVehiculo != null)
+                if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "El vehículo ya posee un ingreso registrado.");
@@ -312,6 +327,7 @@ namespace MecaniCar360.Services
                 when (EsViolacionUnicidad(ex))
             {
                 await transaction.RollbackAsync();
+                DesvincularOperacionRevertida();
 
                 return ServiceResult<OrdenTrabajo>.Error(
                     "El turno ya posee un ingreso u orden de trabajo registrada.");
@@ -319,6 +335,7 @@ namespace MecaniCar360.Services
             catch
             {
                 await transaction.RollbackAsync();
+                DesvincularOperacionRevertida();
                 throw;
             }
         }

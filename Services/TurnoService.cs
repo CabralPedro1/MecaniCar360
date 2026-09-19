@@ -440,8 +440,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para confirmar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await BloquearTurnoAsync(turnoId);
 
             if (turno == null)
             {
@@ -469,6 +470,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_CONFIRMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno confirmado correctamente.");
@@ -525,22 +527,30 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error("Turno no encontrado.");
             }
 
-            return await CancelarInternoAsync(turnoId, usuarioId, motivo);
+            return await CancelarInternoAsync(turnoId, usuarioId, motivo, validarPropietario: true);
         }
 
         private async Task<ServiceResult> CancelarInternoAsync(
             int turnoId,
             int usuarioId,
-            string? motivo)
+            string? motivo,
+            bool validarPropietario = false)
         {
-            var turno = await _context.Turnos
-                .Include(t => t.IngresoVehiculo)
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await BloquearTurnoAsync(turnoId);
 
             if (turno == null)
             {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
+            }
+
+            if (validarPropietario)
+            {
+                var personaId = await ObtenerPersonaIdAsync(usuarioId);
+                if (!personaId.HasValue || turno.ClienteId != personaId.Value)
+                    return ServiceResult.Error("Turno no encontrado.");
             }
 
             if (turno.Estado == EstadoTurno.Cancelado)
@@ -561,7 +571,7 @@ namespace MecaniCar360.Services
                     "No se puede cancelar un turno marcado como cliente ausente.");
             }
 
-            if (turno.IngresoVehiculo != null)
+            if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
             {
                 return ServiceResult.Error(
                     "No se puede cancelar un turno cuyo vehículo ya ingresó al taller.");
@@ -584,6 +594,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_CANCELADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno cancelado correctamente.");
@@ -606,8 +617,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await BloquearTurnoAsync(turnoId);
 
             if (turno == null)
             {
@@ -641,6 +653,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("CLIENTE_AUSENTE", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Cliente marcado como ausente.");
@@ -664,9 +677,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .Include(t => t.IngresoVehiculo)
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            await using var transaction = await _context.Database
+                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await BloquearTurnoAsync(turnoId);
 
             if (turno == null)
             {
@@ -681,7 +694,7 @@ namespace MecaniCar360.Services
                     "Solo se pueden reprogramar turnos pendientes o confirmados.");
             }
 
-            if (turno.IngresoVehiculo != null)
+            if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
             {
                 return ServiceResult.Error(
                     "No se puede reprogramar un turno cuyo vehículo ya ingresó al taller.");
@@ -732,9 +745,19 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_REPROGRAMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno reprogramado correctamente.");
+        }
+
+        private async Task<Turno?> BloquearTurnoAsync(int turnoId)
+        {
+            var turno = await _context.Turnos.FromSqlInterpolated(
+                $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}")
+                .FirstOrDefaultAsync();
+            if (turno != null) await _context.Entry(turno).ReloadAsync();
+            return turno;
         }
 
         private async Task<int?> ObtenerPersonaIdAsync(int usuarioId)
