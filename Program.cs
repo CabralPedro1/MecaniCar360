@@ -71,12 +71,14 @@ namespace MecaniCar360
                             var claim = context.Principal?
                                 .FindFirst(ClaimTypes.NameIdentifier);
 
-                            if (claim == null ||
+                            var stamp = context.Principal?.FindFirst(MecaniCar360.Models.Usuario.SecurityStampClaim)?.Value;
+                            if (string.IsNullOrWhiteSpace(stamp) || claim == null ||
                                 !int.TryParse(
                                     claim.Value,
                                     out int usuarioId))
                             {
                                 context.RejectPrincipal();
+                                context.HttpContext.RequestServices.GetRequiredService<SessionManager>().CerrarSesion();
                                 await context.HttpContext.SignOutAsync(
                                     CookieAuthenticationDefaults.AuthenticationScheme);
                                 return;
@@ -85,15 +87,18 @@ namespace MecaniCar360
                             var db = context.HttpContext.RequestServices
                                 .GetRequiredService<MecaniCarContext>();
 
-                            var vigente = await db.Usuarios
-                                .AnyAsync(u =>
+                            var usuario = await db.Usuarios.AsNoTracking()
+                                .Where(u =>
                                     u.Id == usuarioId &&
                                     u.Activo &&
-                                    u.Persona.Activo);
+                                    u.Persona.Activo)
+                                .Select(u => new { u.SecurityStamp }).SingleOrDefaultAsync();
+                            var vigente = usuario != null && string.Equals(usuario.SecurityStamp, stamp, StringComparison.Ordinal);
 
                             if (!vigente)
                             {
                                 context.RejectPrincipal();
+                                context.HttpContext.RequestServices.GetRequiredService<SessionManager>().CerrarSesion();
                                 await context.HttpContext.SignOutAsync(
                                     CookieAuthenticationDefaults.AuthenticationScheme);
                             }

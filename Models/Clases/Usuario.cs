@@ -15,6 +15,11 @@ namespace MecaniCar360.Models
         [Required, MaxLength(200)]
         public string PasswordHash { get; set; }
 
+        public const string SecurityStampClaim = "SecurityStamp";
+
+        [Required, MaxLength(32)]
+        public string SecurityStamp { get; set; } = Guid.NewGuid().ToString("N");
+
         public bool Activo { get; set; } = true;
         public bool PrimerLogin { get; set; } = true;
 
