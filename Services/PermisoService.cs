@@ -1,5 +1,6 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
+using MecaniCar360.Patterns.Composite;
 using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Services
@@ -108,34 +109,9 @@ namespace MecaniCar360.Services
                 return true;
 
 
-            // =====================================
-            // RECORRER ROLES
-            // =====================================
-
-            foreach (var personaRol
-                in usuario.Persona.Roles)
-            {
-                if (personaRol.FechaBaja != null)
-                    continue;
-
-                if (!personaRol.Rol.Activo)
-                    continue;
-
-
-                foreach (var rolFamilia
-                    in personaRol.Rol.Familias)
-                {
-                    var tienePermiso =
-                        await FamiliaTienePermisoAsync(
-                            rolFamilia.FamiliaId,
-                            patente);
-
-                    if (tienePermiso)
-                        return true;
-                }
-            }
-
-            return false;
+            var componentes = await ConstruirComponentesAsync(usuario);
+            return RecorridoPermisos.ObtenerPatentes(componentes)
+                .Contains(patente, StringComparer.OrdinalIgnoreCase);
         }
 
 
@@ -168,156 +144,62 @@ namespace MecaniCar360.Services
             }
 
 
-            // =====================================
-            // RESTO DE USUARIOS
-            // =====================================
-
-            var patentes =
-                new HashSet<string>(
-                    StringComparer.OrdinalIgnoreCase);
-
-
-            foreach (var personaRol
-                in usuario.Persona.Roles)
-            {
-                if (personaRol.FechaBaja != null)
-                    continue;
-
-                if (!personaRol.Rol.Activo)
-                    continue;
-
-
-                foreach (var rolFamilia
-                    in personaRol.Rol.Familias)
-                {
-                    await ObtenerPatentesFamiliaAsync(
-                        rolFamilia.FamiliaId,
-                        patentes);
-                }
-            }
-
-
-            return patentes.ToList();
+            var componentes = await ConstruirComponentesAsync(usuario);
+            return RecorridoPermisos.ObtenerPatentes(componentes).ToList();
         }
 
-
-        // =====================================
-        // RECORRER FAMILIA
-        // =====================================
-
-        private async Task<bool>
-            FamiliaTienePermisoAsync(
-                int familiaId,
-                string patenteBuscada)
+        private async Task<IReadOnlyList<IComponentePermiso>> ConstruirComponentesAsync(Usuario usuario)
         {
-            var familia =
-                await _context.Familias
-                    .Include(f => f.Patentes)
-                        .ThenInclude(fp => fp.Patente)
+            var raices = usuario.Persona.Roles
+                .Where(pr => pr.FechaBaja == null && pr.Rol.Activo)
+                .SelectMany(pr => pr.Rol.Familias)
+                .Select(rf => rf.FamiliaId).Distinct().ToList();
+            var pendientes = new Queue<int>(raices);
+            var cargadas = new HashSet<int>();
+            var familias = new Dictionary<int, FamiliaPermiso>();
+            var patentes = new Dictionary<int, PatentePermiso>();
+            var enlaces = new List<(int Padre, int Hija)>();
+
+            while (pendientes.TryDequeue(out var id))
+            {
+                if (!cargadas.Add(id)) continue;
+
+                // Mantener la consulta/tracking existente; no consultar padres ni
+                // expandir ramas inactivas. No se modifica ninguna entidad EF.
+                var familia = await _context.Familias
+                    .Include(f => f.Patentes).ThenInclude(fp => fp.Patente)
                     .Include(f => f.FamiliasHijas)
-                    .FirstOrDefaultAsync(
-                        f => f.Id == familiaId &&
-                             f.Activo);
+                    .FirstOrDefaultAsync(f => f.Id == id && f.Activo);
+                if (familia == null) continue;
 
-            if (familia == null)
-                return false;
-
-
-            // =====================================
-            // PATENTES DE ESTA FAMILIA
-            // =====================================
-
-            foreach (var familiaPatente
-                in familia.Patentes)
-            {
-                if (!familiaPatente.Patente.Activo)
-                    continue;
-
-                if (familiaPatente.Patente.Nombre
-                    .Equals(
-                        patenteBuscada,
-                        StringComparison.OrdinalIgnoreCase))
+                var componente = new FamiliaPermiso(familia);
+                familias.Add(id, componente);
+                foreach (var relacion in familia.Patentes)
                 {
-                    return true;
+                    if (!patentes.TryGetValue(relacion.PatenteId, out var hoja))
+                    {
+                        hoja = new PatentePermiso(relacion.Patente);
+                        patentes.Add(relacion.PatenteId, hoja);
+                    }
+                    componente.Agregar(hoja);
+                }
+
+                foreach (var hija in familia.FamiliasHijas)
+                {
+                    if (!hija.Activo) continue;
+                    enlaces.Add((id, hija.Id));
+                    pendientes.Enqueue(hija.Id);
                 }
             }
 
+            // Conectar los nodos ya cargados permite reutilizarlos incluso en ciclos.
+            // El recorrido Composite corta revisitas sin descartar otras ramas.
+            foreach (var (padre, hija) in enlaces)
+                if (familias.TryGetValue(hija, out var componente))
+                    familias[padre].Agregar(componente);
 
-            // =====================================
-            // FAMILIAS HIJAS
-            // =====================================
-
-            foreach (var hija
-                in familia.FamiliasHijas)
-            {
-                if (!hija.Activo)
-                    continue;
-
-
-                if (await FamiliaTienePermisoAsync(
-                    hija.Id,
-                    patenteBuscada))
-                {
-                    return true;
-                }
-            }
-
-
-            return false;
-        }
-
-
-        // =====================================
-        // OBTENER PATENTES RECURSIVAMENTE
-        // =====================================
-
-        private async Task ObtenerPatentesFamiliaAsync(
-            int familiaId,
-            HashSet<string> patentes)
-        {
-            var familia =
-                await _context.Familias
-                    .Include(f => f.Patentes)
-                        .ThenInclude(fp => fp.Patente)
-                    .Include(f => f.FamiliasHijas)
-                    .FirstOrDefaultAsync(
-                        f => f.Id == familiaId &&
-                             f.Activo);
-
-            if (familia == null)
-                return;
-
-
-            // =====================================
-            // PATENTES DE ESTA FAMILIA
-            // =====================================
-
-            foreach (var familiaPatente
-                in familia.Patentes)
-            {
-                if (familiaPatente.Patente.Activo)
-                {
-                    patentes.Add(
-                        familiaPatente.Patente.Nombre);
-                }
-            }
-
-
-            // =====================================
-            // FAMILIAS HIJAS
-            // =====================================
-
-            foreach (var hija
-                in familia.FamiliasHijas)
-            {
-                if (!hija.Activo)
-                    continue;
-
-
-                await ObtenerPatentesFamiliaAsync(
-                    hija.Id,
-                    patentes);
-            }
+            return raices.Where(familias.ContainsKey)
+                .Select(id => (IComponentePermiso)familias[id]).ToList();
         }
 
 
