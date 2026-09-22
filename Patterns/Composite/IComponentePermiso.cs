@@ -7,5 +7,7 @@
         string Nombre { get; }
 
         bool TienePermiso(string patente);
+
+        IEnumerable<string> ObtenerPatentes();
     }
 }

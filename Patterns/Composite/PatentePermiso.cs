@@ -17,14 +17,15 @@ namespace MecaniCar360.Patterns.Composite
         public string Nombre =>
             _patente.Nombre;
 
+        internal bool Activo => _patente.Activo;
+
         public bool TienePermiso(
             string patente)
         {
-            return _patente.Activo &&
-                   string.Equals(
-                       _patente.Nombre,
-                       patente,
-                       StringComparison.OrdinalIgnoreCase);
+            return ObtenerPatentes().Contains(patente, StringComparer.OrdinalIgnoreCase);
         }
+
+        public IEnumerable<string> ObtenerPatentes() =>
+            RecorridoPermisos.ObtenerPatentes(new[] { this });
     }
 }

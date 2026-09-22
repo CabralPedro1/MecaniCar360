@@ -21,6 +21,10 @@ namespace MecaniCar360.Patterns.Composite
         public string Nombre =>
             _familia.Nombre;
 
+        internal bool Activo => _familia.Activo;
+
+        internal IReadOnlyList<IComponentePermiso> Componentes => _componentes.AsReadOnly();
+
 
         public void Agregar(
             IComponentePermiso componente)
@@ -37,15 +41,10 @@ namespace MecaniCar360.Patterns.Composite
         public bool TienePermiso(
             string patente)
         {
-            if (!_familia.Activo)
-            {
-                return false;
-            }
-
-            return _componentes.Any(
-                componente =>
-                    componente.TienePermiso(
-                        patente));
+            return ObtenerPatentes().Contains(patente, StringComparer.OrdinalIgnoreCase);
         }
+
+        public IEnumerable<string> ObtenerPatentes() =>
+            RecorridoPermisos.ObtenerPatentes(new[] { this });
     }
 }
