@@ -1,0 +1,38 @@
+@model MecaniCar360.Models.ViewModels.ClienteDetalleOperativoViewModel
+@{
+    ViewData["Title"] = "Ficha de cliente";
+}
+<h1>Ficha de cliente</h1>
+<h2>Datos del cliente</h2>
+<dl class="row">
+    <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">@(Model.Cliente.Nombre ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Apellido</dt><dd class="col-sm-9">@(Model.Cliente.Apellido ?? "Sin informar")</dd>
+    <dt class="col-sm-3">DNI</dt><dd class="col-sm-9">@(Model.Cliente.Dni ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Teléfono</dt><dd class="col-sm-9">@(Model.Cliente.Telefono ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Email</dt><dd class="col-sm-9">@(Model.Cliente.Email ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Estado</dt><dd class="col-sm-9">@(Model.Cliente.Activo ? "Activo" : "Inactivo")</dd>
+</dl>
+@if (Model.PuedeVerVehiculos)
+{
+    <h2>Vehículos de titularidad vigente</h2>
+    @if (Model.Vehiculos.Count == 0)
+    {
+        <p>No tiene vehículos con titularidad vigente.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead><tr><th>Dominio</th><th>Marca</th><th>Modelo</th><th>Año</th><th>Color</th><th>Estado</th></tr></thead>
+                <tbody>
+                @foreach (var vehiculo in Model.Vehiculos)
+                {
+                    <tr><td>@vehiculo.Patente</td><td>@vehiculo.Marca</td><td>@vehiculo.Modelo</td>
+                        <td>@vehiculo.Anio</td><td>@(vehiculo.Color ?? "Sin informar")</td><td>@(vehiculo.Activo ? "Activo" : "Inactivo")</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+<a asp-action="Clientes" class="btn btn-secondary">Volver a clientes</a>

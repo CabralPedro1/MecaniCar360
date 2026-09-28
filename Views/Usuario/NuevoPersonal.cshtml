@@ -1,0 +1,19 @@
+@model MecaniCar360.Models.ViewModels.NuevoPersonalViewModel
+@{ ViewData["Title"] = "Nuevo personal"; }
+<h2>Nuevo personal</h2>
+<p>Se creará la persona y su cuenta interna. Las credenciales temporales se enviarán al email de acceso.</p>
+<form asp-action="NuevoPersonal" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="mb-3"><label asp-for="Nombre" class="form-label"></label><input asp-for="Nombre" class="form-control" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Apellido" class="form-label"></label><input asp-for="Apellido" class="form-control" /><span asp-validation-for="Apellido" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Dni" class="form-label"></label><input asp-for="Dni" class="form-control" /><span asp-validation-for="Dni" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Telefono" class="form-label"></label><input asp-for="Telefono" class="form-control" /><span asp-validation-for="Telefono" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Email" class="form-label"></label><input asp-for="Email" class="form-control" /><span asp-validation-for="Email" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Username" class="form-label"></label><input asp-for="Username" class="form-control" /><span asp-validation-for="Username" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="EmailLogin" class="form-label"></label><input asp-for="EmailLogin" class="form-control" /><span asp-validation-for="EmailLogin" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="RolId" class="form-label"></label><select asp-for="RolId" asp-items="ViewBag.RolesPersonal" class="form-select"><option value="">Seleccione un rol interno</option></select><span asp-validation-for="RolId" class="text-danger"></span></div>
+    <button type="submit" class="btn btn-primary">Crear personal</button>
+    <a asp-action="Administracion" asp-route-seccion="personal" class="btn btn-secondary">Cancelar</a>
+</form>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

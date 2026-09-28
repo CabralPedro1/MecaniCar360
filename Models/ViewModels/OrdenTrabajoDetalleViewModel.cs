@@ -11,8 +11,8 @@ public sealed class OrdenTrabajoDetalleViewModel
     public DateTime? FechaFin { get; init; }
     public decimal? CostoDiagnostico { get; init; }
     public string? Observaciones { get; init; }
-    public string ClienteNombre { get; init; } = "";
-    public string ClienteApellido { get; init; } = "";
+    public string? ClienteNombre { get; init; }
+    public string? ClienteApellido { get; init; }
     public string VehiculoMarca { get; init; } = "";
     public string VehiculoModelo { get; init; } = "";
     public string VehiculoPatente { get; init; } = "";
@@ -26,7 +26,7 @@ public sealed class OrdenTrabajoDetalleViewModel
     public bool PuedeEmitirFactura { get; init; }
     public bool PuedeEditarCosto { get; init; }
 }
-public sealed record PersonaNombreDetalle(string Nombre, string Apellido);
+public sealed record PersonaNombreDetalle(string? Nombre, string? Apellido);
 public sealed record EstadoOrdenDetalle(DateTime Fecha, EstadoOrden Estado, PersonaNombreDetalle? Mecanico);
 public sealed record DiagnosticoOrdenDetalle(string DescripcionActual, DateTime FechaUltimaModificacion);
 public sealed record PresupuestoOrdenDetalle(EstadoPresupuesto Estado, decimal Total, DateTime FechaUltimaModificacion, string? MotivoRechazo);

@@ -1,0 +1,50 @@
+@model MecaniCar360.Models.ViewModels.AdministracionCuentasViewModel
+@using System.Security.Claims
+@inject MecaniCar360.Services.AltaPersonalService AltaPersonal
+@{
+    ViewData["Title"] = "Administración de personas y cuentas";
+    var seccion = Context.Request.Query["seccion"].ToString() == "clientes" ? "clientes" : "personal";
+    var busqueda = Context.Request.Query["q"].ToString().Trim();
+    var personas = Model.Personas.Where(p => seccion == "clientes" ? p.EsCliente : p.EsPersonal);
+    if (!string.IsNullOrWhiteSpace(busqueda))
+    {
+        personas = personas.Where(p => new[] { $"{p.Nombre} {p.Apellido}", p.Dni, p.Username, p.Email, p.EmailLogin }
+            .Any(valor => valor?.Contains(busqueda, StringComparison.OrdinalIgnoreCase) == true));
+    }
+    var resultados = personas.ToList();
+}
+<h2>Administración de personas y cuentas</h2>
+@if (TempData["Ok"] is string mensaje)
+{
+    <div class="alert alert-success" role="status">@mensaje</div>
+}
+@if (seccion == "personal" && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) && await AltaPersonal.PuedeCrearAsync(actorId))
+{
+    <a asp-action="NuevoPersonal" class="btn btn-primary mb-3">Nuevo personal</a>
+}
+<nav aria-label="Secciones administrativas" class="nav nav-tabs mb-3">
+    <a asp-action="Administracion" asp-route-seccion="personal" asp-route-q="@busqueda"
+       class="nav-link @(seccion == "personal" ? "active" : "")" aria-current="@(seccion == "personal" ? "page" : null)">Personal</a>
+    <a asp-action="Administracion" asp-route-seccion="clientes" asp-route-q="@busqueda"
+       class="nav-link @(seccion == "clientes" ? "active" : "")" aria-current="@(seccion == "clientes" ? "page" : null)">Clientes</a>
+</nav>
+<form asp-action="Administracion" method="get" class="mb-3">
+    <input type="hidden" name="seccion" value="@seccion" />
+    <label for="busqueda-personas" class="form-label">Buscar por nombre, apellido, DNI, usuario o email</label>
+    <div class="input-group">
+        <input id="busqueda-personas" name="q" value="@busqueda" type="search" class="form-control" />
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a asp-action="Administracion" asp-route-seccion="@seccion" class="btn btn-outline-secondary">Limpiar</a>
+    </div>
+</form>
+<section>
+    <h3>@(seccion == "clientes" ? "Clientes" : "Personal")</h3>
+    @if (resultados.Count == 0 && busqueda.Length > 0)
+    {
+        <p>No se encontraron coincidencias en esta sección.</p>
+    }
+    else
+    {
+        <partial name="_PersonasCuentas" model="resultados" />
+    }
+</section>

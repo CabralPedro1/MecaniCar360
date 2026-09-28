@@ -7,6 +7,8 @@
 <h2>Crear usuario</h2>
 
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+<p>Alta de cuentas internas. La persona debe tener un rol interno vigente y no tener rol CLIENTE. Los nuevos clientes se registraran mediante el flujo especifico de clientes.</p>
+
 <form asp-action="Crear" method="post">
     @Html.AntiForgeryToken()
     <div class="mb-3">

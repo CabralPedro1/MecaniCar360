@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.ViewModels;
@@ -171,7 +171,10 @@ namespace MecaniCar360.Services
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
-                            .ThenInclude(t => t.Vehiculo)
+                            .ThenInclude(t => t.Vehiculo).ThenInclude(v => v.Marca)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo).ThenInclude(v => v.Modelo)
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
@@ -245,7 +248,10 @@ namespace MecaniCar360.Services
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)
-                            .ThenInclude(t => t.Vehiculo)
+                            .ThenInclude(t => t.Vehiculo).ThenInclude(v => v.Marca)
+                    .Include(o => o.IngresoVehiculo)
+                        .ThenInclude(i => i.Turno)
+                            .ThenInclude(t => t.Vehiculo).ThenInclude(v => v.Modelo)
 
                     .Include(o => o.IngresoVehiculo)
                         .ThenInclude(i => i.Turno)

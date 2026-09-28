@@ -26,6 +26,9 @@ namespace MecaniCar360.Controllers
         {
             var resultado = await _service.ObtenerTodosAsync(SolicitanteId());
 
+            if (!resultado.Exitoso)
+                return Forbid();
+
             return View(resultado.Data);
         }
 
@@ -36,13 +39,10 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
-            var resultado = await _service.ObtenerTodosAsync(SolicitanteId());
+            var resultado = await _service.ObtenerPorIdAsync(id, SolicitanteId());
 
             if (!resultado.Exitoso)
-            {
-                TempData["Error"] = resultado.Mensaje;
-                return View(new List<Marca>());
-            }
+                return NotFound();
 
             return View(resultado.Data);
         }

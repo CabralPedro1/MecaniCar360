@@ -11,17 +11,14 @@ namespace MecaniCar360.Models
         // DATOS PERSONALES
         // =====================================
 
-        [Required]
         [MaxLength(100)]
-        public string Nombre { get; set; } = string.Empty;
+        public string? Nombre { get; set; }
 
-        [Required]
         [MaxLength(100)]
-        public string Apellido { get; set; } = string.Empty;
+        public string? Apellido { get; set; }
 
-        [Required]
         [MaxLength(15)]
-        public string Dni { get; set; } = string.Empty;
+        public string? Dni { get; set; }
 
 
         // =====================================
@@ -29,11 +26,11 @@ namespace MecaniCar360.Models
         // =====================================
 
         [MaxLength(50)]
-        public string Telefono { get; set; } = string.Empty;
+        public string? Telefono { get; set; }
 
         [MaxLength(100)]
         [EmailAddress]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; }
 
 
         // =====================================

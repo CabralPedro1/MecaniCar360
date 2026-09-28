@@ -1,9 +1,15 @@
-@model MecaniCar360.Models.ViewModels.DashboardViewModel
+﻿@model MecaniCar360.Models.ViewModels.DashboardViewModel
 @{
     ViewData["Title"] = "Dashboard";
 }
 
 <h2 class="mb-4">Dashboard</h2>
+@inject MecaniCar360.Services.PermisoService Permisos
+@using System.Security.Claims
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId) && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER")) {
+<a asp-controller="OrdenTrabajo" asp-action="Index" class="btn btn-primary">Consultar ordenes</a>
+<a asp-controller="OrdenTrabajo" asp-action="Pendientes" class="btn btn-outline-primary">Ordenes libres</a>
+}
 
 @if (ViewData["MostrarResumen"] is true)
 {

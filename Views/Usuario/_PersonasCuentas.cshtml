@@ -1,0 +1,29 @@
+@model List<MecaniCar360.Models.ViewModels.PersonaCuentaViewModel>
+@if (Model.Count == 0)
+{
+    <p>No hay personas disponibles en esta sección.</p>
+}
+else
+{
+    <div class="table-responsive">
+    <table class="table table-striped">
+        <thead><tr><th>Persona</th><th>DNI</th><th>Roles vigentes</th><th>Contacto</th><th>Cuenta</th><th>Proveedor</th><th>Estado persona</th><th>Estado cuenta</th><th></th></tr></thead>
+        <tbody>
+        @foreach (var persona in Model)
+        {
+            <tr>
+                <td>@(string.IsNullOrWhiteSpace($"{persona.Nombre} {persona.Apellido}") ? "Nombre pendiente" : $"{persona.Nombre} {persona.Apellido}")</td>
+                <td>@(persona.Dni ?? "Pendiente")</td>
+                <td>@string.Join(", ", persona.Roles.Where(r => r.Activo && r.FechaBaja == null).Select(r => r.Nombre))</td>
+                <td><div>@(persona.Email ?? "Sin email de contacto")</div><div>@(persona.Telefono ?? "Sin teléfono")</div></td>
+                <td>@if (persona.UsuarioId.HasValue) { <div>@persona.Username</div><div>@persona.EmailLogin</div> } else { <span>Sin cuenta</span> }</td>
+                <td>@(persona.Proveedor?.ToString() ?? "—")</td>
+                <td>@(persona.PersonaActiva ? "Activa" : "Inactiva")</td>
+                <td>@(persona.UsuarioActivo.HasValue ? (persona.UsuarioActivo.Value ? "Activa" : "Inactiva") : "Sin cuenta")</td>
+                <td><a asp-action="PersonaCuenta" asp-route-id="@persona.PersonaId">Ver detalle</a></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+    </div>
+}

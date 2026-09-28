@@ -1,0 +1,34 @@
+@model IEnumerable<MecaniCar360.Models.Persona>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verOrdenes = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER");
+    var ordenId = ViewData["OrdenTrabajoId"] as int?;
+}
+<h2>Mecanicos disponibles</h2>
+<p>Mecanicos activos. Este listado no representa disponibilidad horaria.</p>
+@if (ordenId.HasValue) { <p>Asignar a la orden #@ordenId</p> }
+else { <p>Seleccione una orden desde el listado para iniciar su asignacion.</p> }
+@if (!Model.Any()) { <p>No hay mecanicos activos disponibles.</p> }
+else {
+<table class="table"><thead><tr><th>Mecanico</th><th>Acciones</th></tr></thead><tbody>
+@foreach (var mecanico in Model) {
+<tr><td>@mecanico.Apellido, @mecanico.Nombre</td><td>
+@if (ordenId.HasValue) {
+<form asp-action="AsignarMecanico" method="post">
+@Html.AntiForgeryToken()
+<input type="hidden" name="ordenTrabajoId" value="@ordenId" />
+<input type="hidden" name="mecanicoId" value="@mecanico.Id" />
+<button type="submit" class="btn btn-primary">Asignar</button>
+</form>
+}
+@if (verOrdenes) { <a asp-action="DeMecanico" asp-route-mecanicoId="@mecanico.Id">Ver ordenes activas</a> }
+</td></tr>
+}
+</tbody></table>
+}
+@if (ordenId.HasValue && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE")) {
+<a asp-action="Detalle" asp-route-id="@ordenId">Volver a la orden</a>
+}
+@if (verOrdenes) { <a asp-action="Index" class="btn btn-secondary">Ordenes</a> }

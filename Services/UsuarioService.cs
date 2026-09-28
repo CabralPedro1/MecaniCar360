@@ -26,6 +26,46 @@ namespace MecaniCar360.Services
             _emailService = emailService;
         }
 
+        public async Task<ServiceResult<List<PersonaCuentaViewModel>>> ObtenerAdministracionAsync(int actorId, int? personaId = null)
+        {
+            if (!await _permisoService.TienePermisoAsync(actorId, "PERSONA_VER") ||
+                !await _permisoService.TienePermisoAsync(actorId, "USUARIO_VER"))
+                return ServiceResult<List<PersonaCuentaViewModel>>.Error("Acceso denegado.");
+
+            var esAdmin = await _permisoService.EsAdministradorAsync(actorId);
+            if (!esAdmin && !await EsCajaEfectivoAsync(actorId))
+                return ServiceResult<List<PersonaCuentaViewModel>>.Error("Acceso denegado.");
+
+            var query = _context.Personas.AsNoTracking().AsQueryable();
+            if (!esAdmin)
+                query = query.Where(p => p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE) &&
+                    !p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE));
+
+            query = query.Where(p => p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
+                (pr.Rol.Nombre == RolesSistema.CLIENTE || pr.Rol.Nombre == RolesSistema.ADMIN ||
+                 pr.Rol.Nombre == RolesSistema.MECANICO || pr.Rol.Nombre == RolesSistema.CAJA || pr.Rol.Nombre == RolesSistema.STOCK)));
+            if (personaId.HasValue) query = query.Where(p => p.Id == personaId.Value);
+
+            var personas = await query.OrderBy(p => p.Apellido).ThenBy(p => p.Nombre).ThenBy(p => p.Id)
+                .Select(p => new PersonaCuentaViewModel
+                {
+                    PersonaId = p.Id, Nombre = p.Nombre, Apellido = p.Apellido, Dni = p.Dni,
+                    Telefono = p.Telefono, Email = p.Email, PersonaActiva = p.Activo,
+                    UsuarioId = p.Usuario == null ? null : (int?)p.Usuario.Id,
+                    Username = p.Usuario == null ? null : p.Usuario.Username,
+                    EmailLogin = p.Usuario == null ? null : p.Usuario.EmailLogin,
+                    UsuarioActivo = p.Usuario == null ? null : (bool?)p.Usuario.Activo,
+                    Proveedor = p.Usuario == null ? null : (MecaniCar360.Models.Enums.ProveedorAutenticacion?)p.Usuario.ProveedorAutenticacion,
+                    EsCliente = p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE),
+                    EsPersonal = p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
+                        (pr.Rol.Nombre == RolesSistema.ADMIN || pr.Rol.Nombre == RolesSistema.MECANICO ||
+                         pr.Rol.Nombre == RolesSistema.CAJA || pr.Rol.Nombre == RolesSistema.STOCK)),
+                    Roles = p.Roles.OrderBy(pr => pr.Rol.Nombre).Select(pr => new RolCuentaViewModel
+                    { Nombre = pr.Rol.Nombre, Activo = pr.Rol.Activo, FechaBaja = pr.FechaBaja }).ToList()
+                }).ToListAsync();
+            return ServiceResult<List<PersonaCuentaViewModel>>.Ok(personas);
+        }
+
         public async Task<ServiceResult<List<Usuario>>> ObtenerTodosAsync(
             int usuarioSolicitanteId)
         {
@@ -129,6 +169,7 @@ namespace MecaniCar360.Services
                 .Where(p =>
                     p.Activo &&
                     p.Usuario == null)
+                .Where(EsElegibleCuentaInterna())
                 .AsQueryable();
 
             if (!esAdmin)
@@ -179,6 +220,9 @@ namespace MecaniCar360.Services
                     "La persona ya posee un usuario.");
             }
 
+            if (!await _context.Personas.Where(EsElegibleCuentaInterna()).AnyAsync(p => p.Id == persona.Id))
+                return ServiceResult.Error("Solo se pueden crear credenciales para personas con rol interno vigente y sin rol CLIENTE.");
+
             var username = model.Username.Trim();
             var emailLogin = model.EmailLogin.Trim();
 
@@ -214,12 +258,7 @@ namespace MecaniCar360.Services
                 _auditoria.RegistrarOperacion("USUARIO_CREADO", "Usuario", usuario.Id, usuarioSolicitanteId);
                 await _context.SaveChangesAsync();
 
-                await _emailService.EnviarCorreoAsync(
-                    emailLogin,
-                    "Credenciales temporales MecaniCar360",
-                    $"<p>Su usuario es <strong>{username}</strong>.</p>" +
-                    $"<p>Su contraseña temporal es <strong>{contraseñaTemporal}</strong>.</p>" +
-                    "<p>Deberá cambiarla en el primer ingreso.</p>");
+                await EnviarCredencialesAsync(emailLogin, username, contraseñaTemporal);
 
                 await transaction.CommitAsync();
 
@@ -358,6 +397,13 @@ namespace MecaniCar360.Services
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
+        private static System.Linq.Expressions.Expression<Func<Persona, bool>> EsElegibleCuentaInterna()
+            => p => p.Activo &&
+                !p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Nombre == RolesSistema.CLIENTE) &&
+                p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
+                    (pr.Rol.Nombre == RolesSistema.ADMIN || pr.Rol.Nombre == RolesSistema.MECANICO ||
+                     pr.Rol.Nombre == RolesSistema.CAJA || pr.Rol.Nombre == RolesSistema.STOCK));
+
         private async Task<bool> PuedeAdministrarPersonaAsync(
             int usuarioSolicitanteId,
             int personaId,
@@ -413,7 +459,7 @@ namespace MecaniCar360.Services
                 pr.Rol.Nombre == RolesSistema.CLIENTE) && !p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE);
         }
 
-        private async Task<bool> ExisteUsernameAsync(
+        internal async Task<bool> ExisteUsernameAsync(
             string username,
             int? excluirId = null)
         {
@@ -424,7 +470,7 @@ namespace MecaniCar360.Services
                 (!excluirId.HasValue || u.Id != excluirId.Value));
         }
 
-        private async Task<bool> ExisteEmailAsync(
+        internal async Task<bool> ExisteEmailAsync(
             string email,
             int? excluirId = null)
         {
@@ -435,7 +481,13 @@ namespace MecaniCar360.Services
                 (!excluirId.HasValue || u.Id != excluirId.Value));
         }
 
-        private static string GenerarContraseñaTemporal()
+        internal Task EnviarCredencialesAsync(string email, string username, string password)
+            => _emailService.EnviarCorreoAsync(email, "Credenciales temporales MecaniCar360",
+                $"<p>Su usuario es <strong>{System.Net.WebUtility.HtmlEncode(username)}</strong>.</p>" +
+                $"<p>Su contraseña temporal es <strong>{System.Net.WebUtility.HtmlEncode(password)}</strong>.</p>" +
+                "<p>Deberá cambiarla en el primer ingreso.</p>");
+
+        internal static string GenerarContraseñaTemporal()
         {
             const string minusculas = "abcdefghijkmnopqrstuvwxyz";
             const string mayusculas = "ABCDEFGHJKLMNPQRSTUVWXYZ";

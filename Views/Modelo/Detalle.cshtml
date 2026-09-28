@@ -1,0 +1,26 @@
+@model MecaniCar360.Models.Modelo
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var modificar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
+}
+@{ ViewData["Title"] = "Modelo"; }
+<h2>Modelo: @Model.Nombre</h2>
+@if (TempData["Ok"] != null) { <div class="alert alert-success" role="status">@TempData["Ok"]</div> }
+@if (TempData["Error"] != null) { <div class="alert alert-danger" role="alert">@TempData["Error"]</div> }
+<dl>
+    <dt>Marca</dt><dd><a asp-controller="Marca" asp-action="Detalle" asp-route-id="@Model.MarcaId">@Model.Marca.Nombre</a></dd>
+    <dt>Estado</dt><dd>@(Model.Activo ? "Activo" : "Inactivo")</dd>
+    <dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd>
+</dl>
+@if (modificar)
+{
+    @if (Model.Activo) { <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a> }
+    <form asp-action="CambiarEstado" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <button type="submit" class="btn btn-outline-secondary">@(Model.Activo ? "Desactivar" : "Activar")</button>
+    </form>
+}
+<a asp-action="Index" class="btn btn-secondary">Volver</a>

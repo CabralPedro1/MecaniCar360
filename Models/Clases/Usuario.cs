@@ -12,8 +12,13 @@ namespace MecaniCar360.Models
         [Required, MaxLength(100)]
         public string EmailLogin { get; set; }
 
-        [Required, MaxLength(200)]
-        public string PasswordHash { get; set; }
+        [MaxLength(200)]
+        public string? PasswordHash { get; set; }
+
+        public Enums.ProveedorAutenticacion ProveedorAutenticacion { get; set; } = Enums.ProveedorAutenticacion.Credenciales;
+
+        [MaxLength(255)]
+        public string? IdentificadorExterno { get; set; }
 
         public const string SecurityStampClaim = "SecurityStamp";
 
@@ -36,9 +41,8 @@ namespace MecaniCar360.Models
         {
             get
             {
-                return Persona == null
-                    ? Username
-                    : $"{Persona.Nombre} {Persona.Apellido}";
+                var nombre = Persona == null ? null : $"{Persona.Nombre} {Persona.Apellido}".Trim();
+                return string.IsNullOrWhiteSpace(nombre) ? Username : nombre;
             }
         }
     }

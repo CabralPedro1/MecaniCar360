@@ -333,7 +333,7 @@ namespace MecaniCar360.Controllers
 
         private async Task CargarSelectoresAsync(CrearTurnoViewModel model)
         {
-            var personas = await _personaService.ObtenerActivasAsync(SolicitanteId());
+            var personas = await _personaService.ObtenerClientesAsync(SolicitanteId());
             if (!personas.Exitoso) ModelState.AddModelError(string.Empty, personas.Mensaje);
             if (personas.Exitoso && model.ClienteId > 0 && !personas.Data!.Any(p => p.Id == model.ClienteId))
                 ModelState.AddModelError(nameof(model.ClienteId), "Seleccione una persona activa disponible.");

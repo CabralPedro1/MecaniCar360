@@ -1,0 +1,43 @@
+@model IEnumerable<MecaniCar360.Models.Modelo>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var modificar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
+}
+@{ ViewData["Title"] = "Modelos"; }
+<h2>@ViewData["Title"]</h2>
+@if (TempData["Ok"] != null) { <div class="alert alert-success" role="status">@TempData["Ok"]</div> }
+@if (TempData["Error"] != null) { <div class="alert alert-danger" role="alert">@TempData["Error"]</div> }
+<p>
+    @if (modificar) { <a asp-action="Crear" class="btn btn-primary">Nuevo modelo</a> }
+    <a asp-controller="Marca" asp-action="Index" class="btn btn-secondary">Marcas</a>
+</p>
+@if (!Model.Any()) { <p>No hay modelos registrados.</p> }
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Marca</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Marca.Nombre</td><td>@item.Nombre</td>
+                <td>@(item.Activo ? "Activo" : "Inactivo")</td>
+                <td>
+                    <a asp-action="Detalle" asp-route-id="@item.Id" class="btn btn-sm btn-info">Detalle</a>
+                    @if (modificar)
+                    {
+                        @if (item.Activo) { <a asp-action="Editar" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Editar</a> }
+                        <form asp-action="CambiarEstado" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@item.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">@(item.Activo ? "Desactivar" : "Activar")</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
