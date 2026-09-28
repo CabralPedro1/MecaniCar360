@@ -1,0 +1,32 @@
+@model IEnumerable<MecaniCar360.Models.OrdenTrabajo>
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var verDetalle = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE");
+    var asignar = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ASIGNAR_MECANICO");
+}
+@if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+@if (TempData["Ok"] is string ok) { <div class="alert alert-success" role="status">@ok</div> }
+<nav class="mb-3">
+<a asp-action="Index" class="btn btn-secondary">Ordenes</a>
+<a asp-action="Pendientes" class="btn btn-outline-primary">Pendientes libres</a>
+@if (ViewData["EsMecanicoConsultable"] is true) { <a asp-action="DeMecanico" class="btn btn-outline-primary">Mis ordenes activas</a> }
+@if (asignar) { <a asp-action="MecanicosDisponibles" class="btn btn-outline-primary">Mecanicos disponibles</a> }
+</nav>
+<h2>Ordenes activas del mecanico</h2>
+@if (!Model.Any()) { <p>No hay ordenes para mostrar.</p> }
+else {
+<table class="table table-striped"><thead><tr><th>Orden</th><th>Vehiculo</th><th>Patente</th><th>Inicio</th><th>Estado</th><th>Urgencia</th><th>Acciones</th></tr></thead><tbody>
+@foreach (var orden in Model) {
+<tr><td>@orden.Id</td><td>@orden.IngresoVehiculo.Turno.Vehiculo.Marca.Nombre @orden.IngresoVehiculo.Turno.Vehiculo.Modelo.Nombre</td>
+<td>@orden.IngresoVehiculo.Turno.Vehiculo.Patente</td><td>@orden.FechaInicio.ToString("dd/MM/yyyy HH:mm")</td><td>@orden.EstadoActual</td><td>@orden.Urgencia</td><td>
+@if (verDetalle) { <a asp-action="Detalle" asp-route-id="@orden.Id" class="btn btn-sm btn-info">Detalle</a> }
+@if (asignar && orden.MecanicoId == null && !orden.FechaFin.HasValue && orden.EstadoActual is not (EstadoOrden.Finalizado or EstadoOrden.Entregado)) {
+<a asp-action="MecanicosDisponibles" asp-route-ordenTrabajoId="@orden.Id" class="btn btn-sm btn-primary">Asignar mecanico</a>
+}
+</td></tr>
+}
+</tbody></table>
+}

@@ -1,6 +1,7 @@
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
+using MecaniCar360.Models.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Services
@@ -24,6 +25,68 @@ namespace MecaniCar360.Services
         // =============================
         // CONSULTAS
         // =============================
+
+        private IQueryable<ClienteOperativoViewModel> ClientesOperativos()
+        {
+            return _context.Personas.AsNoTracking()
+                .Where(p => p.Roles.Any(pr => pr.FechaBaja == null &&
+                    pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE))
+                .Select(p => new ClienteOperativoViewModel
+                {
+                    Id = p.Id, Nombre = p.Nombre, Apellido = p.Apellido,
+                    Dni = p.Dni, Telefono = p.Telefono, Email = p.Email, Activo = p.Activo
+                });
+        }
+
+        public async Task<ServiceResult<ClientesOperativosViewModel>> ObtenerClientesOperativosAsync(
+            int usuarioSolicitanteId, string? busqueda)
+        {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PERSONA_VER"))
+                return ServiceResult<ClientesOperativosViewModel>.Error("Acceso denegado.");
+
+            var consulta = ClientesOperativos();
+            var texto = busqueda?.Trim();
+            if (!string.IsNullOrEmpty(texto))
+                consulta = consulta.Where(p =>
+                    ((p.Nombre ?? "") + " " + (p.Apellido ?? "")).Contains(texto) ||
+                    ((p.Apellido ?? "") + " " + (p.Nombre ?? "")).Contains(texto) ||
+                    (p.Dni ?? "").Contains(texto) || (p.Email ?? "").Contains(texto) ||
+                    (p.Telefono ?? "").Contains(texto));
+
+            return ServiceResult<ClientesOperativosViewModel>.Ok(new ClientesOperativosViewModel
+            {
+                Busqueda = texto,
+                Clientes = await consulta.OrderBy(p => p.Apellido).ThenBy(p => p.Nombre).ThenBy(p => p.Id).ToListAsync()
+            });
+        }
+
+        public async Task<ServiceResult<ClienteDetalleOperativoViewModel>> ObtenerClienteOperativoAsync(
+            int id, int usuarioSolicitanteId)
+        {
+            if (!await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "PERSONA_VER"))
+                return ServiceResult<ClienteDetalleOperativoViewModel>.Error("Acceso denegado.");
+
+            var cliente = await ClientesOperativos().SingleOrDefaultAsync(p => p.Id == id);
+            if (cliente == null)
+                return ServiceResult<ClienteDetalleOperativoViewModel>.Error("Cliente no encontrado.");
+
+            var vm = new ClienteDetalleOperativoViewModel
+            {
+                Cliente = cliente,
+                PuedeVerVehiculos = await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "VEHICULO_VER")
+            };
+            if (vm.PuedeVerVehiculos)
+                vm.Vehiculos = await _context.Vehiculos.AsNoTracking()
+                    .Where(v => v.DominiosVehiculares.Any(d => d.PersonaId == id && d.FechaHasta == null))
+                    .OrderBy(v => v.Patente)
+                    .Select(v => new VehiculoClienteOperativoViewModel
+                    {
+                        Patente = v.Patente, Marca = v.Marca.Nombre, Modelo = v.Modelo.Nombre,
+                        Anio = v.Anio, Color = v.Color, Activo = v.Activo
+                    }).ToListAsync();
+
+            return ServiceResult<ClienteDetalleOperativoViewModel>.Ok(vm);
+        }
 
         public async Task<ServiceResult<List<Persona>>> ObtenerTodasAsync(
             int usuarioSolicitanteId)
@@ -173,6 +236,10 @@ namespace MecaniCar360.Services
                     "No posee permisos para crear personas.");
             }
 
+            if (string.IsNullOrWhiteSpace(persona.Nombre) || string.IsNullOrWhiteSpace(persona.Apellido) ||
+                string.IsNullOrWhiteSpace(persona.Dni))
+                return ServiceResult.Error("Nombre, apellido y DNI son obligatorios para el alta administrativa.");
+
             if (await ExisteDniAsync(persona.Dni))
                 return ServiceResult.Error(
                     "Ya existe una persona con ese DNI.");
@@ -216,6 +283,10 @@ namespace MecaniCar360.Services
             if (existente == null)
                 return ServiceResult.Error(
                     "Persona no encontrada.");
+
+            if (string.IsNullOrWhiteSpace(persona.Nombre) || string.IsNullOrWhiteSpace(persona.Apellido) ||
+                string.IsNullOrWhiteSpace(persona.Dni))
+                return ServiceResult.Error("Nombre, apellido y DNI son obligatorios para la edición administrativa.");
 
             if (await ExisteDniAsync(
                 persona.Dni,
@@ -416,6 +487,13 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "Rol no encontrado o inactivo.");
 
+            if (rol.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
+                return ServiceResult.Error("CLIENTE solo puede asignarse desde el alta especifica de clientes.");
+
+            if (await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId &&
+                u.ProveedorAutenticacion == MecaniCar360.Models.Enums.ProveedorAutenticacion.Google))
+                return ServiceResult.Error("Una cuenta Google no puede recibir roles mediante la administracion.");
+
             if (rol.Nombre.Equals(
                 RolesSistema.ADMIN,
                 StringComparison.OrdinalIgnoreCase) &&
@@ -490,6 +568,9 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "La persona no posee ese rol.");
 
+            if (relacion.Rol.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
+                return ServiceResult.Error("CLIENTE no puede quitarse mediante la administración genérica.");
+
             if (relacion.Rol.Nombre.Equals(
                 RolesSistema.ADMIN,
                 StringComparison.OrdinalIgnoreCase))
@@ -545,6 +626,10 @@ namespace MecaniCar360.Services
                     "No posee permisos para consultar roles.");
             }
 
+            if (await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId &&
+                u.ProveedorAutenticacion == MecaniCar360.Models.Enums.ProveedorAutenticacion.Google))
+                return ServiceResult<List<Rol>>.Ok(new List<Rol>());
+
             var asignados = await _context.PersonaRoles
                 .Where(pr =>
                     pr.PersonaId == personaId &&
@@ -555,6 +640,7 @@ namespace MecaniCar360.Services
             var roles = await _context.Roles
                 .Where(r =>
                     r.Activo &&
+                    r.Nombre != RolesSistema.CLIENTE &&
                     !asignados.Contains(r.Id))
                 .OrderBy(r => r.Nombre)
                 .ToListAsync();
@@ -627,7 +713,7 @@ namespace MecaniCar360.Services
         }
 
 
-        private async Task<bool> ExisteDniAsync(
+        internal async Task<bool> ExisteDniAsync(
             string dni,
             int? excluirId = null)
         {

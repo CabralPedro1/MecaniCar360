@@ -72,6 +72,8 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Crear([Bind("Id,Nombre,MarcaId")] Modelo modelo)
         {
+            // El formulario envía la FK; el service valida que la marca exista y esté activa.
+            ModelState.Remove(nameof(Modelo.Marca));
             if (!ModelState.IsValid)
             {
                 await CargarMarcasAsync();
@@ -114,6 +116,7 @@ namespace MecaniCar360.Controllers
         [Permiso("VEHICULO_MODIFICAR")]
         public async Task<IActionResult> Editar([Bind("Id,Nombre,MarcaId")] Modelo modelo)
         {
+            ModelState.Remove(nameof(Modelo.Marca));
             if (!ModelState.IsValid)
             {
                 await CargarMarcasAsync();
@@ -158,8 +161,11 @@ namespace MecaniCar360.Controllers
         {
             var resultado = await _marcaService.ObtenerTodosAsync(SolicitanteId());
 
+            if (!resultado.Exitoso)
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+
             ViewBag.Marcas = new SelectList(
-                resultado.Data!
+                (resultado.Data ?? new List<Marca>())
                     .Where(m => m.Activo)
                     .OrderBy(m => m.Nombre),
                 "Id",

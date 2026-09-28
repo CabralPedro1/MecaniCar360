@@ -123,6 +123,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para crear roles.");
             }
 
+            if (rol.Nombre.Trim().Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
+                return ServiceResult.Error("CLIENTE es un rol de sistema reservado.");
+
             if (rol.Nombre.Trim().Equals(
                 RolesSistema.ADMIN,
                 StringComparison.OrdinalIgnoreCase))
@@ -169,6 +172,10 @@ namespace MecaniCar360.Services
             if (!existente.Activo)
                 return ServiceResult.Error("No se puede editar un rol desactivado.");
 
+            if (existente.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase) ||
+                rol.Nombre.Trim().Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
+                return ServiceResult.Error("CLIENTE es un rol de sistema reservado.");
+
             if (existente.Nombre.Equals(
                 RolesSistema.ADMIN,
                 StringComparison.OrdinalIgnoreCase) ||
@@ -209,6 +216,9 @@ namespace MecaniCar360.Services
 
             if (rol == null)
                 return ServiceResult.Error("Rol no encontrado.");
+
+            if (rol.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
+                return ServiceResult.Error("El estado del rol CLIENTE no puede modificarse desde la administracion.");
 
             if (rol.Nombre.Equals(
                 RolesSistema.ADMIN,

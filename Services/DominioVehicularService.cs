@@ -107,6 +107,10 @@ public class DominioVehicularService
             if (persona == null || !persona.Activo)
                 return ServiceResult.Error("La persona no existe o está inactiva.");
 
+            if (!await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId &&
+                pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE))
+                return ServiceResult.Error("El titular debe tener rol CLIENTE vigente.");
+
             var resultado = await _vehiculoService
                 .CrearAsync(vehiculo, usuarioSolicitanteId);
 
@@ -161,6 +165,10 @@ public class DominioVehicularService
 
             if (nuevaPersona == null || !nuevaPersona.Activo)
                 return ServiceResult.Error("La persona destino no existe o está inactiva.");
+
+            if (!await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == nuevaPersonaId &&
+                pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE))
+                return ServiceResult.Error("El titular destino debe tener rol CLIENTE vigente.");
 
             var dominiosActivos = await _context.DominiosVehiculares
                 .Where(d =>

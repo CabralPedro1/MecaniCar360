@@ -308,7 +308,7 @@ namespace MecaniCar360.Services
             var cliente = await _context.Personas
                 .FirstOrDefaultAsync(p =>
                     p.Id == clienteId &&
-                    p.Activo);
+                    p.Activo && p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE));
 
             if (cliente == null)
             {

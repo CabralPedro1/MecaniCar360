@@ -59,9 +59,65 @@ namespace MecaniCar360.Data
             if (bootstrapPassword != null)
                 CrearAdministrador(context, bootstrapPassword);
 
+            CrearCatalogoVehicular(context);
+
             context.SaveChanges();
         }
 
+
+        // =====================================================
+        // CATÁLOGO VEHICULAR
+        // =====================================================
+
+        private static void CrearCatalogoVehicular(MecaniCarContext context)
+        {
+            var catalogo = new (string Marca, string[] Modelos)[]
+            {
+                ("VOLKSWAGEN", new[] { "Gol", "Gol Trend", "Polo", "Virtus", "Voyage", "Fox", "Suran", "Saveiro", "Amarok", "T-Cross", "Nivus", "Taos" }),
+                ("CHEVROLET", new[] { "Corsa", "Classic", "Agile", "Onix", "Prisma", "Cruze", "Tracker", "Spin", "S10", "Montana" }),
+                ("FORD", new[] { "Ka", "Fiesta", "Focus", "EcoSport", "Territory", "Ranger", "Maverick" }),
+                ("FIAT", new[] { "Uno", "Palio", "Siena", "Strada", "Toro", "Cronos", "Argo", "Mobi" }),
+                ("RENAULT", new[] { "Clio", "Sandero", "Logan", "Duster", "Kangoo", "Fluence", "Captur", "Oroch" }),
+                ("TOYOTA", new[] { "Etios", "Yaris", "Corolla", "Corolla Cross", "Hilux", "SW4" }),
+                ("PEUGEOT", new[] { "206", "207", "208", "307", "308", "408", "Partner", "2008" }),
+                ("CITROËN", new[] { "C3", "C4", "C4 Cactus", "Berlingo" }),
+                ("HONDA", new[] { "Fit", "City", "Civic", "HR-V", "CR-V" }),
+                ("NISSAN", new[] { "March", "Versa", "Sentra", "Kicks", "Frontier" }),
+                ("JEEP", new[] { "Renegade", "Compass", "Commander" }),
+                ("RAM", new[] { "Rampage", "1500" }),
+                ("MERCEDES-BENZ", new[] { "Clase A", "Clase C", "Sprinter" }),
+                ("AUDI", new[] { "A3", "A4", "Q3", "Q5" }),
+                ("BMW", new[] { "Serie 1", "Serie 3", "X1", "X3" }),
+            };
+
+            foreach (var entrada in catalogo)
+            {
+                // Misma comparación por nombre que los services, ejecutada con la collation SQL.
+                var nombreMarca = entrada.Marca.Trim();
+                var claveMarca = nombreMarca.ToUpper();
+                var marca = context.Marcas.FirstOrDefault(m => m.Nombre.ToUpper() == claveMarca);
+                if (marca == null)
+                {
+                    marca = new Marca { Nombre = nombreMarca, Activo = true, FechaCreacion = DateTime.UtcNow };
+                    context.Marcas.Add(marca);
+                    context.SaveChanges();
+                }
+
+                // Sólo completar faltantes: no cambiar nombres, fechas ni estados existentes.
+                foreach (var nombre in entrada.Modelos)
+                {
+                    var nombreModelo = nombre.Trim();
+                    var claveModelo = nombreModelo.ToUpper();
+                    if (!context.Modelos.Any(m => m.MarcaId == marca.Id && m.Nombre.ToUpper() == claveModelo))
+                        context.Modelos.Add(new Modelo
+                        {
+                            Nombre = nombreModelo, MarcaId = marca.Id,
+                            Activo = true, FechaCreacion = DateTime.UtcNow
+                        });
+                }
+                context.SaveChanges();
+            }
+        }
 
         // =====================================================
         // ROLES

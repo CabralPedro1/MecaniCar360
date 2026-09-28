@@ -103,6 +103,8 @@
 
                                     <td class="text-end">
 
+                                        @if (rol.Nombre != MecaniCar360.Models.RolesSistema.CLIENTE)
+                                        {
                                         <form asp-action="QuitarRol"
                                               method="post">
 
@@ -124,6 +126,7 @@
                                             </button>
 
                                         </form>
+                                        }
 
                                     </td>
 
@@ -211,7 +214,7 @@
                 {
                     <div class="alert alert-info mb-0">
 
-                        Todos los roles disponibles ya fueron asignados.
+                        No hay roles disponibles para asignacion administrativa a esta persona.
 
                     </div>
                 }

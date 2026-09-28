@@ -1,6 +1,7 @@
 using MecaniCar360.Data;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models;
+using MecaniCar360.Models.Enums;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.ViewModels;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -34,7 +35,8 @@ namespace MecaniCar360.Services
 
             var usuario = await ObtenerUsuarioPorUsernameAsync(username);
 
-            if (usuario == null)
+            if (usuario == null || usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
+                string.IsNullOrWhiteSpace(usuario.PasswordHash))
             {
                 _ = BCrypt.Net.BCrypt.Verify(password, DummyPasswordHash);
                 resultado.Mensaje = "Usuario o contraseña incorrectos.";
@@ -96,6 +98,10 @@ namespace MecaniCar360.Services
 
             var validacion = ValidarCompletarDatos(model);
 
+            if (usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
+                string.IsNullOrWhiteSpace(usuario.PasswordHash))
+                return ServiceResult<ClaimsIdentity>.Error("La cuenta no utiliza credenciales locales.");
+
             if (!validacion.Exitoso)
                 return ServiceResult<ClaimsIdentity>.Error(validacion.Mensaje);
 
@@ -126,6 +132,10 @@ namespace MecaniCar360.Services
 
             if (usuario == null || !usuario.Activo || usuario.Persona == null || !usuario.Persona.Activo)
                 return ServiceResult<ClaimsIdentity>.Error("Usuario no encontrado.");
+
+            if (usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
+                string.IsNullOrWhiteSpace(usuario.PasswordHash))
+                return ServiceResult<ClaimsIdentity>.Error("La cuenta no utiliza credenciales locales.");
 
             if (!BCrypt.Net.BCrypt.Verify(
                 model.ContraseñaActual,

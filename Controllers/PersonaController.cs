@@ -20,6 +20,29 @@ namespace MecaniCar360.Controllers
         }
 
 
+        [HttpGet]
+        [Permiso("PERSONA_VER")]
+        public async Task<IActionResult> Clientes(string? busqueda)
+        {
+            var usuarioId = ObtenerUsuarioActualId();
+            if (!usuarioId.HasValue) return Unauthorized();
+            var resultado = await _personaService.ObtenerClientesOperativosAsync(usuarioId.Value, busqueda);
+            if (!resultado.Exitoso) return Forbid();
+            return View(resultado.Data);
+        }
+
+        [HttpGet]
+        [Permiso("PERSONA_VER")]
+        public async Task<IActionResult> Cliente(int id)
+        {
+            if (!ModelState.IsValid || id <= 0) return BadRequest();
+            var usuarioId = ObtenerUsuarioActualId();
+            if (!usuarioId.HasValue) return Unauthorized();
+            var resultado = await _personaService.ObtenerClienteOperativoAsync(id, usuarioId.Value);
+            if (!resultado.Exitoso) return NotFound();
+            return View(resultado.Data);
+        }
+
         // =====================================
         // INDEX
         // =====================================
@@ -156,9 +179,9 @@ namespace MecaniCar360.Controllers
                 new PersonaFormViewModel
                 {
                     Id = persona.Id,
-                    Nombre = persona.Nombre,
-                    Apellido = persona.Apellido,
-                    Dni = persona.Dni,
+                    Nombre = persona.Nombre ?? string.Empty,
+                    Apellido = persona.Apellido ?? string.Empty,
+                    Dni = persona.Dni ?? string.Empty,
                     Telefono = persona.Telefono,
                     Email = persona.Email,
                     Activo = persona.Activo

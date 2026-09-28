@@ -23,7 +23,7 @@
     {
         <a asp-controller="Vehiculo" asp-action="Index" asp-route-personaId="@Model.Id" class="btn btn-info">Ver vehículos</a>
     }
-    @if (Model.Activo && await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_CREAR"))
+    @if (Model.Activo && Model.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == MecaniCar360.Models.RolesSistema.CLIENTE) && await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_CREAR"))
     {
         <a asp-controller="Vehiculo" asp-action="Crear" asp-route-personaId="@Model.Id" class="btn btn-primary">Agregar vehículo</a>
     }

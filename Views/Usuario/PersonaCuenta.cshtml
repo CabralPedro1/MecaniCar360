@@ -1,0 +1,39 @@
+@model MecaniCar360.Models.ViewModels.PersonaCuentaViewModel
+@{
+    ViewData["Title"] = "Detalle de persona y cuenta";
+}
+<h2>Detalle de persona y cuenta</h2>
+<p>@(Model.EsPersonal && Model.EsCliente ? "Personal y cliente: combinación de roles existente." : Model.EsCliente ? "Cliente" : "Personal")</p>
+<dl class="row">
+    <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">@(Model.Nombre ?? "Pendiente")</dd>
+    <dt class="col-sm-3">Apellido</dt><dd class="col-sm-9">@(Model.Apellido ?? "Pendiente")</dd>
+    <dt class="col-sm-3">DNI</dt><dd class="col-sm-9">@(Model.Dni ?? "Pendiente")</dd>
+    <dt class="col-sm-3">Teléfono</dt><dd class="col-sm-9">@(Model.Telefono ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Email de contacto</dt><dd class="col-sm-9">@(Model.Email ?? "Sin informar")</dd>
+    <dt class="col-sm-3">Estado de persona</dt><dd class="col-sm-9">@(Model.PersonaActiva ? "Activa" : "Inactiva")</dd>
+</dl>
+<h3>Cuenta</h3>
+@if (!Model.UsuarioId.HasValue)
+{
+    <p>Esta persona no tiene cuenta de acceso.</p>
+}
+else
+{
+    <dl class="row">
+        <dt class="col-sm-3">Usuario</dt><dd class="col-sm-9">@Model.Username</dd>
+        <dt class="col-sm-3">Email de acceso</dt><dd class="col-sm-9">@Model.EmailLogin</dd>
+        <dt class="col-sm-3">Proveedor</dt><dd class="col-sm-9">@Model.Proveedor</dd>
+        <dt class="col-sm-3">Estado de cuenta</dt><dd class="col-sm-9">@(Model.UsuarioActivo == true ? "Activa" : "Inactiva")</dd>
+    </dl>
+}
+<h3>Asignaciones de roles</h3>
+<table class="table">
+    <thead><tr><th>Rol</th><th>Estado del rol</th><th>Asignación</th></tr></thead>
+    <tbody>
+    @foreach (var rol in Model.Roles)
+    {
+        <tr><td>@rol.Nombre</td><td>@(rol.Activo ? "Activo" : "Inactivo")</td><td>@(rol.FechaBaja.HasValue ? $"Finalizada: {rol.FechaBaja.Value:dd/MM/yyyy}" : "Vigente")</td></tr>
+    }
+    </tbody>
+</table>
+<a asp-action="Administracion" class="btn btn-secondary">Volver a personas y cuentas</a>

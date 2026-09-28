@@ -33,6 +33,14 @@
                             <a class="nav-link" asp-controller="Dashboard" asp-action="Index">Inicio</a>
                         </li>
 
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioCatalogoId) &&
+                            await Permisos.TienePermisoAsync(usuarioCatalogoId, "VEHICULO_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Marca" asp-action="Index">Marcas y modelos</a>
+                            </li>
+                        }
+
                         <!-- TURNOS -->
                         @if (!User.IsInRole("CLIENTE"))
                         {
@@ -81,11 +89,20 @@
                                 <a class="nav-link" asp-controller="Factura" asp-action="MisFacturas">Mis facturas</a>
                             </li>
                         }
-                        <!-- ADMIN -->
-                        @if (User.IsInRole("ADMIN"))
+                        @if (usuarioFacturacionId > 0 &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" asp-controller="Usuario" asp-action="Index">Usuarios</a>
+                                <a class="nav-link" asp-controller="Persona" asp-action="Clientes">Clientes</a>
+                            </li>
+                        }
+                        <!-- ADMIN -->
+                        @if (usuarioFacturacionId > 0 &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "USUARIO_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Usuario" asp-action="Administracion">Personas y cuentas</a>
                             </li>
 
                         }

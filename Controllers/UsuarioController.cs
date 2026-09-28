@@ -12,10 +12,61 @@ namespace MecaniCar360.Controllers
     public class UsuarioController : Controller
     {
         private readonly UsuarioService _usuarioService;
+        private readonly AltaPersonalService _altaPersonal;
 
-        public UsuarioController(UsuarioService usuarioService)
+        public UsuarioController(UsuarioService usuarioService, AltaPersonalService altaPersonal)
         {
             _usuarioService = usuarioService;
+            _altaPersonal = altaPersonal;
+        }
+
+        [HttpGet, Permiso("PERSONA_CREAR"), Permiso("USUARIO_CREAR"), Permiso("ROL_MODIFICAR")]
+        public async Task<IActionResult> NuevoPersonal()
+        {
+            if (!await CargarRolesPersonalAsync()) return Forbid();
+            return View(new NuevoPersonalViewModel());
+        }
+
+        [HttpPost, ValidateAntiForgeryToken]
+        [Permiso("PERSONA_CREAR"), Permiso("USUARIO_CREAR"), Permiso("ROL_MODIFICAR")]
+        public async Task<IActionResult> NuevoPersonal(NuevoPersonalViewModel model)
+        {
+            if (!await CargarRolesPersonalAsync(model.RolId)) return Forbid();
+            if (!ModelState.IsValid) return View(model);
+            var resultado = await _altaPersonal.CrearAsync(model, ObtenerUsuarioId());
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                if (!await CargarRolesPersonalAsync(model.RolId)) return Forbid();
+                return View(model);
+            }
+            TempData["Ok"] = resultado.Mensaje;
+            return RedirectToAction(nameof(Administracion), new { seccion = "personal" });
+        }
+
+        private async Task<bool> CargarRolesPersonalAsync(int? seleccionado = null)
+        {
+            var resultado = await _altaPersonal.ObtenerRolesAsync(ObtenerUsuarioId());
+            if (!resultado.Exitoso) return false;
+            ViewBag.RolesPersonal = new SelectList(resultado.Data, "Id", "Nombre", seleccionado);
+            return true;
+        }
+
+        [HttpGet, Permiso("PERSONA_VER"), Permiso("USUARIO_VER")]
+        public async Task<IActionResult> Administracion()
+        {
+            var resultado = await _usuarioService.ObtenerAdministracionAsync(ObtenerUsuarioId());
+            if (!resultado.Exitoso) return Forbid();
+            return View(new AdministracionCuentasViewModel { Personas = resultado.Data! });
+        }
+
+        [HttpGet, Permiso("PERSONA_VER"), Permiso("USUARIO_VER")]
+        public async Task<IActionResult> PersonaCuenta(int id)
+        {
+            var resultado = await _usuarioService.ObtenerAdministracionAsync(ObtenerUsuarioId(), id);
+            if (!resultado.Exitoso) return Forbid();
+            var persona = resultado.Data!.SingleOrDefault();
+            return persona == null ? NotFound() : View(persona);
         }
 
         [Permiso("USUARIO_VER")]

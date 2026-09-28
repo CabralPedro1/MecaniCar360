@@ -216,6 +216,24 @@ namespace MecaniCar360.Data
                 .IsUnique();
 
             modelBuilder.Entity<Usuario>()
+                .Property(u => u.ProveedorAutenticacion)
+                .HasDefaultValue(MecaniCar360.Models.Enums.ProveedorAutenticacion.Credenciales);
+
+            modelBuilder.Entity<Usuario>()
+                .Property(u => u.IdentificadorExterno)
+                .UseCollation("Latin1_General_100_BIN2");
+
+            modelBuilder.Entity<Usuario>()
+                .HasIndex(u => new { u.ProveedorAutenticacion, u.IdentificadorExterno })
+                .IsUnique()
+                .HasFilter("[IdentificadorExterno] IS NOT NULL");
+
+            modelBuilder.Entity<Usuario>().ToTable("Usuarios", table =>
+                table.HasCheckConstraint("CK_Usuarios_ProveedorAutenticacion",
+                    "([ProveedorAutenticacion] = 0 AND [PasswordHash] IS NOT NULL AND LEN(LTRIM(RTRIM([PasswordHash]))) > 0 AND [IdentificadorExterno] IS NULL) OR " +
+                    "([ProveedorAutenticacion] = 1 AND [PasswordHash] IS NULL AND [IdentificadorExterno] IS NOT NULL AND LEN(LTRIM(RTRIM([IdentificadorExterno]))) > 0 AND [PrimerLogin] = 0)"));
+
+            modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.EmailLogin)
                 .IsUnique();
 

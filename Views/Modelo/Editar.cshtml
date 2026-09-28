@@ -1,12 +1,12 @@
-@model MecaniCar360.Models.Marca
+@model MecaniCar360.Models.Modelo
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{
-    ViewData["Title"] = "Editar marca";
+    ViewData["Title"] = "Editar modelo";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
     var consultar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_VER");
 }
-<h2>Editar marca</h2>
+<h2>Editar modelo</h2>
 <form asp-action="Editar" method="post">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
@@ -15,6 +15,13 @@
         <label asp-for="Nombre" class="form-label"></label>
         <input asp-for="Nombre" class="form-control" maxlength="100" />
         <span asp-validation-for="Nombre" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="MarcaId" class="form-label">Marca</label>
+        <select asp-for="MarcaId" asp-items="ViewBag.Marcas" class="form-select" required>
+            <option value="">Seleccione una marca activa</option>
+        </select>
+        <span asp-validation-for="MarcaId" class="text-danger"></span>
     </div>
     <button type="submit" class="btn btn-primary">Guardar</button>
     @if (consultar) { <a asp-action="Index" class="btn btn-secondary">Volver</a> }

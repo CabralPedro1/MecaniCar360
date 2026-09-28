@@ -1,4 +1,4 @@
-using MecaniCar360.Attributes;
+﻿using MecaniCar360.Attributes;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Services;
@@ -12,11 +12,13 @@ namespace MecaniCar360.Controllers
     public class OrdenTrabajoController : Controller
     {
         private readonly OrdenTrabajoService _ordenTrabajoService;
+        private readonly PermisoService _permisos;
 
         public OrdenTrabajoController(
-            OrdenTrabajoService ordenTrabajoService)
+            OrdenTrabajoService ordenTrabajoService, PermisoService permisos)
         {
             _ordenTrabajoService = ordenTrabajoService;
+            _permisos = permisos;
         }
 
 
@@ -24,6 +26,7 @@ namespace MecaniCar360.Controllers
         // INDEX
         // =====================================================
 
+        [HttpGet]
         [Permiso("ORDEN_VER")]
         public async Task<IActionResult> Index()
         {
@@ -49,6 +52,7 @@ namespace MecaniCar360.Controllers
                     "Dashboard");
             }
 
+            await PrepararNavegacionAsync(usuarioSolicitanteId.Value);
             return View(resultado.Data);
         }
 
@@ -57,6 +61,7 @@ namespace MecaniCar360.Controllers
         // DETALLE
         // =====================================================
 
+        [HttpGet]
         [Permiso("ORDEN_VER_DETALLE")]
         public async Task<IActionResult> Detalle(
             int id)
@@ -83,6 +88,7 @@ namespace MecaniCar360.Controllers
                     nameof(Index));
             }
 
+            await PrepararNavegacionAsync(usuarioSolicitanteId.Value);
             return View(resultado.Data);
         }
 
@@ -91,6 +97,7 @@ namespace MecaniCar360.Controllers
         // ÓRDENES PENDIENTES
         // =====================================================
 
+        [HttpGet]
         [Permiso("ORDEN_VER")]
         public async Task<IActionResult> Pendientes()
         {
@@ -115,6 +122,7 @@ namespace MecaniCar360.Controllers
                     nameof(Index));
             }
 
+            await PrepararNavegacionAsync(usuarioSolicitanteId.Value);
             return View(resultado.Data);
         }
 
@@ -123,9 +131,10 @@ namespace MecaniCar360.Controllers
         // ÓRDENES DEL MECÁNICO
         // =====================================================
 
+        [HttpGet]
         [Permiso("ORDEN_VER")]
         public async Task<IActionResult> DeMecanico(
-            int mecanicoId)
+            int? mecanicoId = null)
         {
             var usuarioSolicitanteId = ObtenerUsuarioId();
 
@@ -137,7 +146,7 @@ namespace MecaniCar360.Controllers
             var resultado =
                 await _ordenTrabajoService
                     .ObtenerDeMecanicoAsync(
-                        mecanicoId,
+                        mecanicoId ?? await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId.Value) ?? 0,
                         usuarioSolicitanteId.Value);
 
             if (!resultado.Exitoso)
@@ -149,6 +158,7 @@ namespace MecaniCar360.Controllers
                     nameof(Index));
             }
 
+            await PrepararNavegacionAsync(usuarioSolicitanteId.Value);
             return View(
                 "DeMecanico",
                 resultado.Data);
@@ -161,9 +171,10 @@ namespace MecaniCar360.Controllers
         // SOLO ADMIN
         // =====================================================
 
+        [HttpGet]
         [Permiso("ORDEN_ASIGNAR_MECANICO")]
         public async Task<IActionResult>
-            MecanicosDisponibles()
+            MecanicosDisponibles(int? ordenTrabajoId = null)
         {
             var usuarioSolicitanteId = ObtenerUsuarioId();
 
@@ -171,6 +182,9 @@ namespace MecaniCar360.Controllers
                 return RedirectToAction(
                     "Login",
                     "Account");
+
+            if (!ModelState.IsValid || ordenTrabajoId <= 0) return BadRequest("Orden invalida.");
+            ViewData["OrdenTrabajoId"] = ordenTrabajoId;
 
             var resultado =
                 await _ordenTrabajoService
@@ -186,6 +200,7 @@ namespace MecaniCar360.Controllers
                     nameof(Index));
             }
 
+            await PrepararNavegacionAsync(usuarioSolicitanteId.Value);
             return View(resultado.Data);
         }
 
@@ -591,6 +606,19 @@ namespace MecaniCar360.Controllers
             if (!resultado.Exitoso) return NotFound();
             var o = resultado.Data!;
             return Json(new { o.Id, o.EstadoActual, o.FechaInicio, o.FechaFin });
+        }
+
+        private async Task PrepararNavegacionAsync(int usuarioId)
+        {
+            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+            if (personaId.HasValue && await _permisos.TienePermisoAsync(usuarioId, "ORDEN_VER"))
+            {
+                // Reutilizar la elegibilidad y alcance del service, sin roles desde Claims.
+                var propias = await _ordenTrabajoService.ObtenerDeMecanicoAsync(personaId.Value, usuarioId);
+                ViewData["EsMecanicoConsultable"] = propias.Exitoso;
+                ViewData["PuedeTomar"] = propias.Exitoso &&
+                    await _permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
+            }
         }
 
         private int? ObtenerUsuarioId()
