@@ -1,0 +1,25 @@
+@model Turno
+@using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{ ViewData["Title"] = "Mi turno"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
+<h1>Turno #@Model.Id</h1>
+<partial name="_Mensajes" />
+<p><strong>Fecha:</strong> @Model.FechaInicio.ToString("dd/MM/yyyy HH:mm")</p>
+<p><strong>Estado:</strong> @(Model.Estado == EstadoTurno.ClienteAusente ? "Cliente ausente" : Model.Estado.ToString())</p>
+<p><strong>Tipo:</strong> @Model.Tipo</p>
+<p><strong>Vehículo previsto:</strong> @(Model.Vehiculo == null ? "Sin especificar" : $"{Model.Vehiculo.Patente} — {Model.Vehiculo.Marca.Nombre} {Model.Vehiculo.Modelo.Nombre}")</p>
+<p><strong>Motivo:</strong> @Model.Motivo</p>
+<a asp-action="MisTurnos" class="btn btn-secondary mb-3">Volver</a>
+@if (Model.IngresoVehiculo?.OrdenTrabajo is {} orden && await Permisos.TienePermisoAsync(actor, "CLIENTE_ORDEN_VER")) {
+    <a asp-action="Orden" asp-route-id="@orden.Id" class="btn btn-outline-primary mb-3">Ver orden de trabajo</a>
+}
+@if (Model.IngresoVehiculo == null && Model.Estado is EstadoTurno.Pendiente or EstadoTurno.Confirmado && await Permisos.TienePermisoAsync(actor, "CLIENTE_TURNO_CANCELAR")) {
+    <form asp-action="CancelarTurno" method="post">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="id" value="@Model.Id" />
+        <label for="motivo">Motivo de cancelación (opcional)</label>
+        <textarea id="motivo" name="motivo" class="form-control mb-2"></textarea>
+        <button type="submit" class="btn btn-warning">Cancelar turno</button>
+    </form>
+}

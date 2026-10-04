@@ -47,6 +47,9 @@ namespace MecaniCar360.Services
         public Task<ServiceResult<Factura>> ObtenerPropiaAsync(int facturaId, int usuarioId) =>
             ConsultarAsync(Consulta().Where(f => f.Id == facturaId), usuarioId, "CLIENTE_FACTURA_VER", true);
 
+        public Task<ServiceResult<Factura>> ObtenerPorOrdenPropiaAsync(int ordenTrabajoId, int usuarioId) =>
+            ConsultarAsync(Consulta().Where(f => f.OrdenTrabajoId == ordenTrabajoId), usuarioId, "CLIENTE_FACTURA_VER", true);
+
         public Task<ServiceResult<Factura>> ObtenerParaPagoAsync(int facturaId, int usuarioId) =>
             ConsultarAsync(Consulta().Where(f => f.Id == facturaId), usuarioId, "PAGO_REGISTRAR");
 

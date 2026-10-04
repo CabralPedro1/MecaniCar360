@@ -1,0 +1,22 @@
+@model MecaniCar360.Models.ViewModels.OrdenPropiaViewModel
+@{ ViewData["Title"] = "Mi orden"; var o = Model.Orden; var ingreso = o.IngresoVehiculo; var v = ingreso.Vehiculo; }
+<h1>Orden #@o.Id</h1>
+<partial name="_Mensajes" />
+<p><strong>Estado:</strong> <partial name="_EstadoOrden" model="o.EstadoActual" /></p>
+<p><strong>Vehículo recibido:</strong> @v.Patente — @v.Marca.Nombre @v.Modelo.Nombre</p>
+<p><strong>Ingreso:</strong> @ingreso.FechaIngreso.ToString("dd/MM/yyyy HH:mm") · <strong>Kilometraje:</strong> @ingreso.Kilometraje</p>
+<p><strong>Inicio del trabajo:</strong> @o.FechaInicio.ToString("dd/MM/yyyy HH:mm")</p>
+@if (o.FechaFin.HasValue) { <p><strong>Finalización:</strong> @o.FechaFin.Value.ToString("dd/MM/yyyy HH:mm")</p> }
+@if (ingreso.FechaEgreso.HasValue) { <p><strong>Entrega:</strong> @ingreso.FechaEgreso.Value.ToString("dd/MM/yyyy HH:mm")</p> }
+@if (Model.Diagnostico != null) {
+    <h2 class="h5">Diagnóstico</h2><p class="text-break">@Model.Diagnostico.DescripcionActual</p>
+}
+@if (Model.Presupuesto != null) {
+    <h2 class="h5">Presupuesto enviado</h2>
+    <p>Versión @Model.Presupuesto.NumeroVersion · @Model.Presupuesto.Decision · @Model.Presupuesto.Total.ToString("C2")</p>
+    <a asp-controller="Presupuesto" asp-action="Propio" asp-route-ordenTrabajoId="@o.Id" class="btn btn-primary mb-3">Ver presupuesto</a>
+} else { <p>No hay un presupuesto enviado disponible para consultar.</p> }
+@if (Model.FacturaId.HasValue) {
+    <a asp-controller="Factura" asp-action="DetallePropio" asp-route-facturaId="@Model.FacturaId" class="btn btn-outline-primary mb-3">Ver factura</a>
+}
+<a asp-action="MisOrdenes" class="btn btn-secondary mb-3">Volver a mis órdenes</a>

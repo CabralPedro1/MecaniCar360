@@ -1,0 +1,7 @@
+@model MecaniCar360.Models.Enums.EstadoOrden
+@(Model switch {
+    MecaniCar360.Models.Enums.EstadoOrden.Diagnostico => "Diagnóstico",
+    MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion => "Esperando aprobación",
+    MecaniCar360.Models.Enums.EstadoOrden.EnReparacion => "En reparación",
+    _ => Model.ToString()
+})

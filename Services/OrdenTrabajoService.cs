@@ -954,6 +954,8 @@ namespace MecaniCar360.Services
             var usuario = await ObtenerUsuarioAutorizadoAsync(usuarioSolicitanteId, "CLIENTE_ORDEN_VER");
             if (usuario == null) return ServiceResult<List<OrdenTrabajo>>.Error("Acceso denegado.");
             var ordenes = await _context.OrdenesTrabajo.AsNoTracking()
+                .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Vehiculo).ThenInclude(v => v.Modelo)
                 .Where(o => o.IngresoVehiculo.Turno.ClienteId == usuario.PersonaId)
                 .OrderByDescending(o => o.FechaInicio).ToListAsync();
             return ServiceResult<List<OrdenTrabajo>>.Ok(ordenes);
@@ -963,9 +965,18 @@ namespace MecaniCar360.Services
         {
             var usuario = await ObtenerUsuarioAutorizadoAsync(usuarioSolicitanteId, "CLIENTE_ORDEN_VER");
             if (usuario == null) return ServiceResult<OrdenTrabajo>.Error("Acceso denegado.");
-            var orden = await _context.OrdenesTrabajo.AsNoTracking().FirstOrDefaultAsync(o =>
+            var orden = await _context.OrdenesTrabajo.AsNoTracking()
+                .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Vehiculo).ThenInclude(v => v.Marca)
+                .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Vehiculo).ThenInclude(v => v.Modelo)
+                .FirstOrDefaultAsync(o =>
                 o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == usuario.PersonaId);
-            return orden == null ? ServiceResult<OrdenTrabajo>.Error("Orden no encontrada.") : ServiceResult<OrdenTrabajo>.Ok(orden);
+            if (orden == null) return ServiceResult<OrdenTrabajo>.Error("Orden no encontrada.");
+            // Consulta propia: sólo descripción actual, sin historial, evidencias ni actores internos.
+            orden.Diagnostico = await _context.Diagnosticos.AsNoTracking()
+                .Where(d => d.OrdenTrabajoId == orden.Id)
+                .Select(d => new Diagnostico { DescripcionActual = d.DescripcionActual })
+                .FirstOrDefaultAsync();
+            return ServiceResult<OrdenTrabajo>.Ok(orden);
         }
 
         private async Task<Usuario?> ObtenerUsuarioAutorizadoAsync(

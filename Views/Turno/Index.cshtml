@@ -1,8 +1,17 @@
 @model MecaniCar360.Models.ViewModels.CalendarioViewModel
+@{ ViewData["Title"] = "Calendario de turnos"; }
 
 <h2 class="mb-4">
     Calendario de Turnos - @Model.Fecha.ToString("dd/MM/yyyy")
 </h2>
+
+<partial name="_Mensajes" />
+<form asp-action="Index" method="get" class="mb-3">
+    <label for="fecha">Fecha</label>
+    <input id="fecha" name="fecha" type="date" value="@Model.Fecha.ToString("yyyy-MM-dd")" required />
+    <button class="btn btn-secondary" type="submit">Consultar</button>
+    <a asp-action="Agenda" asp-route-fecha="@Model.Fecha.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Agenda del día</a>
+</form>
 
 <div class="mb-3">
     <a class="btn btn-primary" href="/Turno/Crear">
@@ -42,7 +51,9 @@
                                     👤 @t.Cliente.Nombre<br />
                                     ⏰ @t.FechaInicio.ToString("HH:mm")
 
+                                    <div>@t.Estado</div>
                                     <div class="mt-2">
+                                        <a asp-action="Detalle" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">Detalle</a>
 
                                         @if (t.IngresoVehiculo?.OrdenTrabajo != null)
                                         {
