@@ -1,0 +1,30 @@
+@model MecaniCar360.Models.ViewModels.CrearGarantiaViewModel
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{ ViewData["Title"] = "Crear garantía"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
+<h1>Crear garantía — OT #@Model.OrdenTrabajoId</h1>
+<partial name="_Mensajes" />
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+@if (Model.Items.Count > 0) {
+<p>Inicio de cobertura: @Model.FechaInicio.ToString("dd/MM/yyyy HH:mm") (entrega efectiva).</p>
+<p>Seleccione los ítems a cubrir e indique entre 1 y 120 meses para cada uno.</p>
+<form asp-action="Crear" method="post">
+@Html.AntiForgeryToken()
+<input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
+<div class="table-responsive"><table class="table table-striped">
+<thead><tr><th>Incluir</th><th>Ítem facturado</th><th>Cantidad</th><th>Meses</th><th>Observaciones</th></tr></thead>
+<tbody>@foreach (var item in Model.Items) {
+    <tr><td><input type="checkbox" name="items.Index" value="@item.Id" aria-label="Incluir @item.Descripcion" /></td>
+    <td>@item.Descripcion<input type="hidden" name="items[@item.Id].FacturaItemId" value="@item.Id" /></td>
+    <td>@item.Cantidad</td><td><input type="number" name="items[@item.Id].MesesGarantia" min="1" max="120" class="form-control" aria-label="Meses para @item.Descripcion" /></td>
+    <td><input name="items[@item.Id].Observaciones" maxlength="1000" class="form-control" aria-label="Observaciones de @item.Descripcion" /></td></tr>
+}</tbody></table></div>
+<button class="btn btn-primary mb-3" type="submit">Crear garantía</button>
+</form>
+}
+@if (await Permisos.TienePermisoAsync(actor, "ORDEN_VER_DETALLE")) {
+    <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-secondary">Volver a la orden</a>
+}
+@if (await Permisos.TienePermisoAsync(actor, "GARANTIA_VER")) {
+    <a asp-action="Index" class="btn btn-outline-secondary">Ver garantías</a>
+}

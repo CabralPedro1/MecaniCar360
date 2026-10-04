@@ -1,6 +1,8 @@
 using MecaniCar360.Attributes;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models.DTOs;
+using MecaniCar360.Models;
+using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -44,7 +46,7 @@ namespace MecaniCar360.Controllers
                     "Dashboard");
             }
 
-            return View(resultado.Data);
+            return View(resultado.Data!.Select(ParaVista).ToList());
         }
 
 
@@ -72,7 +74,7 @@ namespace MecaniCar360.Controllers
                     nameof(Index));
             }
 
-            return View(resultado.Data);
+            return View(ParaVista(resultado.Data!));
         }
 
 
@@ -109,7 +111,8 @@ namespace MecaniCar360.Controllers
                     "Dashboard");
             }
 
-            return View(resultado.Data);
+            ViewData["Propia"] = true;
+            return View(resultado.Data!.Select(ParaVista).ToList());
         }
 
 
@@ -140,7 +143,7 @@ namespace MecaniCar360.Controllers
 
             return View(
                 "PorVehiculo",
-                resultado.Data);
+                resultado.Data!.Select(ParaVista).ToList());
         }
 
 
@@ -149,6 +152,14 @@ namespace MecaniCar360.Controllers
         //
         // ADMIN / CAJA
         // =====================================================
+
+        [HttpGet, Permiso("GARANTIA_CREAR")]
+        public async Task<IActionResult> Crear(int ordenTrabajoId)
+        {
+            var resultado = await _garantiaService.ObtenerParaCrearAsync(ordenTrabajoId, ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) ModelState.AddModelError(string.Empty, resultado.Mensaje);
+            return View(resultado.Data ?? new CrearGarantiaViewModel { OrdenTrabajoId = ordenTrabajoId });
+        }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
@@ -181,11 +192,10 @@ namespace MecaniCar360.Controllers
                     resultado.Mensaje;
 
                 return RedirectToAction(
-                    "Detalle",
-                    "OrdenTrabajo",
+                    nameof(Crear),
                     new
                     {
-                        id = ordenTrabajoId
+                        ordenTrabajoId
                     });
             }
 
@@ -295,6 +305,28 @@ namespace MecaniCar360.Controllers
         // =====================================================
         // HELPERS
         // =====================================================
+
+        [HttpGet, Permiso("GARANTIA_VER_PROPIA")]
+        public async Task<IActionResult> DetallePropio(int id)
+        {
+            var resultado = await _garantiaService.ObtenerPropiaAsync(id, ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) return NotFound();
+            ViewData["Propia"] = true;
+            return View("Detalle", ParaVista(resultado.Data!));
+        }
+
+        [HttpGet, Permiso("GARANTIA_VER_PROPIA"), Permiso("CLIENTE_VEHICULO_VER")]
+        public async Task<IActionResult> PorVehiculoPropio(int vehiculoId)
+        {
+            var resultado = await _garantiaService.ObtenerPorVehiculoPropioAsync(vehiculoId, ObtenerUsuarioId() ?? 0);
+            if (!resultado.Exitoso) return NotFound();
+            ViewData["Propia"] = true;
+            ViewData["VehiculoId"] = vehiculoId;
+            return View("PorVehiculo", resultado.Data!.Select(ParaVista).ToList());
+        }
+
+        private static GarantiaDetalleViewModel ParaVista(Garantia garantia) => new()
+        { Garantia = garantia, Estado = GarantiaService.DescribirVigencia(garantia) };
 
         [HttpGet, Permiso("GARANTIA_VER_PROPIA")]
         public async Task<IActionResult> Propia(int id)

@@ -9,6 +9,9 @@
     <dt class="col-sm-3">Color</dt><dd class="col-sm-9">@(Model.Color ?? "Sin informar")</dd>
 </dl>
 <a asp-action="MisVehiculos" class="btn btn-secondary">Volver</a>
+@if (await Permisos.TienePermisoAsync(actor, "GARANTIA_VER_PROPIA")) {
+    <a asp-controller="Garantia" asp-action="PorVehiculoPropio" asp-route-vehiculoId="@Model.Id" class="btn btn-outline-primary">Mis garantías del vehículo</a>
+}
 @if (await Permisos.TienePermisoAsync(actor, "CLIENTE_TURNO_CREAR")) {
     <a asp-action="NuevoTurno" asp-route-vehiculoId="@Model.Id" class="btn btn-primary">Solicitar turno</a>
 }

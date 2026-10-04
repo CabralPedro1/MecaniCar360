@@ -17,7 +17,7 @@ public sealed class PortalClienteController(
 {
     private int Actor => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
 
-    [HttpGet, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER")]
+    [HttpGet, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")]
     public IActionResult Index() => View();
 
     [HttpGet, Permiso("CLIENTE_VEHICULO_VER")]

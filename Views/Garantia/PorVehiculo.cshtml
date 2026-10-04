@@ -1,0 +1,9 @@
+@model List<MecaniCar360.Models.ViewModels.GarantiaDetalleViewModel>
+@{ ViewData["Title"] = "Garantías del vehículo"; var propia = ViewData["Propia"] is true; }
+<h1>Garantías del vehículo</h1>
+<partial name="_Mensajes" />
+<a asp-action="@(propia ? "MisGarantias" : "Index")" class="btn btn-secondary mb-3">Volver a garantías</a>
+@if (propia && ViewData["VehiculoId"] is int vehiculoId) {
+    <a asp-controller="PortalCliente" asp-action="Vehiculo" asp-route-id="@vehiculoId" class="btn btn-outline-secondary mb-3">Volver a mi vehículo</a>
+}
+<partial name="_Lista" model="Model" />
