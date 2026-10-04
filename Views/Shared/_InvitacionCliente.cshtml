@@ -1,0 +1,20 @@
+@model int
+@using System.Security.Claims
+@inject MecaniCar360.Services.InvitacionClienteService Invitaciones
+@{
+    var estado = int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor)
+        ? await Invitaciones.ObtenerEstadoAsync(Model, actor) : null;
+}
+@if (estado?.Exitoso == true)
+{
+    var cuenta = estado.Data!;
+    <p>@(cuenta.Habilitado ? "Cuenta activa: cliente habilitado." : cuenta.TieneUsuario ? "Cuenta existente: cliente no habilitado." : "Cuenta pendiente de activacion.")</p>
+    @if (cuenta.PuedeInvitar)
+    {
+        <form asp-controller="InvitacionCliente" asp-action="Emitir" method="post">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="personaId" value="@Model" />
+            <button type="submit" class="btn btn-primary">@(cuenta.InvitacionPendiente ? "Reenviar invitacion" : "Enviar invitacion")</button>
+        </form>
+    }
+}

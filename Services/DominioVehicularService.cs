@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Services;
@@ -154,8 +154,9 @@ public class DominioVehicularService
 
         try
         {
-            var vehiculo = await _context.Vehiculos
-                .FirstOrDefaultAsync(v => v.Id == vehiculoId);
+            var vehiculo = await _context.Vehiculos.FromSqlInterpolated(
+                $"SELECT * FROM [Vehiculos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {vehiculoId}")
+                .FirstOrDefaultAsync();
 
             if (vehiculo == null)
                 return ServiceResult.Error("Vehículo no encontrado.");
@@ -227,6 +228,12 @@ public class DominioVehicularService
                 "No posee permisos para modificar vehículos.");
         }
 
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        var vehiculo = await _context.Vehiculos.FromSqlInterpolated(
+            $"SELECT * FROM [Vehiculos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {vehiculoId}")
+            .AsNoTracking().SingleOrDefaultAsync();
+        if (vehiculo == null) return ServiceResult.Error("Vehiculo no encontrado.");
+
         var dominiosActivos = await _context.DominiosVehiculares
             .Where(d =>
                 d.VehiculoId == vehiculoId &&
@@ -251,6 +258,7 @@ public class DominioVehicularService
             $"Titularidad finalizada para Persona {dominiosActivos[0].PersonaId}.");
         await GuardarCambiosAsync();
 
+        await transaction.CommitAsync();
         return ServiceResult.Ok("Titularidad finalizada correctamente.");
     }
 

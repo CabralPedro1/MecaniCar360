@@ -44,6 +44,6 @@ namespace MecaniCar360.Models
 
         public List<Turno> Turnos { get; set; } = new();
 
-        public List<OrdenTrabajo> OrdenesTrabajo { get; set; } = new();
+        public List<IngresoVehiculo> IngresosVehiculo { get; set; } = new();
     }
 }

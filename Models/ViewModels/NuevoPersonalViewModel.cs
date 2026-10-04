@@ -15,6 +15,7 @@ public sealed class NuevoPersonalViewModel
     [EmailAddress, StringLength(100), Display(Name = "Email de contacto")]
     public string? Email { get; set; }
     [Required, StringLength(50), Display(Name = "Usuario")]
+    [RegularExpression(@"[^@]+", ErrorMessage = "El usuario no puede contener @.")]
     public string Username { get; set; } = "";
     [Required, EmailAddress, StringLength(100), Display(Name = "Email de acceso")]
     public string EmailLogin { get; set; } = "";

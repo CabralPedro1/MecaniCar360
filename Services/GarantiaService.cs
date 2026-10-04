@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
@@ -168,7 +168,7 @@ namespace MecaniCar360.Services
             if (!await UsuarioAutorizadoAsync(usuarioSolicitanteId, "GARANTIA_VER"))
                 return ServiceResult<List<Garantia>>.Error("Acceso denegado.");
             return ServiceResult<List<Garantia>>.Ok(await Consulta()
-                .Where(g => g.OrdenTrabajo.IngresoVehiculo.Turno.VehiculoId == vehiculoId)
+                .Where(g => g.OrdenTrabajo.IngresoVehiculo.VehiculoId == vehiculoId)
                 .OrderByDescending(g => g.FechaInicio).ToListAsync());
         }
 
@@ -239,7 +239,8 @@ namespace MecaniCar360.Services
             .Include(g => g.Items).ThenInclude(i => i.FacturaItem)
             .Include(g => g.CreadaPorUsuario).ThenInclude(u => u.Persona)
             .Include(g => g.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Cliente)
-            .Include(g => g.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Vehiculo);
+            .Include(g => g.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Marca)
+            .Include(g => g.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Modelo);
 
         private async Task<bool> UsuarioAutorizadoAsync(int id, string patente) => id > 0 &&
             await _permisos.TienePermisoAsync(id, patente) &&

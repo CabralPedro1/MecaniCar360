@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +33,13 @@ namespace MecaniCar360.Services
             var registro = Crear(accion, entidad, entidadId, actor, descripcion);
             _context.Auditorias.Add(registro);
             return registro;
+        }
+
+        // Evento limitado: el destinatario no es el actor autenticado.
+        internal void RegistrarActivacionCliente(int usuarioId)
+        {
+            _context.Auditorias.Add(Crear("CLIENTE_ACTIVADO", "Usuario", usuarioId, null,
+                "Cuenta activada mediante invitacion."));
         }
 
         public Task RegistrarLoginExitosoAsync() => RegistrarSesionAsync("LOGIN_EXITOSO", ObtenerActor());

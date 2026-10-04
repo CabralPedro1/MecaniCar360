@@ -1,0 +1,17 @@
+@model MecaniCar360.Models.ViewModels.ActivarClienteViewModel
+@{ Layout = null; }
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title></head><body>
+<h1>Activar cuenta de MecaniCar</h1>
+<form asp-controller="ActivacionCliente" asp-action="Index" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div asp-validation-summary="All"></div>
+    }
+    <input asp-for="Token" type="hidden" />
+    <div><label asp-for="Username">Usuario</label><input asp-for="Username" autocomplete="username" maxlength="50" required /><span asp-validation-for="Username"></span></div>
+    <div><label asp-for="Password">Contrasena</label><input asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span></div>
+    <div><label asp-for="ConfirmarPassword">Confirmar contrasena</label><input asp-for="ConfirmarPassword" autocomplete="new-password" required /><span asp-validation-for="ConfirmarPassword"></span></div>
+    <p>Use al menos 8 caracteres, mayusculas, minusculas, numeros y un simbolo.</p>
+    <button type="submit">Activar cuenta</button>
+</form></body></html>

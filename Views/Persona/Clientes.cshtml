@@ -1,8 +1,15 @@
 @model MecaniCar360.Models.ViewModels.ClientesOperativosViewModel
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 @{
     ViewData["Title"] = "Clientes";
 }
 <h1>Clientes</h1>
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) &&
+    await Permisos.TienePermisoAsync(actorId, "PERSONA_CREAR"))
+{
+    <a asp-action="NuevoCliente" class="btn btn-primary mb-3">Nuevo cliente</a>
+}
 <form asp-controller="Persona" asp-action="Clientes" method="get" class="mb-3">
     <label for="busqueda" class="form-label">Buscar por nombre, apellido, DNI, email o teléfono</label>
     <div class="input-group">

@@ -1,8 +1,17 @@
-@model MecaniCar360.Models.ViewModels.ClienteDetalleOperativoViewModel
+﻿@model MecaniCar360.Models.ViewModels.ClienteDetalleOperativoViewModel
 @{
     ViewData["Title"] = "Ficha de cliente";
 }
 <h1>Ficha de cliente</h1>
+@if (TempData["Ok"] is string mensaje)
+{
+    <div class="alert alert-success" role="status">@mensaje</div>
+}
+@if (TempData["Error"] is string errorInvitacion)
+{
+    <div class="alert alert-danger" role="alert">@errorInvitacion</div>
+}
+<partial name="_InvitacionCliente" model="Model.Cliente.Id" />
 <h2>Datos del cliente</h2>
 <dl class="row">
     <dt class="col-sm-3">Nombre</dt><dd class="col-sm-9">@(Model.Cliente.Nombre ?? "Sin informar")</dd>

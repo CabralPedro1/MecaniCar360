@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
@@ -213,12 +213,13 @@ namespace MecaniCar360.Services
 
         public async Task<ServiceResult> CrearAsync(
             int clienteId,
-            int vehiculoId,
+            int? vehiculoId,
             TipoTurno tipo,
-            DateTime fechaInicio,
+            DateTime? fechaInicio,
             string motivo,
             int usuarioId,
-            string? observaciones = null)
+            string? observaciones = null,
+            bool atencionInmediata = false)
         {
             if (!await _permisoService.TienePermisoAsync(
                 usuarioId,
@@ -235,16 +236,18 @@ namespace MecaniCar360.Services
                 fechaInicio,
                 motivo,
                 usuarioId,
-                observaciones);
+                observaciones,
+                atencionInmediata);
         }
 
         public async Task<ServiceResult> CrearPropioAsync(
             int usuarioId,
-            int vehiculoId,
+            int? vehiculoId,
             TipoTurno tipo,
-            DateTime fechaInicio,
+            DateTime? fechaInicio,
             string motivo,
-            string? observaciones = null)
+            string? observaciones = null,
+            bool atencionInmediata = false)
         {
             if (!await _permisoService.TienePermisoAsync(
                 usuarioId,
@@ -262,9 +265,9 @@ namespace MecaniCar360.Services
                     "Usuario no encontrado o inactivo.");
             }
 
-            if (!await _dominioVehicularService.EsTitularActualAsync(
+            if (vehiculoId.HasValue && !await _dominioVehicularService.EsTitularActualAsync(
                 personaId.Value,
-                vehiculoId))
+                vehiculoId.Value))
             {
                 return ServiceResult.Error(
                     "El cliente no es el titular actual del vehículo.");
@@ -277,17 +280,19 @@ namespace MecaniCar360.Services
                 fechaInicio,
                 motivo,
                 usuarioId,
-                observaciones);
+                observaciones,
+                atencionInmediata);
         }
 
         private async Task<ServiceResult> CrearInternoAsync(
             int clienteId,
-            int vehiculoId,
+            int? vehiculoId,
             TipoTurno tipo,
-            DateTime fechaInicio,
+            DateTime? fechaInicio,
             string motivo,
             int usuarioId,
-            string? observaciones)
+            string? observaciones,
+            bool atencionInmediata)
         {
             // ---------------------------------
             // VALIDACIONES BÁSICAS
@@ -299,16 +304,23 @@ namespace MecaniCar360.Services
                     "Debe indicar el motivo del turno.");
             }
 
-            if (fechaInicio <= DateTime.Now)
+            if (!atencionInmediata && !fechaInicio.HasValue)
             {
                 return ServiceResult.Error(
-                    "La fecha del turno debe ser futura.");
+                    "Debe indicar una fecha para el turno programado.");
             }
+
+            if (!atencionInmediata && !vehiculoId.HasValue)
+                return ServiceResult.Error("Seleccione el vehículo previsto para el turno programado.");
+
+            var fechaEfectiva = atencionInmediata ? DateTime.Now : fechaInicio!.Value;
+            if (!atencionInmediata && fechaEfectiva <= DateTime.Now)
+                return ServiceResult.Error("La fecha del turno debe ser futura.");
 
             var cliente = await _context.Personas
                 .FirstOrDefaultAsync(p =>
                     p.Id == clienteId &&
-                    p.Activo && p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE));
+                    p.Activo);
 
             if (cliente == null)
             {
@@ -316,12 +328,8 @@ namespace MecaniCar360.Services
                     "El cliente no existe o está inactivo.");
             }
 
-            var vehiculo = await _context.Vehiculos
-                .FirstOrDefaultAsync(v =>
-                    v.Id == vehiculoId &&
-                    v.Activo);
-
-            if (vehiculo == null)
+            if (vehiculoId.HasValue && !await _context.Vehiculos.AnyAsync(v =>
+                    v.Id == vehiculoId.Value && v.Activo))
             {
                 return ServiceResult.Error(
                     "El vehículo no existe o está inactivo.");
@@ -332,10 +340,8 @@ namespace MecaniCar360.Services
             // VERIFICAR TITULARIDAD
             // ---------------------------------
 
-            var esTitular = await _dominioVehicularService
-                .EsTitularActualAsync(clienteId, vehiculoId);
-
-            if (!esTitular)
+            if (vehiculoId.HasValue && !await _dominioVehicularService
+                .EsTitularActualAsync(clienteId, vehiculoId.Value))
             {
                 return ServiceResult.Error(
                     "El cliente no es el titular actual del vehículo.");
@@ -346,9 +352,9 @@ namespace MecaniCar360.Services
             // EVITAR TURNO DUPLICADO
             // ---------------------------------
 
-            var tieneTurnoActivo = await _context.Turnos
+            var tieneTurnoActivo = vehiculoId.HasValue && await _context.Turnos
                 .AnyAsync(t =>
-                    t.VehiculoId == vehiculoId &&
+                    t.VehiculoId == vehiculoId.Value &&
                     t.Estado != EstadoTurno.Cancelado &&
                     t.Estado != EstadoTurno.ClienteAusente &&
                     t.Estado != EstadoTurno.Finalizado &&
@@ -365,13 +371,10 @@ namespace MecaniCar360.Services
             // DISPONIBILIDAD
             // ---------------------------------
 
-            var disponibilidad =
-                await _agendaService.ValidarDisponibilidadAsync(
-                    fechaInicio);
-
-            if (!disponibilidad.Exitoso)
+            if (!atencionInmediata)
             {
-                return disponibilidad;
+                var disponibilidad = await _agendaService.ValidarDisponibilidadAsync(fechaEfectiva);
+                if (!disponibilidad.Exitoso) return disponibilidad;
             }
 
 
@@ -385,7 +388,7 @@ namespace MecaniCar360.Services
                 VehiculoId = vehiculoId,
                 Tipo = tipo,
                 Motivo = motivo.Trim(),
-                FechaInicio = fechaInicio,
+                FechaInicio = fechaEfectiva,
                 Estado = EstadoTurno.Pendiente,
                 FechaCreacion = DateTime.Now,
                 CreadoPorUsuarioId = usuarioId,
@@ -440,9 +443,8 @@ namespace MecaniCar360.Services
                     "No posee permisos para confirmar turnos.");
             }
 
-            await using var transaction = await _context.Database
-                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            var turno = await BloquearTurnoAsync(turnoId);
+            var turno = await _context.Turnos
+                .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
             {
@@ -470,7 +472,6 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_CONFIRMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno confirmado correctamente.");
@@ -527,30 +528,22 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error("Turno no encontrado.");
             }
 
-            return await CancelarInternoAsync(turnoId, usuarioId, motivo, validarPropietario: true);
+            return await CancelarInternoAsync(turnoId, usuarioId, motivo);
         }
 
         private async Task<ServiceResult> CancelarInternoAsync(
             int turnoId,
             int usuarioId,
-            string? motivo,
-            bool validarPropietario = false)
+            string? motivo)
         {
-            await using var transaction = await _context.Database
-                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            var turno = await BloquearTurnoAsync(turnoId);
+            var turno = await _context.Turnos
+                .Include(t => t.IngresoVehiculo)
+                .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
             {
                 return ServiceResult.Error(
                     "Turno no encontrado.");
-            }
-
-            if (validarPropietario)
-            {
-                var personaId = await ObtenerPersonaIdAsync(usuarioId);
-                if (!personaId.HasValue || turno.ClienteId != personaId.Value)
-                    return ServiceResult.Error("Turno no encontrado.");
             }
 
             if (turno.Estado == EstadoTurno.Cancelado)
@@ -571,7 +564,7 @@ namespace MecaniCar360.Services
                     "No se puede cancelar un turno marcado como cliente ausente.");
             }
 
-            if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
+            if (turno.IngresoVehiculo != null)
             {
                 return ServiceResult.Error(
                     "No se puede cancelar un turno cuyo vehículo ya ingresó al taller.");
@@ -594,7 +587,6 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_CANCELADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno cancelado correctamente.");
@@ -617,9 +609,8 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            await using var transaction = await _context.Database
-                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            var turno = await BloquearTurnoAsync(turnoId);
+            var turno = await _context.Turnos
+                .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
             {
@@ -653,7 +644,6 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("CLIENTE_AUSENTE", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Cliente marcado como ausente.");
@@ -677,9 +667,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            await using var transaction = await _context.Database
-                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
-            var turno = await BloquearTurnoAsync(turnoId);
+            var turno = await _context.Turnos
+                .Include(t => t.IngresoVehiculo)
+                .FirstOrDefaultAsync(t => t.Id == turnoId);
 
             if (turno == null)
             {
@@ -694,7 +684,7 @@ namespace MecaniCar360.Services
                     "Solo se pueden reprogramar turnos pendientes o confirmados.");
             }
 
-            if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
+            if (turno.IngresoVehiculo != null)
             {
                 return ServiceResult.Error(
                     "No se puede reprogramar un turno cuyo vehículo ya ingresó al taller.");
@@ -745,19 +735,9 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_REPROGRAMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno reprogramado correctamente.");
-        }
-
-        private async Task<Turno?> BloquearTurnoAsync(int turnoId)
-        {
-            var turno = await _context.Turnos.FromSqlInterpolated(
-                $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}")
-                .FirstOrDefaultAsync();
-            if (turno != null) await _context.Entry(turno).ReloadAsync();
-            return turno;
         }
 
         private async Task<int?> ObtenerPersonaIdAsync(int usuarioId)

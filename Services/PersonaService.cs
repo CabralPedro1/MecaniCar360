@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.ViewModels;
@@ -278,7 +278,14 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar personas.");
             }
 
-            var existente = await ObtenerPersonaAsync(persona.Id);
+            if (_context.Database.CurrentTransaction != null || _context.ChangeTracker.HasChanges())
+                return ServiceResult.Error("Hay otra operacion pendiente.");
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            // Mismo orden que invitaciones: Persona -> Usuario/roles -> invitaciones.
+            var existente = await _context.Personas.FromSqlInterpolated(
+                $"SELECT * FROM [Personas] WITH (UPDLOCK,HOLDLOCK) WHERE [Id] = {persona.Id}")
+                .SingleOrDefaultAsync();
+            if (existente != null) await _context.Entry(existente).ReloadAsync();
 
             if (existente == null)
                 return ServiceResult.Error(
@@ -296,22 +303,50 @@ namespace MecaniCar360.Services
                     "Ya existe una persona con ese DNI.");
             }
 
-            existente.Nombre = persona.Nombre;
-            existente.Apellido = persona.Apellido;
-            existente.Dni = persona.Dni.Trim();
-            existente.Telefono = persona.Telefono;
-            existente.Email = persona.Email;
+            var emailNuevo = MecaniCar360.Helpers.IdentificadorCuenta.Normalizar(persona.Email);
+            var cambioEmail = !string.Equals(MecaniCar360.Helpers.IdentificadorCuenta.Normalizar(existente.Email),
+                emailNuevo, StringComparison.OrdinalIgnoreCase);
+            if (cambioEmail && !await _context.Usuarios.AnyAsync(u => u.PersonaId == existente.Id))
+                await _context.InvitacionesCliente.Where(i => i.PersonaId == existente.Id &&
+                    i.FechaConsumida == null && i.FechaInvalidacion == null)
+                    .ExecuteUpdateAsync(s => s.SetProperty(i => i.FechaInvalidacion, DateTime.UtcNow));
 
-            // El estado se administra mediante
-            // ActivarAsync / DesactivarAsync.
-            // No lo modificamos desde la edición general.
+            var valoresPrevios = _context.Entry(existente).CurrentValues.Clone();
+            var auditoriasPrevias = _context.ChangeTracker.Entries<MecaniCar360.Models.Auditoria>().Select(e => e.Entity).ToHashSet();
+            var confirmado = false;
+            try
+            {
+                existente.Nombre = persona.Nombre;
+                existente.Apellido = persona.Apellido;
+                existente.Dni = persona.Dni.Trim();
+                existente.Telefono = persona.Telefono;
+                existente.Email = string.IsNullOrEmpty(emailNuevo) ? null : emailNuevo;
 
-            _auditoria.RegistrarOperacion("PERSONA_MODIFICADA", "Persona", existente.Id, usuarioSolicitanteId,
-                "Persona modificada.");
-            await _context.SaveChangesAsync();
+                // El estado se administra mediante
+                // ActivarAsync / DesactivarAsync.
+                // No lo modificamos desde la edición general.
 
-            return ServiceResult.Ok(
-                "Persona actualizada correctamente.");
+                _auditoria.RegistrarOperacion("PERSONA_MODIFICADA", "Persona", existente.Id, usuarioSolicitanteId,
+                    "Persona modificada.");
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                confirmado = true;
+
+                return ServiceResult.Ok(
+                    "Persona actualizada correctamente.");
+            }
+            finally
+            {
+                if (!confirmado)
+                {
+                    await transaction.RollbackAsync();
+                    _context.Entry(existente).CurrentValues.SetValues(valoresPrevios);
+                    _context.Entry(existente).OriginalValues.SetValues(valoresPrevios);
+                    _context.Entry(existente).State = EntityState.Unchanged;
+                    foreach (var e in _context.ChangeTracker.Entries<MecaniCar360.Models.Auditoria>().Where(e => !auditoriasPrevias.Contains(e.Entity)).ToList())
+                        e.State = EntityState.Detached;
+                }
+            }
         }
 
 
@@ -457,161 +492,159 @@ namespace MecaniCar360.Services
         }
 
 
-        public async Task<ServiceResult> AsignarRolAsync(
-            int personaId,
-            int rolId,
-            int usuarioOtorgaId)
+        // Historical internal assignments preserve eligibility after removing the last role
+        // from a person without an active account. Pure clients have no such history.
+        private IQueryable<Persona> PersonalAdministrable() => _context.Personas.Where(p =>
+            p.Roles.Any(pr => RolesSistema.Internos.Contains(pr.Rol.Nombre)));
+
+        public async Task<bool> PuedeConsultarRolesInternosAsync(int personaId, int actorId) =>
+            await _permisoService.TienePermisoAsync(actorId, "PERSONA_VER") &&
+            await _permisoService.TienePermisoAsync(actorId, "ROL_VER") &&
+            await PersonalAdministrable().AsNoTracking().AnyAsync(p => p.Id == personaId);
+
+        public async Task<ServiceResult> AsignarRolAsync(int personaId, int rolId, int usuarioOtorgaId)
+            => await CambiarAsignacionInternaAsync(personaId, rolId, usuarioOtorgaId, quitar: false);
+
+        public async Task<ServiceResult> QuitarRolAsync(int personaId, int rolId, int usuarioSolicitanteId)
+            => await CambiarAsignacionInternaAsync(personaId, rolId, usuarioSolicitanteId, quitar: true);
+
+        private async Task<ServiceResult> CambiarAsignacionInternaAsync(int personaId, int rolId, int actorId, bool quitar)
         {
-            if (!await _permisoService.TienePermisoAsync(
-                usuarioOtorgaId,
-                "ROL_MODIFICAR"))
-            {
-                return ServiceResult.Error(
-                    "No posee permisos para asignar roles.");
-            }
+            if (!await _permisoService.TienePermisoAsync(actorId, "ROL_MODIFICAR"))
+                return ServiceResult.Error("No posee permisos para modificar roles.");
+            if (_context.Database.CurrentTransaction != null || _context.ChangeTracker.HasChanges())
+                return ServiceResult.Error("No se puede modificar roles con otra operación pendiente.");
 
-            var persona = await _context.Personas
-                .FirstOrDefaultAsync(p =>
-                    p.Id == personaId);
-
-            if (persona == null)
-                return ServiceResult.Error(
-                    "Persona no encontrada.");
-
-            var rol = await _context.Roles
-                .FirstOrDefaultAsync(r =>
-                    r.Id == rolId &&
-                    r.Activo);
-
-            if (rol == null)
-                return ServiceResult.Error(
-                    "Rol no encontrado o inactivo.");
-
-            if (rol.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
-                return ServiceResult.Error("CLIENTE solo puede asignarse desde el alta especifica de clientes.");
-
-            if (await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId &&
-                u.ProveedorAutenticacion == MecaniCar360.Models.Enums.ProveedorAutenticacion.Google))
-                return ServiceResult.Error("Una cuenta Google no puede recibir roles mediante la administracion.");
-
-            if (rol.Nombre.Equals(
-                RolesSistema.ADMIN,
-                StringComparison.OrdinalIgnoreCase) &&
-                !await _permisoService.EsAdministradorAsync(
-                    usuarioOtorgaId))
-            {
-                return ServiceResult.Error(
-                    "Sólo un administrador puede asignar el rol ADMIN.");
-            }
-
-            bool yaExiste = await _context.PersonaRoles.AnyAsync(pr =>
-                pr.PersonaId == personaId &&
-                pr.RolId == rolId &&
-                pr.FechaBaja == null);
-
-            if (yaExiste)
-                return ServiceResult.Error(
-                    "La persona ya posee ese rol.");
-
-            _context.PersonaRoles.Add(
-                new PersonaRol
-                {
-                    PersonaId = personaId,
-                    RolId = rolId,
-                    FechaAlta = DateTime.Now,
-                    OtorgadoPorUsuarioId = usuarioOtorgaId
-                });
-
-            _auditoria.RegistrarOperacion("ROL_ASIGNADO", "Persona", personaId, usuarioOtorgaId, $"Rol #{rolId}.");
-            await _context.SaveChangesAsync();
-
-            return ServiceResult.Ok(
-                "Rol asignado correctamente.");
-        }
-
-
-        public async Task<ServiceResult> QuitarRolAsync(
-            int personaId,
-            int rolId,
-            int usuarioSolicitanteId)
-        {
-            if (!await _permisoService.TienePermisoAsync(
-                usuarioSolicitanteId,
-                "ROL_MODIFICAR"))
-            {
-                return ServiceResult.Error(
-                    "No posee permisos para quitar roles.");
-            }
-
-            await using var transaction = await _context.Database
-                .BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            // M1 first, then the target Persona, then Usuario/PersonaRol. Never acquire M1
+            // after locking a target. Both assignment and removal follow this order.
             await _permisoService.BloquearAdministradoresAsync();
-
-            // Revalidar la autoridad con el estado actualizado bajo el mutex.
-            if (!await _permisoService.TienePermisoAsync(
-                usuarioSolicitanteId,
-                "ROL_MODIFICAR"))
+            var previas = _context.ChangeTracker.Entries().ToDictionary(e => e.Entity,
+                e => (Actuales: e.CurrentValues.Clone(), Originales: e.OriginalValues.Clone()),
+                ReferenceEqualityComparer.Instance);
+            var confirmado = false;
+            try
             {
-                return ServiceResult.Error(
-                    "No posee permisos para quitar roles.");
+                if (!await _permisoService.TienePermisoAsync(actorId, "ROL_MODIFICAR"))
+                    return ServiceResult.Error("No posee permisos para modificar roles.");
+                var persona = await _context.Personas.FromSqlInterpolated(
+                    $"SELECT * FROM [Personas] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {personaId}")
+                    .AsNoTracking().SingleOrDefaultAsync();
+                if (persona == null || !await PersonalAdministrable().AsNoTracking().AnyAsync(p => p.Id == personaId))
+                    return ServiceResult.Error("La persona no es elegible para administrar roles internos.");
+
+                var rol = await _context.Roles.AsNoTracking().SingleOrDefaultAsync(r => r.Id == rolId);
+                if (rol == null || !RolesSistema.Internos.Contains(rol.Nombre))
+                    return ServiceResult.Error("Sólo se pueden administrar roles internos. CLIENTE no puede asignarse ni quitarse aquí.");
+                if (!quitar && !rol.Activo)
+                    return ServiceResult.Error("El rol está inactivo.");
+                var relacion = await _context.PersonaRoles.SingleOrDefaultAsync(pr => pr.PersonaId == personaId && pr.RolId == rolId);
+                if (quitar && (relacion == null || relacion.FechaBaja != null))
+                    return ServiceResult.Error("La persona no posee ese rol vigente.");
+                if (!quitar && relacion != null && relacion.FechaBaja == null)
+                    return ServiceResult.Error("La persona ya posee ese rol.");
+
+                if (rol.Nombre == RolesSistema.ADMIN)
+                {
+                    if (!await _permisoService.EsAdministradorAsync(actorId))
+                        return ServiceResult.Error("Sólo un administrador puede modificar ADMIN.");
+                    if (quitar)
+                    {
+                        if (await _context.Usuarios.AnyAsync(u => u.Id == actorId && u.PersonaId == personaId))
+                            return ServiceResult.Error("No puede quitarse su propia asignación ADMIN.");
+                        if (await _permisoService.EsAdministradorEfectivoPersonaAsync(personaId) &&
+                            await _permisoService.ContarAdministradoresEfectivosAsync() <= 1)
+                            return ServiceResult.Error("No se puede quitar la última asignación ADMIN activa.");
+                    }
+                }
+                if (quitar)
+                {
+                    if (await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId && u.Activo) &&
+                        !await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId && pr.RolId != rolId &&
+                            pr.FechaBaja == null && pr.Rol.Activo && RolesSistema.Internos.Contains(pr.Rol.Nombre)))
+                        return ServiceResult.Error("Una cuenta interna activa debe conservar al menos un rol interno activo y vigente.");
+                    relacion!.FechaBaja = DateTime.Now;
+                }
+                else
+                {
+                    if (relacion == null)
+                    {
+                        relacion = new PersonaRol { PersonaId = personaId, RolId = rolId };
+                        _context.PersonaRoles.Add(relacion);
+                    }
+                    relacion.FechaBaja = null;
+                    relacion.FechaAlta = DateTime.Now;
+                    relacion.OtorgadoPorUsuarioId = actorId;
+                }
+                _auditoria.RegistrarOperacion(quitar ? "ROL_QUITADO" : "ROL_ASIGNADO", "Persona", personaId, actorId, $"Rol #{rolId}.");
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                confirmado = true;
+                return ServiceResult.Ok(quitar ? "Rol removido correctamente." : "Rol asignado correctamente.");
             }
-
-
-            var relacion = await _context.PersonaRoles
-                .Include(pr => pr.Rol)
-                .FirstOrDefaultAsync(pr =>
-                    pr.PersonaId == personaId &&
-                    pr.RolId == rolId &&
-                    pr.FechaBaja == null);
-
-            if (relacion == null)
-                return ServiceResult.Error(
-                    "La persona no posee ese rol.");
-
-            if (relacion.Rol.Nombre.Equals(RolesSistema.CLIENTE, StringComparison.OrdinalIgnoreCase))
-                return ServiceResult.Error("CLIENTE no puede quitarse mediante la administración genérica.");
-
-            if (relacion.Rol.Nombre.Equals(
-                RolesSistema.ADMIN,
-                StringComparison.OrdinalIgnoreCase))
+            catch (DbUpdateException)
             {
-                if (!await _permisoService.EsAdministradorAsync(
-                    usuarioSolicitanteId))
+                return ServiceResult.Error("No se pudo guardar el cambio de rol. Intente nuevamente.");
+            }
+            finally
+            {
+                if (!confirmado)
                 {
-                    return ServiceResult.Error(
-                        "Sólo un administrador puede quitar el rol ADMIN.");
-                }
-
-                var usuario = await _context.Usuarios
-                    .FirstOrDefaultAsync(u =>
-                        u.Id == usuarioSolicitanteId);
-
-                if (usuario?.PersonaId == personaId)
-                {
-                    return ServiceResult.Error(
-                        "No puede quitarse su propia asignación ADMIN.");
-                }
-
-                if (await _permisoService
-                    .EsAdministradorEfectivoPersonaAsync(personaId) &&
-                    await _permisoService
-                        .ContarAdministradoresEfectivosAsync() <= 1)
-                {
-                    return ServiceResult.Error(
-                        "No se puede quitar la última asignación ADMIN activa.");
+                    try { await transaction.RollbackAsync(); }
+                    finally
+                    {
+                        foreach (var entry in _context.ChangeTracker.Entries().ToList())
+                        {
+                            if (!previas.TryGetValue(entry.Entity, out var valores)) entry.State = EntityState.Detached;
+                            else
+                            {
+                                entry.CurrentValues.SetValues(valores.Actuales);
+                                entry.OriginalValues.SetValues(valores.Originales);
+                                entry.State = EntityState.Unchanged;
+                            }
+                        }
+                    }
                 }
             }
-
-            relacion.FechaBaja = DateTime.Now;
-
-            _auditoria.RegistrarOperacion("ROL_QUITADO", "Persona", personaId, usuarioSolicitanteId, $"Rol #{rolId}.");
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return ServiceResult.Ok(
-                "Rol removido correctamente.");
         }
 
+        public async Task<ServiceResult<MecaniCar360.ViewModels.AdministrarRolesViewModel>> ObtenerAdministracionRolesAsync(int personaId, int actorId)
+        {
+            if (!await PuedeConsultarRolesInternosAsync(personaId, actorId))
+                return ServiceResult<MecaniCar360.ViewModels.AdministrarRolesViewModel>.Error("Acceso denegado.");
+            var vm = await PersonalAdministrable().AsNoTracking().Where(p => p.Id == personaId)
+                .Select(p => new MecaniCar360.ViewModels.AdministrarRolesViewModel
+                {
+                    PersonaId = p.Id, Nombre = p.Nombre, Apellido = p.Apellido, Dni = p.Dni,
+                    TieneCuenta = p.Usuario != null,
+                    RolesActuales = p.Roles.Where(pr => pr.FechaBaja == null && RolesSistema.Internos.Contains(pr.Rol.Nombre))
+                        .Select(pr => new MecaniCar360.ViewModels.RolInternoViewModel
+                        { Id = pr.RolId, Nombre = pr.Rol.Nombre, Activo = pr.Rol.Activo }).ToList()
+                }).SingleOrDefaultAsync();
+            if (vm == null) return ServiceResult<MecaniCar360.ViewModels.AdministrarRolesViewModel>.Error("Persona no disponible.");
+            var modificar = await _permisoService.TienePermisoAsync(actorId, "ROL_MODIFICAR");
+            var admin = await _permisoService.EsAdministradorAsync(actorId);
+            var cuentaActiva = await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId && u.Activo);
+            var propia = await _context.Usuarios.AnyAsync(u => u.Id == actorId && u.PersonaId == personaId);
+            var ultimoAdmin = await _permisoService.EsAdministradorEfectivoPersonaAsync(personaId) &&
+                await _permisoService.ContarAdministradoresEfectivosAsync() <= 1;
+            foreach (var rol in vm.RolesActuales)
+            {
+                rol.Restriccion = !modificar ? "Sólo consulta." :
+                    rol.Nombre == RolesSistema.ADMIN && (!admin || propia || ultimoAdmin) ? "Asignaci?n ADMIN protegida." :
+                    cuentaActiva && !vm.RolesActuales.Any(r => r.Id != rol.Id && r.Activo) ? "La cuenta debe conservar un rol interno activo." : null;
+                rol.PuedeQuitar = rol.Restriccion == null;
+            }
+            if (modificar)
+            {
+                var disponibles = await ObtenerRolesDisponiblesAsync(personaId, actorId);
+                if (!disponibles.Exitoso) return ServiceResult<MecaniCar360.ViewModels.AdministrarRolesViewModel>.Error(disponibles.Mensaje);
+                vm.RolesDisponibles.AddRange(disponibles.Data!.Select(r => new MecaniCar360.ViewModels.RolInternoViewModel
+                    { Id = r.Id, Nombre = r.Nombre, Activo = r.Activo }));
+            }
+            vm.PuedeAsignar = modificar && vm.RolesDisponibles.Count > 0;
+            return ServiceResult<MecaniCar360.ViewModels.AdministrarRolesViewModel>.Ok(vm);
+        }
 
         public async Task<ServiceResult<List<Rol>>>
             ObtenerRolesDisponiblesAsync(
@@ -626,9 +659,9 @@ namespace MecaniCar360.Services
                     "No posee permisos para consultar roles.");
             }
 
-            if (await _context.Usuarios.AnyAsync(u => u.PersonaId == personaId &&
-                u.ProveedorAutenticacion == MecaniCar360.Models.Enums.ProveedorAutenticacion.Google))
-                return ServiceResult<List<Rol>>.Ok(new List<Rol>());
+            if (!await PersonalAdministrable().AsNoTracking().AnyAsync(p => p.Id == personaId))
+                return ServiceResult<List<Rol>>.Error("La persona no es elegible para administrar roles internos.");
+            var admin = await _permisoService.EsAdministradorAsync(usuarioSolicitanteId);
 
             var asignados = await _context.PersonaRoles
                 .Where(pr =>
@@ -640,7 +673,8 @@ namespace MecaniCar360.Services
             var roles = await _context.Roles
                 .Where(r =>
                     r.Activo &&
-                    r.Nombre != RolesSistema.CLIENTE &&
+                    RolesSistema.Internos.Contains(r.Nombre) &&
+                    (admin || r.Nombre != RolesSistema.ADMIN) &&
                     !asignados.Contains(r.Id))
                 .OrderBy(r => r.Nombre)
                 .ToListAsync();

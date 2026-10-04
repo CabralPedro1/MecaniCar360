@@ -15,6 +15,8 @@ namespace MecaniCar360.Data
         // =============================
 
         public DbSet<Usuario> Usuarios { get; set; }
+        public DbSet<IdentidadExterna> IdentidadesExternas { get; set; }
+        public DbSet<InvitacionCliente> InvitacionesCliente { get; set; }
         public DbSet<Persona> Personas { get; set; }
         public DbSet<Rol> Roles { get; set; }
         public DbSet<PersonaRol> PersonaRoles { get; set; }
@@ -212,26 +214,21 @@ namespace MecaniCar360.Data
             // =============================
 
             modelBuilder.Entity<Usuario>()
+                .Property(u => u.Username)
+                .UseCollation("Latin1_General_100_CI_AS");
+
+            modelBuilder.Entity<Usuario>()
+                .Property(u => u.EmailLogin)
+                .UseCollation("Latin1_General_100_CI_AS");
+
+            modelBuilder.Entity<Usuario>()
+                .ToTable("Usuarios", table => table.HasCheckConstraint(
+                    "CK_Usuarios_CredencialLocal",
+                    "[PasswordHash] IS NULL OR LEN(LTRIM(RTRIM([PasswordHash]))) > 0"));
+
+            modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.Username)
                 .IsUnique();
-
-            modelBuilder.Entity<Usuario>()
-                .Property(u => u.ProveedorAutenticacion)
-                .HasDefaultValue(MecaniCar360.Models.Enums.ProveedorAutenticacion.Credenciales);
-
-            modelBuilder.Entity<Usuario>()
-                .Property(u => u.IdentificadorExterno)
-                .UseCollation("Latin1_General_100_BIN2");
-
-            modelBuilder.Entity<Usuario>()
-                .HasIndex(u => new { u.ProveedorAutenticacion, u.IdentificadorExterno })
-                .IsUnique()
-                .HasFilter("[IdentificadorExterno] IS NOT NULL");
-
-            modelBuilder.Entity<Usuario>().ToTable("Usuarios", table =>
-                table.HasCheckConstraint("CK_Usuarios_ProveedorAutenticacion",
-                    "([ProveedorAutenticacion] = 0 AND [PasswordHash] IS NOT NULL AND LEN(LTRIM(RTRIM([PasswordHash]))) > 0 AND [IdentificadorExterno] IS NULL) OR " +
-                    "([ProveedorAutenticacion] = 1 AND [PasswordHash] IS NULL AND [IdentificadorExterno] IS NOT NULL AND LEN(LTRIM(RTRIM([IdentificadorExterno]))) > 0 AND [PrimerLogin] = 0)"));
 
             modelBuilder.Entity<Usuario>()
                 .HasIndex(u => u.EmailLogin)
@@ -247,6 +244,42 @@ namespace MecaniCar360.Data
                 .HasForeignKey<Usuario>(u => u.PersonaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
+
+            // =============================
+            // IDENTIDADES EXTERNAS E INVITACIONES
+            // =============================
+
+            modelBuilder.Entity<IdentidadExterna>(entity =>
+            {
+                entity.Property(i => i.IdentificadorExterno)
+                    .UseCollation("Latin1_General_100_BIN2");
+                entity.HasIndex(i => new { i.Proveedor, i.IdentificadorExterno }).IsUnique();
+                entity.HasIndex(i => new { i.UsuarioId, i.Proveedor }).IsUnique();
+                entity.HasOne(i => i.Usuario).WithMany(u => u.IdentidadesExternas)
+                    .HasForeignKey(i => i.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+                entity.ToTable("IdentidadesExternas", table =>
+                {
+                    table.HasCheckConstraint("CK_IdentidadesExternas_Identificador",
+                        "LEN(LTRIM(RTRIM([IdentificadorExterno]))) > 0");
+                    table.HasCheckConstraint("CK_IdentidadesExternas_Proveedor", "[Proveedor] = 1");
+                });
+            });
+
+            modelBuilder.Entity<InvitacionCliente>(entity =>
+            {
+                entity.Property(i => i.EmailDestino).UseCollation("Latin1_General_100_CI_AS");
+                entity.Property(i => i.TokenHash).IsUnicode(false).IsFixedLength()
+                    .UseCollation("Latin1_General_100_BIN2");
+                entity.HasIndex(i => i.TokenHash).IsUnique();
+                entity.HasIndex(i => new { i.PersonaId, i.FechaConsumida, i.FechaInvalidacion });
+                entity.HasOne(i => i.Persona).WithMany()
+                    .HasForeignKey(i => i.PersonaId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasOne(i => i.EmitidaPorUsuario).WithMany()
+                    .HasForeignKey(i => i.EmitidaPorUsuarioId).OnDelete(DeleteBehavior.Restrict);
+                entity.ToTable("InvitacionesCliente", table => table.HasCheckConstraint(
+                    "CK_InvitacionesCliente_Vigencia",
+                    "[FechaExpiracion] = DATEADD(hour, 48, [FechaCreacion])"));
+            });
 
             // =============================
             // VEHÍCULO
@@ -358,6 +391,36 @@ namespace MecaniCar360.Data
             modelBuilder.Entity<IngresoVehiculo>()
                 .Property(i => i.FechaIngreso)
                 .HasDefaultValueSql("GETDATE()");
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .HasOne(i => i.Vehiculo)
+                .WithMany(v => v.IngresosVehiculo)
+                .HasForeignKey(i => i.VehiculoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .HasOne(i => i.RegistradoPorUsuario)
+                .WithMany()
+                .HasForeignKey(i => i.RegistradoPorUsuarioId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .HasIndex(i => i.VehiculoId)
+                .IsUnique()
+                .HasFilter("[FechaEgreso] IS NULL");
+
+            modelBuilder.Entity<IngresoVehiculo>()
+                .ToTable("IngresosVehiculo", table =>
+                {
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Accesorios", "[Accesorios] >= 0 AND [Accesorios] <= 63");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Combustible", "[NivelCombustible] IN (0, 1, 2, 3, 4)");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_EstadoExterior", "([EstadoExterior] = 0 AND [ObservacionesEstadoExterior] IS NULL) OR ([EstadoExterior] = 1 AND [ObservacionesEstadoExterior] IS NOT NULL AND LEN(LTRIM(RTRIM([ObservacionesEstadoExterior]))) > 0)");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Fechas", "[FechaEgreso] IS NULL OR [FechaEgreso] >= [FechaIngreso]");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Kilometraje", "[Kilometraje] >= 0");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_OtrosAccesorios", "(([Accesorios] & 32) = 0 AND [OtrosAccesorios] IS NULL) OR (([Accesorios] & 32) = 32 AND [OtrosAccesorios] IS NOT NULL AND LEN(LTRIM(RTRIM([OtrosAccesorios]))) > 0)");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Snapshot", "LEN(LTRIM(RTRIM([ClienteNombreSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([ClienteDniSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([VehiculoPatenteSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([VehiculoDescripcionSnapshot]))) > 0");
+                    table.HasCheckConstraint("CK_IngresosVehiculo_Verificacion", "[DatosVerificadosConCliente] = 1");
+                });
 
 
             // =============================
@@ -507,10 +570,14 @@ namespace MecaniCar360.Data
                 .IsUnique();
 
             modelBuilder.Entity<CalificacionTrabajo>()
-                .HasOne(c => c.Cliente).WithMany().HasForeignKey(c => c.ClienteId)
+                .HasOne(c => c.Cliente)
+                .WithMany()
+                .HasForeignKey(c => c.ClienteId)
                 .OnDelete(DeleteBehavior.Restrict);
-            modelBuilder.Entity<CalificacionTrabajo>().ToTable(t =>
-                t.HasCheckConstraint("CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5"));
+
+            modelBuilder.Entity<CalificacionTrabajo>()
+                .ToTable("Calificaciones", table => table.HasCheckConstraint(
+                    "CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5"));
 
             modelBuilder.Entity<CalificacionTrabajo>()
                 .Property(c => c.Fecha)
@@ -612,6 +679,11 @@ namespace MecaniCar360.Data
             // =============================
             // DOMINIO VEHICULAR
             // =============================
+
+            modelBuilder.Entity<DominioVehicular>()
+                .HasIndex(d => d.VehiculoId)
+                .IsUnique()
+                .HasFilter("[FechaHasta] IS NULL");
 
             modelBuilder.Entity<DominioVehicular>()
                 .Property(d => d.FechaDesde)

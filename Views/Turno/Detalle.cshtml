@@ -1,4 +1,4 @@
-@model MecaniCar360.Models.Turno
+﻿@model MecaniCar360.Models.Turno
 @using MecaniCar360.Models.Enums
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
@@ -28,7 +28,7 @@ else if (abierto && await Permisos.TienePermisoAsync(usuarioId, "INGRESO_REGISTR
 <div class="card mb-3"><div class="card-body"><dl>
 <dt>Fecha y hora</dt><dd>@Model.FechaInicio.ToString("dd/MM/yyyy HH:mm")</dd>
 <dt>Cliente</dt><dd>@Model.Cliente.Apellido, @Model.Cliente.Nombre</dd>
-<dt>Vehículo</dt><dd>@Model.Vehiculo.Patente — @Model.Vehiculo.Marca.Nombre @Model.Vehiculo.Modelo.Nombre</dd>
+<dt>Vehiculo previsto</dt><dd>@(Model.Vehiculo == null ? "No especificado" : $"{Model.Vehiculo.Patente} - {Model.Vehiculo.Marca.Nombre} {Model.Vehiculo.Modelo.Nombre}")</dd>
 <dt>Estado</dt><dd>@Model.Estado</dd><dt>Tipo</dt><dd>@Model.Tipo</dd>
 <dt>Motivo</dt><dd>@Model.Motivo</dd><dt>Observaciones</dt><dd>@(Model.Observaciones ?? "—")</dd>
 <dt>Creado</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy HH:mm")</dd>

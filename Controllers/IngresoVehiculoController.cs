@@ -1,6 +1,7 @@
 ﻿using MecaniCar360.Models;
 using MecaniCar360.Attributes;
 using MecaniCar360.Services;
+using MecaniCar360.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,17 +12,11 @@ namespace MecaniCar360.Controllers
     public class IngresoVehiculoController : Controller
     {
         private readonly IngresoVehiculoService _ingresoService;
-        private readonly TurnoService _turnoService;
-        private readonly PermisoService _permisos;
 
         public IngresoVehiculoController(
-            IngresoVehiculoService ingresoService,
-            TurnoService turnoService,
-            PermisoService permisos)
+            IngresoVehiculoService ingresoService)
         {
             _ingresoService = ingresoService;
-            _turnoService = turnoService;
-            _permisos = permisos;
         }
 
 
@@ -92,8 +87,28 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Registrar(
             int turnoId)
         {
-            if (!ModelState.IsValid || turnoId <= 0) return BadRequest("Turno inválido.");
-            return await MostrarRegistroAsync(turnoId);
+            var usuarioId = ObtenerUsuarioId();
+            var resultado =
+                await _ingresoService
+                    .PrepararRegistroAsync(turnoId, usuarioId);
+
+            if (!resultado.Exitoso || resultado.Data == null)
+            {
+                TempData["Error"] = resultado.Mensaje;
+                return RedirectToAction("Detalle", "Turno", new { id = turnoId });
+            }
+
+            if (resultado.Data.Turno?.IngresoVehiculo != null)
+            {
+                return RedirectToAction(
+                    nameof(Detalle),
+                    new
+                    {
+                        id = resultado.Data.Turno.IngresoVehiculo.Id
+                    });
+            }
+
+            return View(resultado.Data);
         }
 
 
@@ -101,48 +116,54 @@ namespace MecaniCar360.Controllers
         [ValidateAntiForgeryToken]
         [Permiso("INGRESO_REGISTRAR")]
         public async Task<IActionResult> Registrar(
-            int turnoId,
-            bool clienteEspera,
-            string? observaciones)
+            RegistrarIngresoViewModel model)
         {
             var usuarioId =
                 ObtenerUsuarioId();
 
-            if (turnoId <= 0) return BadRequest("Turno inválido.");
-            ViewData["ClienteEspera"] = clienteEspera;
-            ViewData["Observaciones"] = observaciones;
-            if (!ModelState.IsValid) return await MostrarRegistroAsync(turnoId);
+            if (!ModelState.IsValid)
+            {
+                var form = await _ingresoService.PrepararRegistroAsync(model.TurnoId, usuarioId);
+                if (form.Exitoso && form.Data != null)
+                {
+                    model.Turno = form.Data.Turno;
+                    model.Vehiculos = form.Data.Vehiculos;
+                }
+                return View(model);
+            }
 
             var resultado =
                 await _ingresoService
                     .RegistrarIngresoYCrearOrdenAsync(
-                        turnoId,
-                        clienteEspera,
-                        observaciones,
+                        model,
                         usuarioId);
 
             if (!resultado.Exitoso)
             {
                 ModelState.AddModelError(string.Empty, resultado.Mensaje);
-                return await MostrarRegistroAsync(turnoId);
+                var form = await _ingresoService.PrepararRegistroAsync(model.TurnoId, usuarioId);
+                if (form.Exitoso && form.Data != null)
+                {
+                    model.Turno = form.Data.Turno;
+                    model.Vehiculos = form.Data.Vehiculos;
+                }
+                return View(model);
             }
 
             TempData["Ok"] =
                 resultado.Mensaje;
 
-            if (await _permisos.TienePermisoAsync(usuarioId, "INGRESO_VER"))
-                return RedirectToAction(nameof(Detalle), new { id = resultado.Data!.IngresoVehiculoId });
-            // Registrar no concede implícitamente acceso de lectura al ingreso ni a la OT.
-            return Content(resultado.Mensaje);
-        }
+            // Después del ingreso,
+            // vamos directamente a la OT.
 
-        private async Task<IActionResult> MostrarRegistroAsync(int turnoId)
-        {
-            var usuarioId = ObtenerUsuarioId();
-            if (!await _permisos.TienePermisoAsync(usuarioId, "TURNO_VER")) return Forbid();
-            var turno = await _turnoService.ObtenerPorIdAsync(turnoId, usuarioId);
-            if (!turno.Exitoso || turno.Data == null) return NotFound();
-            return View("Registrar", turno.Data);
+            return RedirectToAction(
+                "Detalle",
+                "OrdenTrabajo",
+                new
+                {
+                    id =
+                        resultado.Data!.Id
+                });
         }
 
 

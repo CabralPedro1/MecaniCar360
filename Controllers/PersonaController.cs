@@ -1,4 +1,4 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using MecaniCar360.Attributes;
 using MecaniCar360.Models;
 using MecaniCar360.Services;
@@ -12,11 +12,33 @@ namespace MecaniCar360.Controllers
     public class PersonaController : Controller
     {
         private readonly PersonaService _personaService;
+        private readonly AltaClienteService _altaCliente;
 
         public PersonaController(
-            PersonaService personaService)
+            PersonaService personaService, AltaClienteService altaCliente)
         {
             _personaService = personaService;
+            _altaCliente = altaCliente;
+        }
+
+        [HttpGet, Permiso("PERSONA_CREAR")]
+        public IActionResult NuevoCliente()
+            => View(new MecaniCar360.Models.ViewModels.NuevoClienteViewModel());
+
+        [HttpPost, ValidateAntiForgeryToken, Permiso("PERSONA_CREAR")]
+        public async Task<IActionResult> NuevoCliente(MecaniCar360.Models.ViewModels.NuevoClienteViewModel model)
+        {
+            var usuarioId = ObtenerUsuarioActualId();
+            if (!usuarioId.HasValue) return Unauthorized();
+            if (!ModelState.IsValid) return View(model);
+            var resultado = await _altaCliente.CrearAsync(model, usuarioId.Value);
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return View(model);
+            }
+            TempData["Ok"] = resultado.Mensaje;
+            return RedirectToAction(nameof(Cliente), new { id = resultado.Data!.Id });
         }
 
 
@@ -317,46 +339,10 @@ namespace MecaniCar360.Controllers
             if (!usuarioId.HasValue)
                 return Unauthorized();
 
-            var personaResult =
-                await _personaService.ObtenerPorIdAsync(
-                    id,
-                    usuarioId.Value);
-
-            if (!personaResult.Exitoso)
-                return NotFound();
-
-            var rolesActuales =
-                await _personaService
-                    .ObtenerRolesPersonaAsync(
-                        id,
-                        usuarioId.Value);
-
-            var rolesDisponibles =
-                await _personaService
-                    .ObtenerRolesDisponiblesAsync(
-                        id,
-                        usuarioId.Value);
-
-            if (!rolesActuales.Exitoso ||
-                !rolesDisponibles.Exitoso)
-            {
-                return Forbid();
-            }
-
-            var vm =
-                new AdministrarRolesViewModel
-                {
-                    Persona =
-                        personaResult.Data!,
-
-                    RolesActuales =
-                        rolesActuales.Data!,
-
-                    RolesDisponibles =
-                        rolesDisponibles.Data!
-                };
-
-            return View(vm);
+            if (!ModelState.IsValid || id <= 0) return BadRequest();
+            var resultado = await _personaService.ObtenerAdministracionRolesAsync(id, usuarioId.Value);
+            if (!resultado.Exitoso) return Forbid();
+            return View(resultado.Data);
         }
 
 

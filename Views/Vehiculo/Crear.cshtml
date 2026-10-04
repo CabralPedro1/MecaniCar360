@@ -1,9 +1,11 @@
-@model VehiculoViewModel
+﻿@model VehiculoViewModel
 @{ ViewData["Title"] = "Agregar vehículo"; }
+@if (ViewData["ReturnUrl"] is string volver) { <a href="@volver" class="btn btn-secondary">Volver a recepcion</a> }
 <h2>Agregar vehículo</h2>
 <p>Persona destinataria: #@Model.PersonaId. La titularidad inicial se valida al guardar.</p>
 <form asp-action="Crear" method="post">
     @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
     <input asp-for="PersonaId" type="hidden" />
     <div class="row">

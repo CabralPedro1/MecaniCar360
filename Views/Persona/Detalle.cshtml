@@ -7,6 +7,7 @@
 <h2>Detalle de Persona</h2>
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
+@inject MecaniCar360.Services.PersonaService Personas
 @if (TempData["Ok"] is string ok)
 {
     <div class="alert alert-success" role="status">@ok</div>
@@ -174,6 +175,8 @@
 
     </a>
 
+    @if (await Personas.PuedeConsultarRolesInternosAsync(Model.Id, usuarioId))
+    {
     <a asp-action="AdministrarRoles"
        asp-route-id="@Model.Id"
        class="btn btn-secondary">
@@ -181,6 +184,7 @@
         Administrar Roles
 
     </a>
+    }
 
     <a asp-action="Index"
        class="btn btn-outline-secondary">

@@ -41,9 +41,9 @@ namespace MecaniCar360.Services
                 query = query.Where(p => p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE) &&
                     !p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre != RolesSistema.CLIENTE));
 
-            query = query.Where(p => p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
-                (pr.Rol.Nombre == RolesSistema.CLIENTE || pr.Rol.Nombre == RolesSistema.ADMIN ||
-                 pr.Rol.Nombre == RolesSistema.MECANICO || pr.Rol.Nombre == RolesSistema.CAJA || pr.Rol.Nombre == RolesSistema.STOCK)));
+            // Keep internal personnel with historical assignments reachable for reassignment.
+            query = query.Where(p => p.Roles.Any(pr => RolesSistema.Internos.Contains(pr.Rol.Nombre)) ||
+                p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE));
             if (personaId.HasValue) query = query.Where(p => p.Id == personaId.Value);
 
             var personas = await query.OrderBy(p => p.Apellido).ThenBy(p => p.Nombre).ThenBy(p => p.Id)
@@ -55,11 +55,10 @@ namespace MecaniCar360.Services
                     Username = p.Usuario == null ? null : p.Usuario.Username,
                     EmailLogin = p.Usuario == null ? null : p.Usuario.EmailLogin,
                     UsuarioActivo = p.Usuario == null ? null : (bool?)p.Usuario.Activo,
-                    Proveedor = p.Usuario == null ? null : (MecaniCar360.Models.Enums.ProveedorAutenticacion?)p.Usuario.ProveedorAutenticacion,
+                    CredencialLocalDisponible = p.Usuario != null && p.Usuario.PasswordHash != null && p.Usuario.PasswordHash.Trim() != "",
+                    GoogleVinculado = p.Usuario != null && p.Usuario.IdentidadesExternas.Any(i => i.Proveedor == MecaniCar360.Models.Enums.ProveedorIdentidadExterna.Google),
                     EsCliente = p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE),
-                    EsPersonal = p.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo &&
-                        (pr.Rol.Nombre == RolesSistema.ADMIN || pr.Rol.Nombre == RolesSistema.MECANICO ||
-                         pr.Rol.Nombre == RolesSistema.CAJA || pr.Rol.Nombre == RolesSistema.STOCK)),
+                    EsPersonal = p.Roles.Any(pr => RolesSistema.Internos.Contains(pr.Rol.Nombre)),
                     Roles = p.Roles.OrderBy(pr => pr.Rol.Nombre).Select(pr => new RolCuentaViewModel
                     { Nombre = pr.Rol.Nombre, Activo = pr.Rol.Activo, FechaBaja = pr.FechaBaja }).ToList()
                 }).ToListAsync();
@@ -223,8 +222,10 @@ namespace MecaniCar360.Services
             if (!await _context.Personas.Where(EsElegibleCuentaInterna()).AnyAsync(p => p.Id == persona.Id))
                 return ServiceResult.Error("Solo se pueden crear credenciales para personas con rol interno vigente y sin rol CLIENTE.");
 
-            var username = model.Username.Trim();
-            var emailLogin = model.EmailLogin.Trim();
+            var username = IdentificadorCuenta.Normalizar(model.Username);
+            var emailLogin = IdentificadorCuenta.Normalizar(model.EmailLogin);
+            if (!IdentificadorCuenta.UsernameValido(username) || !IdentificadorCuenta.EmailValido(emailLogin))
+                return ServiceResult.Error("Usuario o email no validos; el usuario no admite @.");
 
             if (await ExisteUsernameAsync(username))
                 return ServiceResult.Error(
@@ -300,8 +301,10 @@ namespace MecaniCar360.Services
                     "No puede modificar esta cuenta.");
             }
 
-            var username = model.Username.Trim();
-            var emailLogin = model.EmailLogin.Trim();
+            var username = IdentificadorCuenta.Normalizar(model.Username);
+            var emailLogin = IdentificadorCuenta.Normalizar(model.EmailLogin);
+            if (!IdentificadorCuenta.UsernameValido(username) || !IdentificadorCuenta.EmailValido(emailLogin))
+                return ServiceResult.Error("Usuario o email no validos; el usuario no admite @.");
 
             if (await ExisteUsernameAsync(username, usuario.Id))
                 return ServiceResult.Error(
@@ -463,10 +466,10 @@ namespace MecaniCar360.Services
             string username,
             int? excluirId = null)
         {
-            var normalized = username.ToUpper();
+            var normalized = IdentificadorCuenta.Normalizar(username);
 
             return await _context.Usuarios.AnyAsync(u =>
-                u.Username.ToUpper() == normalized &&
+                u.Username == normalized &&
                 (!excluirId.HasValue || u.Id != excluirId.Value));
         }
 
@@ -474,10 +477,10 @@ namespace MecaniCar360.Services
             string email,
             int? excluirId = null)
         {
-            var normalized = email.ToUpper();
+            var normalized = IdentificadorCuenta.Normalizar(email);
 
             return await _context.Usuarios.AnyAsync(u =>
-                u.EmailLogin.ToUpper() == normalized &&
+                u.EmailLogin == normalized &&
                 (!excluirId.HasValue || u.Id != excluirId.Value));
         }
 

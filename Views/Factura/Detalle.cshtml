@@ -18,7 +18,7 @@
     <p class="text-break"><strong>Número:</strong> @Model.NumeroFactura</p>
     <p><strong>Emisión:</strong> @Model.FechaEmision.ToString("dd/MM/yyyy HH:mm") · <strong>Estado:</strong> @Model.Estado</p>
     <p><strong>Orden de trabajo:</strong> @Model.OrdenTrabajoId</p>
-    <p><strong>Cliente:</strong> @turno.Cliente.Nombre @turno.Cliente.Apellido · <strong>Vehículo:</strong> @turno.Vehiculo.Patente</p>
+    <p><strong>Cliente:</strong> @turno.Cliente.Nombre @turno.Cliente.Apellido · <strong>Vehículo:</strong> @Model.OrdenTrabajo.IngresoVehiculo.Vehiculo.Patente</p>
     <p>@Model.Observaciones</p>
     <div class="table-responsive"><table class="table table-striped">
         <thead><tr><th>Concepto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>

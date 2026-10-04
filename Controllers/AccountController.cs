@@ -201,6 +201,14 @@ namespace MecaniCar360.Controllers
         }
 
         [Authorize]
+        [HttpGet]
+        public IActionResult AccesoDenegado()
+        {
+            Response.StatusCode = StatusCodes.Status403Forbidden;
+            return View();
+        }
+
+        [Authorize]
         public IActionResult CompletarDatosExito()
         {
             return View();

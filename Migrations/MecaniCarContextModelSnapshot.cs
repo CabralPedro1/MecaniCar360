@@ -212,7 +212,9 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("PersonaId");
 
-                    b.HasIndex("VehiculoId");
+                    b.HasIndex("VehiculoId")
+                        .IsUnique()
+                        .HasFilter("[FechaHasta] IS NULL");
 
                     b.ToTable("DominiosVehiculares");
                 });
@@ -448,6 +450,45 @@ namespace MecaniCar360.Migrations
                     b.ToTable("GarantiaItems");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.IdentidadExterna", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("FechaVinculacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("IdentificadorExterno")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)")
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.Property<int>("Proveedor")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Proveedor", "IdentificadorExterno")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId", "Proveedor")
+                        .IsUnique();
+
+                    b.ToTable("IdentidadesExternas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_IdentidadesExternas_Identificador", "LEN(LTRIM(RTRIM([IdentificadorExterno]))) > 0");
+
+                            t.HasCheckConstraint("CK_IdentidadesExternas_Proveedor", "[Proveedor] = 1");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.IngresoVehiculo", b =>
                 {
                     b.Property<int>("Id")
@@ -456,8 +497,27 @@ namespace MecaniCar360.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("Accesorios")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ClienteDniSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("nvarchar(15)");
+
                     b.Property<bool>("ClienteEspera")
                         .HasColumnType("bit");
+
+                    b.Property<string>("ClienteNombreSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(201)
+                        .HasColumnType("nvarchar(201)");
+
+                    b.Property<bool>("DatosVerificadosConCliente")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("EstadoExterior")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("FechaEgreso")
                         .HasColumnType("datetime2");
@@ -467,18 +527,126 @@ namespace MecaniCar360.Migrations
                         .HasColumnType("datetime2")
                         .HasDefaultValueSql("GETDATE()");
 
+                    b.Property<int>("Kilometraje")
+                        .HasColumnType("int");
+
+                    b.Property<int>("NivelCombustible")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ObservacionesEstadoExterior")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
                     b.Property<string>("ObservacionesRecepcion")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OtrosAccesorios")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("RegistradoPorUsuarioId")
+                        .HasColumnType("int");
 
                     b.Property<int>("TurnoId")
                         .HasColumnType("int");
 
+                    b.Property<string>("VehiculoDescripcionSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<int>("VehiculoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("VehiculoPatenteSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("RegistradoPorUsuarioId");
 
                     b.HasIndex("TurnoId")
                         .IsUnique();
 
-                    b.ToTable("IngresosVehiculo");
+                    b.HasIndex("VehiculoId")
+                        .IsUnique()
+                        .HasFilter("[FechaEgreso] IS NULL");
+
+                    b.ToTable("IngresosVehiculo", t =>
+                        {
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Accesorios", "[Accesorios] >= 0 AND [Accesorios] <= 63");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Combustible", "[NivelCombustible] IN (0, 1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_EstadoExterior", "([EstadoExterior] = 0 AND [ObservacionesEstadoExterior] IS NULL) OR ([EstadoExterior] = 1 AND [ObservacionesEstadoExterior] IS NOT NULL AND LEN(LTRIM(RTRIM([ObservacionesEstadoExterior]))) > 0)");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Fechas", "[FechaEgreso] IS NULL OR [FechaEgreso] >= [FechaIngreso]");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Kilometraje", "[Kilometraje] >= 0");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_OtrosAccesorios", "(([Accesorios] & 32) = 0 AND [OtrosAccesorios] IS NULL) OR (([Accesorios] & 32) = 32 AND [OtrosAccesorios] IS NOT NULL AND LEN(LTRIM(RTRIM([OtrosAccesorios]))) > 0)");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Snapshot", "LEN(LTRIM(RTRIM([ClienteNombreSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([ClienteDniSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([VehiculoPatenteSnapshot]))) > 0 AND LEN(LTRIM(RTRIM([VehiculoDescripcionSnapshot]))) > 0");
+
+                            t.HasCheckConstraint("CK_IngresosVehiculo_Verificacion", "[DatosVerificadosConCliente] = 1");
+                        });
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.InvitacionCliente", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("EmailDestino")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)")
+                        .UseCollation("Latin1_General_100_CI_AS");
+
+                    b.Property<int>("EmitidaPorUsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaConsumida")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaExpiracion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaInvalidacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PersonaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength()
+                        .UseCollation("Latin1_General_100_BIN2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmitidaPorUsuarioId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("PersonaId", "FechaConsumida", "FechaInvalidacion");
+
+                    b.ToTable("InvitacionesCliente", t =>
+                        {
+                            t.HasCheckConstraint("CK_InvitacionesCliente_Vigencia", "[FechaExpiracion] = DATEADD(hour, 48, [FechaCreacion])");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.LoteRepuesto", b =>
@@ -746,9 +914,6 @@ namespace MecaniCar360.Migrations
                     b.Property<int>("Urgencia")
                         .HasColumnType("int");
 
-                    b.Property<int?>("VehiculoId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CreadaPorUsuarioId");
@@ -757,8 +922,6 @@ namespace MecaniCar360.Migrations
                         .IsUnique();
 
                     b.HasIndex("MecanicoId");
-
-                    b.HasIndex("VehiculoId");
 
                     b.ToTable("OrdenesTrabajo");
                 });
@@ -1350,7 +1513,7 @@ namespace MecaniCar360.Migrations
                     b.Property<int>("Tipo")
                         .HasColumnType("int");
 
-                    b.Property<int>("VehiculoId")
+                    b.Property<int?>("VehiculoId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1410,15 +1573,11 @@ namespace MecaniCar360.Migrations
                     b.Property<string>("EmailLogin")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasColumnType("nvarchar(100)")
+                        .UseCollation("Latin1_General_100_CI_AS");
 
                     b.Property<DateTime>("FechaCreacion")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("IdentificadorExterno")
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
-                        .UseCollation("Latin1_General_100_BIN2");
 
                     b.Property<string>("PasswordHash")
                         .HasMaxLength(200)
@@ -1430,26 +1589,16 @@ namespace MecaniCar360.Migrations
                     b.Property<bool>("PrimerLogin")
                         .HasColumnType("bit");
 
-                    b.Property<int>("ProveedorAutenticacion")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
-
                     b.Property<string>("SecurityStamp")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
-                    b.Property<DateTime?>("TokenRecuperacionExpira")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("TokenRecuperacionPassword")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(50)")
+                        .UseCollation("Latin1_General_100_CI_AS");
 
                     b.HasKey("Id");
 
@@ -1462,13 +1611,9 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("Username")
                         .IsUnique();
 
-                    b.HasIndex("ProveedorAutenticacion", "IdentificadorExterno")
-                        .IsUnique()
-                        .HasFilter("[IdentificadorExterno] IS NOT NULL");
-
                     b.ToTable("Usuarios", null, t =>
                         {
-                            t.HasCheckConstraint("CK_Usuarios_ProveedorAutenticacion", "([ProveedorAutenticacion] = 0 AND [PasswordHash] IS NOT NULL AND LEN(LTRIM(RTRIM([PasswordHash]))) > 0 AND [IdentificadorExterno] IS NULL) OR ([ProveedorAutenticacion] = 1 AND [PasswordHash] IS NULL AND [IdentificadorExterno] IS NOT NULL AND LEN(LTRIM(RTRIM([IdentificadorExterno]))) > 0 AND [PrimerLogin] = 0)");
+                            t.HasCheckConstraint("CK_Usuarios_CredencialLocal", "[PasswordHash] IS NULL OR LEN(LTRIM(RTRIM([PasswordHash]))) > 0");
                         });
                 });
 
@@ -1761,15 +1906,61 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Garantia");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.IdentidadExterna", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.Usuario", "Usuario")
+                        .WithMany("IdentidadesExternas")
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.IngresoVehiculo", b =>
                 {
+                    b.HasOne("MecaniCar360.Models.Usuario", "RegistradoPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("RegistradoPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("MecaniCar360.Models.Turno", "Turno")
                         .WithOne("IngresoVehiculo")
                         .HasForeignKey("MecaniCar360.Models.IngresoVehiculo", "TurnoId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("MecaniCar360.Models.Vehiculo", "Vehiculo")
+                        .WithMany("IngresosVehiculo")
+                        .HasForeignKey("VehiculoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RegistradoPorUsuario");
+
                     b.Navigation("Turno");
+
+                    b.Navigation("Vehiculo");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.InvitacionCliente", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.Usuario", "EmitidaPorUsuario")
+                        .WithMany()
+                        .HasForeignKey("EmitidaPorUsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.Persona", "Persona")
+                        .WithMany()
+                        .HasForeignKey("PersonaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("EmitidaPorUsuario");
+
+                    b.Navigation("Persona");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.LoteRepuesto", b =>
@@ -1883,10 +2074,6 @@ namespace MecaniCar360.Migrations
                         .WithMany()
                         .HasForeignKey("MecanicoId")
                         .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("MecaniCar360.Models.Vehiculo", null)
-                        .WithMany("OrdenesTrabajo")
-                        .HasForeignKey("VehiculoId");
 
                     b.Navigation("CreadaPorUsuario");
 
@@ -2130,8 +2317,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Vehiculo", "Vehiculo")
                         .WithMany("Turnos")
                         .HasForeignKey("VehiculoId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Cliente");
 
@@ -2330,11 +2516,16 @@ namespace MecaniCar360.Migrations
                     b.Navigation("IngresoVehiculo");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.Usuario", b =>
+                {
+                    b.Navigation("IdentidadesExternas");
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.Vehiculo", b =>
                 {
                     b.Navigation("DominiosVehiculares");
 
-                    b.Navigation("OrdenesTrabajo");
+                    b.Navigation("IngresosVehiculo");
 
                     b.Navigation("Turnos");
                 });
