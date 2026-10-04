@@ -51,7 +51,7 @@
 
                         <!-- CLIENTE -->
                         @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
-                            await Permisos.TieneAlgunoAsync(usuarioPortalId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER"))
+                            await Permisos.TieneAlgunoAsync(usuarioPortalId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="PortalCliente" asp-action="Index">Portal cliente</a>
@@ -88,6 +88,13 @@
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Factura" asp-action="MisFacturas">Mis facturas</a>
+                            </li>
+                        }
+                        @if (usuarioFacturacionId > 0 &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "GARANTIA_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Garantia" asp-action="Index">Garantías</a>
                             </li>
                         }
                         @if (usuarioFacturacionId > 0 &&

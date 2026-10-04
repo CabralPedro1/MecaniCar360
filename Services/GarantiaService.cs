@@ -3,6 +3,7 @@ using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
+using MecaniCar360.Models.ViewModels;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,12 +14,29 @@ namespace MecaniCar360.Services
         private readonly MecaniCarContext _context;
         private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
+        private readonly VehiculoService _vehiculos;
 
-        public GarantiaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
+        public GarantiaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria,
+            VehiculoService vehiculos)
         {
             _context = context;
             _auditoria = auditoria;
             _permisos = permisos;
+            _vehiculos = vehiculos;
+        }
+
+        // Preparación de pantalla: comparte las condiciones de elegibilidad de la escritura.
+        public async Task<ServiceResult<CrearGarantiaViewModel>> ObtenerParaCrearAsync(int ordenTrabajoId, int usuarioId)
+        {
+            if (!await UsuarioAutorizadoAsync(usuarioId, "GARANTIA_CREAR"))
+                return ServiceResult<CrearGarantiaViewModel>.Error("Acceso denegado.");
+            var orden = await _context.OrdenesTrabajo.AsNoTracking().FirstOrDefaultAsync(o => o.Id == ordenTrabajoId);
+            if (orden == null) return ServiceResult<CrearGarantiaViewModel>.Error("Orden de trabajo no encontrada.");
+            var datos = await PrepararCreacionAsync(orden);
+            return datos.Exitoso
+                ? ServiceResult<CrearGarantiaViewModel>.Ok(new CrearGarantiaViewModel
+                { OrdenTrabajoId = orden.Id, FechaInicio = datos.Data!.Inicio, Items = datos.Data.Factura.Items })
+                : ServiceResult<CrearGarantiaViewModel>.Error(datos.Mensaje);
         }
 
         public async Task<ServiceResult<Garantia>> CrearAsync(
@@ -48,35 +66,13 @@ namespace MecaniCar360.Services
                     .FirstOrDefaultAsync();
                 if (orden == null) return ServiceResult<Garantia>.Error("Orden de trabajo no encontrada.");
                 await _context.Entry(orden).ReloadAsync();
-                if (await _context.Garantias.AnyAsync(g => g.OrdenTrabajoId == orden.Id))
-                    return ServiceResult<Garantia>.Error("La orden ya posee una garantía, aunque esté anulada.");
-                if (orden.EstadoActual != EstadoOrden.Entregado || !orden.FechaFin.HasValue)
-                    return ServiceResult<Garantia>.Error("La reparación debe estar finalizada y entregada.");
-                var estadoPrevio = await _context.Set<OrdenTrabajoEstadoHistorial>().AsNoTracking()
-                    .Where(h => h.OrdenTrabajoId == orden.Id && h.Estado != EstadoOrden.Entregado)
-                    .OrderByDescending(h => h.Fecha).ThenByDescending(h => h.Id)
-                    .Select(h => (EstadoOrden?)h.Estado).FirstOrDefaultAsync();
-                if (estadoPrevio != EstadoOrden.Finalizado)
-                    return ServiceResult<Garantia>.Error("La entrega no corresponde a una reparación finalizada.");
-                var ingreso = await _context.IngresosVehiculo.AsNoTracking()
-                    .FirstOrDefaultAsync(i => i.Id == orden.IngresoVehiculoId);
-                if (ingreso?.FechaEgreso == null)
-                    return ServiceResult<Garantia>.Error("La orden no tiene una entrega efectiva registrada.");
-                var factura = await _context.Facturas.AsNoTracking()
-                    .Include(f => f.Items).Include(f => f.Pagos)
-                    .Include(f => f.PresupuestoVersionOrigen).ThenInclude(v => v!.Presupuesto)
-                    .FirstOrDefaultAsync(f => f.OrdenTrabajoId == orden.Id);
-                if (factura == null || factura.Estado != EstadoFactura.Pagada || factura.Total <= 0 ||
-                    factura.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto) < factura.Total)
-                    return ServiceResult<Garantia>.Error("La factura debe estar completamente pagada.");
-                var version = factura.PresupuestoVersionOrigen;
-                if (!factura.PresupuestoVersionOrigenId.HasValue || version == null ||
-                    version.Decision != EstadoPresupuestoVersion.Aprobado || version.Presupuesto.OrdenTrabajoId != orden.Id)
-                    return ServiceResult<Garantia>.Error("No corresponde garantía para el cobro de diagnóstico/rechazo.");
+                var datos = await PrepararCreacionAsync(orden);
+                if (!datos.Exitoso) return ServiceResult<Garantia>.Error(datos.Mensaje);
+                var factura = datos.Data!.Factura;
                 var idsFactura = factura.Items.Select(i => i.Id).ToHashSet();
                 if (items.Any(i => !idsFactura.Contains(i.FacturaItemId)))
                     return ServiceResult<Garantia>.Error("Los ítems deben pertenecer a la factura de esta orden.");
-                var inicio = ingreso.FechaEgreso.Value;
+                var inicio = datos.Data.Inicio;
                 DateTime fin;
                 try { fin = items.Max(i => inicio.AddMonths(i.MesesGarantia)); }
                 catch (ArgumentOutOfRangeException)
@@ -224,6 +220,52 @@ namespace MecaniCar360.Services
             {
                 return ServiceResult.Error("La fecha de cobertura excede el rango permitido.");
             }
+        }
+
+        internal static string DescribirVigencia(Garantia garantia) => Vigencia(garantia, garantia.FechaFin).Mensaje;
+
+        private sealed record DatosCreacion(Factura Factura, DateTime Inicio);
+
+        private async Task<ServiceResult<DatosCreacion>> PrepararCreacionAsync(OrdenTrabajo orden)
+        {
+            if (await _context.Garantias.AnyAsync(g => g.OrdenTrabajoId == orden.Id))
+                return ServiceResult<DatosCreacion>.Error("La orden ya posee una garantía, aunque esté anulada.");
+            if (orden.EstadoActual != EstadoOrden.Entregado || !orden.FechaFin.HasValue)
+                return ServiceResult<DatosCreacion>.Error("La reparación debe estar finalizada y entregada.");
+            var estadoPrevio = await _context.Set<OrdenTrabajoEstadoHistorial>().AsNoTracking()
+                .Where(h => h.OrdenTrabajoId == orden.Id && h.Estado != EstadoOrden.Entregado)
+                .OrderByDescending(h => h.Fecha).ThenByDescending(h => h.Id)
+                .Select(h => (EstadoOrden?)h.Estado).FirstOrDefaultAsync();
+            if (estadoPrevio != EstadoOrden.Finalizado)
+                return ServiceResult<DatosCreacion>.Error("La entrega no corresponde a una reparación finalizada.");
+            var ingreso = await _context.IngresosVehiculo.AsNoTracking()
+                .FirstOrDefaultAsync(i => i.Id == orden.IngresoVehiculoId);
+            if (ingreso?.FechaEgreso == null)
+                return ServiceResult<DatosCreacion>.Error("La orden no tiene una entrega efectiva registrada.");
+            var factura = await _context.Facturas.AsNoTracking()
+                .Include(f => f.Items).Include(f => f.Pagos)
+                .Include(f => f.PresupuestoVersionOrigen).ThenInclude(v => v!.Presupuesto)
+                .FirstOrDefaultAsync(f => f.OrdenTrabajoId == orden.Id);
+            if (factura == null || factura.Estado != EstadoFactura.Pagada || factura.Total <= 0 ||
+                factura.Pagos.Where(p => p.Estado == EstadoPago.Pagado).Sum(p => p.Monto) < factura.Total)
+                return ServiceResult<DatosCreacion>.Error("La factura debe estar completamente pagada.");
+            var version = factura.PresupuestoVersionOrigen;
+            if (!factura.PresupuestoVersionOrigenId.HasValue || version == null ||
+                version.Decision != EstadoPresupuestoVersion.Aprobado || version.Presupuesto.OrdenTrabajoId != orden.Id)
+                return ServiceResult<DatosCreacion>.Error("No corresponde garantía para el cobro de diagnóstico/rechazo.");
+            return ServiceResult<DatosCreacion>.Ok(new DatosCreacion(factura, ingreso.FechaEgreso.Value));
+        }
+
+        public async Task<ServiceResult<List<Garantia>>> ObtenerPorVehiculoPropioAsync(int vehiculoId, int usuarioId)
+        {
+            // Titularidad actual del vehículo y pertenencia histórica del trabajo son condiciones distintas.
+            var vehiculo = await _vehiculos.ObtenerVehiculoPropioAsync(usuarioId, vehiculoId);
+            if (!vehiculo.Exitoso) return ServiceResult<List<Garantia>>.Error("Vehículo no encontrado.");
+            var propias = await ObtenerPorClienteAsync(usuarioId);
+            return propias.Exitoso
+                ? ServiceResult<List<Garantia>>.Ok(propias.Data!
+                    .Where(g => g.OrdenTrabajo.IngresoVehiculo.VehiculoId == vehiculoId).ToList())
+                : propias;
         }
 
         private static ServiceResult Vigencia(Garantia garantia, DateTime fin)

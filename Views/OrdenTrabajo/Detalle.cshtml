@@ -16,6 +16,16 @@
         Orden de Trabajo #@Model.Id
     </h2>
 
+    @if (Model.EstadoActual == EstadoOrden.Entregado && Model.FechaFin.HasValue &&
+        await Permisos.TienePermisoAsync(usuarioId, "GARANTIA_CREAR"))
+    {
+        <a asp-controller="Garantia" asp-action="Crear" asp-route-ordenTrabajoId="@Model.Id" class="btn btn-outline-primary mb-3">Crear garantía</a>
+    }
+    @if (await Permisos.TienePermisoAsync(usuarioId, "GARANTIA_VER"))
+    {
+        <a asp-controller="Garantia" asp-action="PorVehiculo" asp-route-vehiculoId="@Model.IngresoVehiculo.VehiculoId" class="btn btn-outline-secondary mb-3">Garantías del vehículo</a>
+    }
+
 
     <!-- ===================================== -->
     <!-- MENSAJES -->

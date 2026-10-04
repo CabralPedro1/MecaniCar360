@@ -1,0 +1,37 @@
+@model MecaniCar360.Models.ViewModels.GarantiaDetalleViewModel
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Detalle de garantía";
+    var propia = ViewData["Propia"] is true;
+    var g = Model.Garantia; var ingreso = g.OrdenTrabajo.IngresoVehiculo; var v = ingreso.Vehiculo;
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+}
+<h1>Garantía #@g.Id</h1>
+<partial name="_Mensajes" />
+<p><strong>Orden:</strong> #@g.OrdenTrabajoId</p>
+<p><strong>Vehículo:</strong> @v.Patente — @v.Marca.Nombre @v.Modelo.Nombre</p>
+@if (!propia) { <p><strong>Cliente:</strong> @ingreso.Turno.Cliente.Nombre @ingreso.Turno.Cliente.Apellido</p> }
+<p><strong>Inicio:</strong> @g.FechaInicio.ToString("dd/MM/yyyy HH:mm") · <strong>Fin:</strong> @g.FechaFin.ToString("dd/MM/yyyy HH:mm")</p>
+<p class="alert alert-info">@Model.Estado</p>
+<h2 class="h5">Ítems cubiertos</h2>
+<p>La duración se cuenta desde la entrega; cada ítem conserva los meses de cobertura indicados.</p>
+<div class="table-responsive"><table class="table table-striped">
+<thead><tr><th>Ítem facturado</th><th>Cantidad</th><th>Meses de cobertura</th><th>Observaciones</th></tr></thead>
+<tbody>@foreach (var item in g.Items) {
+    <tr><td>@item.FacturaItem.Descripcion</td><td>@item.FacturaItem.Cantidad</td><td>@item.MesesGarantia</td><td>@(item.Observaciones ?? "—")</td></tr>
+}</tbody></table></div>
+<a asp-action="@(propia ? "MisGarantias" : "Index")" class="btn btn-secondary mb-3">Volver</a>
+@if (await Permisos.TienePermisoAsync(actor, propia ? "CLIENTE_ORDEN_VER" : "ORDEN_VER_DETALLE")) {
+    <a asp-controller="@(propia ? "PortalCliente" : "OrdenTrabajo")" asp-action="@(propia ? "Orden" : "Detalle")" asp-route-id="@g.OrdenTrabajoId" class="btn btn-outline-primary mb-3">Ver orden</a>
+}
+@if (!propia) {
+    <a asp-action="PorVehiculo" asp-route-vehiculoId="@v.Id" class="btn btn-outline-primary mb-3">Garantías del vehículo</a>
+}
+@if (!propia && g.Activa && await Permisos.TienePermisoAsync(actor, "GARANTIA_ANULAR")) {
+    <form asp-action="Anular" method="post">
+        @Html.AntiForgeryToken()
+        <input name="id" type="hidden" value="@g.Id" />
+        <button type="submit" class="btn btn-danger">Anular garantía</button>
+    </form>
+}
