@@ -1,0 +1,21 @@
+@{ Layout = null; }
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title></head>
+<body><p id="estado">Abriendo invitacion...</p><noscript>Active JavaScript para abrir la invitacion de forma segura.</noscript>
+<script>
+(async () => {
+    const token = location.hash.slice(1);
+    history.replaceState(null, '', location.pathname);
+    if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
+        document.getElementById('estado').textContent = 'La invitacion no esta disponible. Solicite una nueva al taller.';
+        return;
+    }
+    try {
+        const respuesta = await fetch(location.pathname, {headers: {'X-Invitacion': token}, cache: 'no-store', credentials: 'same-origin', redirect: 'error'});
+        if (!respuesta.ok) throw new Error();
+        const html = await respuesta.text();
+        document.open(); document.write(html); document.close();
+    } catch {
+        document.getElementById('estado').textContent = 'No se pudo abrir la invitacion. Intente nuevamente desde el correo.';
+    }
+})();
+</script></body></html>

@@ -1,4 +1,4 @@
-@model MecaniCar360.Models.Presupuesto
+﻿@model MecaniCar360.Models.Presupuesto
 @using MecaniCar360.Models.Enums
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
@@ -15,7 +15,7 @@
 <h2>Presupuesto #@Model.Id</h2>
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
 <p>Cliente: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Cliente.Nombre</p>
-<p>Vehículo: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Vehiculo.Patente</p>
+<p>Vehículo: @Model.OrdenTrabajo.IngresoVehiculo.VehiculoPatenteSnapshot</p>
 <p>Estado: @Model.Estado — Total actual: $ @Model.Total.ToString("N2")</p>
 @if (editar)
 {

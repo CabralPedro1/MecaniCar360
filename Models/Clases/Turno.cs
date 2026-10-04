@@ -10,8 +10,8 @@ namespace MecaniCar360.Models
         // VEHÍCULO Y CLIENTE
         // =====================================
 
-        public int VehiculoId { get; set; }
-        public Vehiculo Vehiculo { get; set; } = null!;
+        public int? VehiculoId { get; set; }
+        public Vehiculo? Vehiculo { get; set; }
 
         public int ClienteId { get; set; }
         public Persona Cliente { get; set; } = null!;

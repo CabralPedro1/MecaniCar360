@@ -1,7 +1,9 @@
+﻿using System.ComponentModel.DataAnnotations;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
+using MecaniCar360.Models.ViewModels;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,14 +42,10 @@ namespace MecaniCar360.Services
 
             var ingreso = await _context.IngresosVehiculo
                 .Include(i => i.OrdenTrabajo)
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Marca)
-
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Modelo)
-
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Cliente)
 
@@ -79,14 +77,10 @@ namespace MecaniCar360.Services
 
             var ingreso = await _context.IngresosVehiculo
                 .Include(i => i.OrdenTrabajo)
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Marca)
-
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Modelo)
-
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Cliente)
 
@@ -104,15 +98,49 @@ namespace MecaniCar360.Services
         }
 
 
+        public async Task<ServiceResult<RegistrarIngresoViewModel>> PrepararRegistroAsync(
+            int turnoId,
+            int usuarioSolicitanteId)
+        {
+            if (!await TienePermisoAsync(usuarioSolicitanteId, "INGRESO_REGISTRAR"))
+                return ServiceResult<RegistrarIngresoViewModel>.Error("No tiene permisos para registrar ingresos.");
+
+            var turno = await _context.Turnos.AsNoTracking()
+                .Include(t => t.Cliente)
+                .Include(t => t.Vehiculo)
+                .Include(t => t.IngresoVehiculo)
+                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            if (turno == null)
+                return ServiceResult<RegistrarIngresoViewModel>.Error("Turno no encontrado.");
+
+            var vehiculos = await _context.DominiosVehiculares.AsNoTracking()
+                .Where(d => d.PersonaId == turno.ClienteId && d.FechaHasta == null && d.Vehiculo.Activo)
+                .Select(d => d.Vehiculo)
+                .Include(v => v.Marca)
+                .Include(v => v.Modelo)
+                .OrderBy(v => v.Patente)
+                .ToListAsync();
+
+            return ServiceResult<RegistrarIngresoViewModel>.Ok(new RegistrarIngresoViewModel
+            {
+                TurnoId = turno.Id,
+                Turno = turno,
+                Vehiculos = vehiculos,
+                VehiculoId = turno.VehiculoId.HasValue && vehiculos.Any(v => v.Id == turno.VehiculoId.Value)
+                    ? turno.VehiculoId
+                    : null,
+                Kilometraje = turno.Vehiculo?.Kilometraje
+            });
+        }
+
+
         // =====================================
         // REGISTRAR INGRESO + CREAR ORDEN
         // =====================================
 
         public async Task<ServiceResult<OrdenTrabajo>>
             RegistrarIngresoYCrearOrdenAsync(
-                int turnoId,
-                bool clienteEspera,
-                string? observaciones,
+                RegistrarIngresoViewModel model,
                 int usuarioSolicitanteId)
         {
             if (!await TienePermisoAsync(
@@ -123,21 +151,11 @@ namespace MecaniCar360.Services
                     "No tiene permisos para registrar ingresos.");
             }
 
-            await using var transaction =
-                await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var validaciones = new List<ValidationResult>();
+            if (!Validator.TryValidateObject(model, new ValidationContext(model), validaciones, validateAllProperties: true))
+                return ServiceResult<OrdenTrabajo>.Error(validaciones.FirstOrDefault()?.ErrorMessage ?? "Revise los datos de recepción.");
 
-            var entidadesPrevias = _context.ChangeTracker.Entries()
-                .Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
-            Turno? turnoOperacion = null;
-
-            void DesvincularOperacionRevertida()
-            {
-                // No limpiar entidades ajenas al registro que acaba de revertirse.
-                foreach (var entry in _context.ChangeTracker.Entries().ToList())
-                    if (!entidadesPrevias.Contains(entry.Entity) ||
-                        ReferenceEquals(entry.Entity, turnoOperacion))
-                        entry.State = EntityState.Detached;
-            }
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
 
             try
             {
@@ -145,9 +163,13 @@ namespace MecaniCar360.Services
                 // BUSCAR TURNO
                 // =====================================
 
-                var turno = await _context.Turnos.FromSqlInterpolated(
-                    $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}")
-                    .FirstOrDefaultAsync();
+                var turno = await _context.Turnos
+                    .FromSqlInterpolated($"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {model.TurnoId}")
+                    .Include(t => t.Vehiculo)
+                    .Include(t => t.IngresoVehiculo)
+                    .Include(t => t.Cliente)
+                    .FirstOrDefaultAsync(t =>
+                        t.Id == model.TurnoId);
 
                 if (turno == null)
                 {
@@ -159,9 +181,6 @@ namespace MecaniCar360.Services
                 // =====================================
                 // VALIDAR ESTADO
                 // =====================================
-
-                turnoOperacion = turno;
-                await _context.Entry(turno).ReloadAsync();
 
                 if (turno.Estado == EstadoTurno.Cancelado)
                 {
@@ -193,11 +212,42 @@ namespace MecaniCar360.Services
                 // EVITAR DOBLE INGRESO
                 // =====================================
 
-                if (await _context.IngresosVehiculo.AnyAsync(i => i.TurnoId == turnoId))
+                if (turno.IngresoVehiculo != null)
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "El vehículo ya posee un ingreso registrado.");
                 }
+
+                var vehiculo = await _context.Vehiculos
+                    .FromSqlInterpolated($"SELECT * FROM [Vehiculos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {model.VehiculoId!.Value}")
+                    .Include(v => v.Marca)
+                    .Include(v => v.Modelo)
+                    .FirstOrDefaultAsync(v => v.Activo);
+                if (vehiculo == null)
+                    return ServiceResult<OrdenTrabajo>.Error("El vehículo seleccionado no existe o está inactivo.");
+
+                var titularValido = await _context.DominiosVehiculares.AnyAsync(d =>
+                    d.PersonaId == turno.ClienteId && d.VehiculoId == vehiculo.Id && d.FechaHasta == null);
+                if (!titularValido)
+                    return ServiceResult<OrdenTrabajo>.Error("El vehículo recibido no pertenece al cliente del turno.");
+
+                if (await _context.IngresosVehiculo.AnyAsync(i => i.VehiculoId == vehiculo.Id && i.FechaEgreso == null))
+                    return ServiceResult<OrdenTrabajo>.Error("El vehículo ya tiene un ingreso activo en el taller.");
+
+                if (vehiculo.Kilometraje.HasValue && model.Kilometraje!.Value < vehiculo.Kilometraje.Value && !model.ConfirmarKilometrajeMenor)
+                    return ServiceResult<OrdenTrabajo>.Error("Confirme expresamente el kilometraje menor al registrado anteriormente.");
+
+                if (model.EstadoExterior == EstadoExteriorRecepcion.ConObservaciones && string.IsNullOrWhiteSpace(model.DescripcionEstadoExterior))
+                    return ServiceResult<OrdenTrabajo>.Error("Describa el estado exterior del vehículo.");
+                if (model.EstadoExterior == EstadoExteriorRecepcion.SinDanosVisiblesDeclarados && !string.IsNullOrWhiteSpace(model.DescripcionEstadoExterior))
+                    return ServiceResult<OrdenTrabajo>.Error("Quite la descripción exterior o seleccione el estado con observaciones.");
+                if (!model.VerificadoConCliente)
+                    return ServiceResult<OrdenTrabajo>.Error("Debe verificar los datos de recepción con el cliente.");
+
+                var accesorios = model.AccesoriosSeleccionados.Aggregate(AccesoriosRecepcion.Ninguno, (actual, item) => actual | item);
+                var otrosSeleccionado = accesorios.HasFlag(AccesoriosRecepcion.Otros);
+                if (otrosSeleccionado != !string.IsNullOrWhiteSpace(model.OtrosAccesorios))
+                    return ServiceResult<OrdenTrabajo>.Error("La descripción de Otros debe corresponder con la selección de accesorios.");
 
 
                 // =====================================
@@ -206,19 +256,31 @@ namespace MecaniCar360.Services
 
                 var ingreso = new IngresoVehiculo
                 {
-                    TurnoId =
-                        turnoId,
+                    TurnoId = turno.Id,
+                    VehiculoId = vehiculo.Id,
+                    RegistradoPorUsuarioId = usuarioSolicitanteId,
+                    ClienteNombreSnapshot = $"{turno.Cliente.Nombre} {turno.Cliente.Apellido}".Trim(),
+                    ClienteDniSnapshot = turno.Cliente.Dni.Trim(),
+                    VehiculoPatenteSnapshot = vehiculo.Patente.Trim(),
+                    VehiculoDescripcionSnapshot = $"{vehiculo.Marca.Nombre} {vehiculo.Modelo.Nombre} {vehiculo.Anio}".Trim(),
+                    Kilometraje = model.Kilometraje!.Value,
+                    NivelCombustible = model.NivelCombustible!.Value,
+                    EstadoExterior = model.EstadoExterior!.Value,
+                    ObservacionesEstadoExterior = string.IsNullOrWhiteSpace(model.DescripcionEstadoExterior) ? null : model.DescripcionEstadoExterior.Trim(),
+                    Accesorios = accesorios,
+                    OtrosAccesorios = otrosSeleccionado ? model.OtrosAccesorios!.Trim() : null,
+                    DatosVerificadosConCliente = true,
 
                     FechaIngreso =
                         DateTime.Now,
 
                     ClienteEspera =
-                        clienteEspera,
+                        turno.Tipo == TipoTurno.Servicio && model.ClienteEspera,
 
                     ObservacionesRecepcion =
-                        string.IsNullOrWhiteSpace(observaciones)
+                        string.IsNullOrWhiteSpace(model.ObservacionesRecepcion)
                             ? null
-                            : observaciones.Trim()
+                            : model.ObservacionesRecepcion.Trim()
                 };
 
                 _context.IngresosVehiculo.Add(
@@ -231,6 +293,7 @@ namespace MecaniCar360.Services
 
                 turno.Estado =
                     EstadoTurno.Finalizado;
+                vehiculo.Kilometraje = model.Kilometraje.Value;
 
                 _context.TurnoEstados.Add(
                     new TurnoEstadoHistorial
@@ -327,15 +390,13 @@ namespace MecaniCar360.Services
                 when (EsViolacionUnicidad(ex))
             {
                 await transaction.RollbackAsync();
-                DesvincularOperacionRevertida();
 
                 return ServiceResult<OrdenTrabajo>.Error(
-                    "El turno ya posee un ingreso u orden de trabajo registrada.");
+                    "No se pudo completar la recepción porque el turno, la orden o el vehículo ya tiene una asociación activa.");
             }
             catch
             {
                 await transaction.RollbackAsync();
-                DesvincularOperacionRevertida();
                 throw;
             }
         }
@@ -359,14 +420,10 @@ namespace MecaniCar360.Services
 
             var ingresos = await _context.IngresosVehiculo
                 .Include(i => i.OrdenTrabajo)
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Marca)
-
-                .Include(i => i.Turno)
-                    .ThenInclude(t => t.Vehiculo)
-                        .ThenInclude(v => v.Modelo)
-
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Marca)
+                .Include(i => i.Vehiculo)
+                    .ThenInclude(v => v.Modelo)
                 .Include(i => i.Turno)
                     .ThenInclude(t => t.Cliente)
 
@@ -411,7 +468,7 @@ namespace MecaniCar360.Services
 
             return await _context.IngresosVehiculo
                 .AnyAsync(i =>
-                    i.Turno.VehiculoId == vehiculoId &&
+                    i.VehiculoId == vehiculoId &&
                     !i.FechaEgreso.HasValue);
         }
     }

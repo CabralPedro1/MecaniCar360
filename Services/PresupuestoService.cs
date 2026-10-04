@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
@@ -325,7 +325,8 @@ namespace MecaniCar360.Services
 
         private Task<OrdenTrabajo?> OrdenConsultaAsync(int id) => _context.OrdenesTrabajo.AsNoTracking()
             .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Cliente)
-            .Include(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Vehiculo)
+            .Include(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Marca)
+            .Include(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Modelo)
             .Include(o => o.Factura).FirstOrDefaultAsync(o => o.Id == id);
 
         private async Task<Usuario?> UsuarioAutorizadoAsync(int id, string patente)

@@ -6,10 +6,10 @@ using MecaniCar360.Services;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Threading.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Threading.RateLimiting;
 
 namespace MecaniCar360
 {
@@ -28,7 +28,6 @@ namespace MecaniCar360
 
             builder.Services.AddControllersWithViews();
 
-            // Cuota por proceso. Configurar proxies confiables antes de usar la IP tras un proxy.
             builder.Services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -173,6 +172,9 @@ namespace MecaniCar360
             // =====================================
 
             builder.Services.AddScoped<AltaPersonalService>();
+            builder.Services.AddScoped<AltaClienteService>();
+            builder.Services.AddScoped<ClienteHabilitadoService>();
+            builder.Services.AddScoped<InvitacionClienteService>();
             builder.Services.AddScoped<AgendaService>();
             builder.Services.AddScoped<AuditoriaService>();
             builder.Services.AddScoped<ModeloService>();
@@ -283,7 +285,8 @@ namespace MecaniCar360
                             MecaniCarContext>();
 
                 InicializadorBD.Inicializar(
-                    context, builder.Configuration);
+                    context,
+                    builder.Configuration);
             }
 
 

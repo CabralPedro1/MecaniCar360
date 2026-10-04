@@ -33,9 +33,9 @@ namespace MecaniCar360.Services
         {
             var resultado = new LoginResult();
 
-            var usuario = await ObtenerUsuarioPorUsernameAsync(username);
+            var usuario = await ObtenerUsuarioPorUsernameAsync(IdentificadorCuenta.Normalizar(username));
 
-            if (usuario == null || usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
+            if (usuario == null ||
                 string.IsNullOrWhiteSpace(usuario.PasswordHash))
             {
                 _ = BCrypt.Net.BCrypt.Verify(password, DummyPasswordHash);
@@ -43,7 +43,7 @@ namespace MecaniCar360.Services
                 return resultado;
             }
 
-            if (!BCrypt.Net.BCrypt.Verify(password, usuario.PasswordHash))
+            if (!VerificarPassword(password, usuario.PasswordHash))
             {
                 resultado.Mensaje = "Usuario o contraseña incorrectos.";
                 return resultado;
@@ -98,8 +98,7 @@ namespace MecaniCar360.Services
 
             var validacion = ValidarCompletarDatos(model);
 
-            if (usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
-                string.IsNullOrWhiteSpace(usuario.PasswordHash))
+            if (string.IsNullOrWhiteSpace(usuario.PasswordHash))
                 return ServiceResult<ClaimsIdentity>.Error("La cuenta no utiliza credenciales locales.");
 
             if (!validacion.Exitoso)
@@ -133,11 +132,10 @@ namespace MecaniCar360.Services
             if (usuario == null || !usuario.Activo || usuario.Persona == null || !usuario.Persona.Activo)
                 return ServiceResult<ClaimsIdentity>.Error("Usuario no encontrado.");
 
-            if (usuario.ProveedorAutenticacion != ProveedorAutenticacion.Credenciales ||
-                string.IsNullOrWhiteSpace(usuario.PasswordHash))
+            if (string.IsNullOrWhiteSpace(usuario.PasswordHash))
                 return ServiceResult<ClaimsIdentity>.Error("La cuenta no utiliza credenciales locales.");
 
-            if (!BCrypt.Net.BCrypt.Verify(
+            if (!VerificarPassword(
                 model.ContraseñaActual,
                 usuario.PasswordHash))
             {
@@ -193,6 +191,14 @@ namespace MecaniCar360.Services
         // =====================================
         // MÉTODOS PRIVADOS - CONSULTAS
         // =====================================
+
+        private static bool VerificarPassword(string password, string hash)
+        {
+            try { return BCrypt.Net.BCrypt.Verify(password, hash); }
+            catch (BCrypt.Net.SaltParseException) { return false; }
+            catch (ArgumentException) { return false; }
+            catch (FormatException) { return false; }
+        }
 
         private async Task<Usuario?> BloquearUsuarioAsync(int usuarioId)
         {

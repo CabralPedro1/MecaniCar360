@@ -1,8 +1,10 @@
-@model VehiculoViewModel
+﻿@model VehiculoViewModel
 @{ ViewData["Title"] = "Editar vehículo"; }
+@if (ViewData["ReturnUrl"] is string volver) { <a href="@volver" class="btn btn-secondary">Volver a recepcion</a> }
 <h2>Editar vehículo</h2>
 <form asp-action="Editar" method="post">
     @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
     <input asp-for="PersonaId" type="hidden" />
     <input asp-for="Vehiculo.Id" type="hidden" />

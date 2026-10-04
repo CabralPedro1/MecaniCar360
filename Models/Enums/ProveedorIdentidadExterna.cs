@@ -1,7 +1,6 @@
 namespace MecaniCar360.Models.Enums;
 
-public enum ProveedorAutenticacion
+public enum ProveedorIdentidadExterna
 {
-    Credenciales = 0,
     Google = 1
 }

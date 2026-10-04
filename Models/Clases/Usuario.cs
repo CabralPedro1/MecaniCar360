@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace MecaniCar360.Models
 {
@@ -15,10 +15,7 @@ namespace MecaniCar360.Models
         [MaxLength(200)]
         public string? PasswordHash { get; set; }
 
-        public Enums.ProveedorAutenticacion ProveedorAutenticacion { get; set; } = Enums.ProveedorAutenticacion.Credenciales;
-
-        [MaxLength(255)]
-        public string? IdentificadorExterno { get; set; }
+        public List<IdentidadExterna> IdentidadesExternas { get; set; } = new();
 
         public const string SecurityStampClaim = "SecurityStamp";
 
@@ -28,8 +25,6 @@ namespace MecaniCar360.Models
         public bool Activo { get; set; } = true;
         public bool PrimerLogin { get; set; } = true;
 
-        public string? TokenRecuperacionPassword { get; set; }
-        public DateTime? TokenRecuperacionExpira { get; set; }
 
         public int PersonaId { get; set; }
 

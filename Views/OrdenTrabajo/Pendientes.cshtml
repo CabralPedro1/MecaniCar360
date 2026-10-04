@@ -1,4 +1,4 @@
-@model IEnumerable<MecaniCar360.Models.OrdenTrabajo>
+﻿@model IEnumerable<MecaniCar360.Models.OrdenTrabajo>
 @using MecaniCar360.Models.Enums
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
@@ -20,8 +20,8 @@
 else {
 <table class="table table-striped"><thead><tr><th>Orden</th><th>Vehiculo</th><th>Patente</th><th>Inicio</th><th>Estado</th><th>Urgencia</th><th>Acciones</th></tr></thead><tbody>
 @foreach (var orden in Model) {
-<tr><td>@orden.Id</td><td>@orden.IngresoVehiculo.Turno.Vehiculo.Marca.Nombre @orden.IngresoVehiculo.Turno.Vehiculo.Modelo.Nombre</td>
-<td>@orden.IngresoVehiculo.Turno.Vehiculo.Patente</td><td>@orden.FechaInicio.ToString("dd/MM/yyyy HH:mm")</td><td>@orden.EstadoActual</td><td>@orden.Urgencia</td><td>
+<tr><td>@orden.Id</td><td>@orden.IngresoVehiculo.Vehiculo.Marca.Nombre @orden.IngresoVehiculo.Vehiculo.Modelo.Nombre</td>
+<td>@orden.IngresoVehiculo.Vehiculo.Patente</td><td>@orden.FechaInicio.ToString("dd/MM/yyyy HH:mm")</td><td>@orden.EstadoActual</td><td>@orden.Urgencia</td><td>
 @if (verDetalle) { <a asp-action="Detalle" asp-route-id="@orden.Id" class="btn btn-sm btn-info">Detalle</a> }
 @if (asignar && orden.MecanicoId == null && !orden.FechaFin.HasValue && orden.EstadoActual is not (EstadoOrden.Finalizado or EstadoOrden.Entregado)) {
 <a asp-action="MecanicosDisponibles" asp-route-ordenTrabajoId="@orden.Id" class="btn btn-sm btn-primary">Asignar mecanico</a>

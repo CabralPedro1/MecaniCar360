@@ -1,20 +1,27 @@
-@model MecaniCar360.Models.ViewModels.CrearTurnoViewModel
+﻿@model MecaniCar360.Models.ViewModels.CrearTurnoViewModel
 @using MecaniCar360.Models.Enums
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 @{ ViewData["Title"] = "Crear turno"; }
 <h2>Crear turno</h2>
+@{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+   var inmediata = await Permisos.TienePermisoAsync(actor, "INGRESO_REGISTRAR"); }
 <form asp-action="Crear" method="post">
 @Html.AntiForgeryToken()
 <div asp-validation-summary="All" class="text-danger" role="alert"></div>
 <div class="mb-3"><label asp-for="ClienteId">Cliente / Persona</label>
 <select asp-for="ClienteId" asp-items="ViewBag.Clientes" class="form-select" required><option value="">Seleccione persona</option></select>
 <span asp-validation-for="ClienteId" class="text-danger"></span></div>
-<div class="mb-3"><label asp-for="VehiculoId">Vehículo</label>
-<select asp-for="VehiculoId" asp-items="ViewBag.Vehiculos" class="form-select" required><option value="">Seleccione vehículo</option></select>
+<div class="mb-3"><label asp-for="VehiculoId">Vehiculo previsto (opcional)</label>
+<select asp-for="VehiculoId" asp-items="ViewBag.Vehiculos" class="form-select"><option value="">Sin especificar</option></select>
 <span asp-validation-for="VehiculoId" class="text-danger"></span><p id="aviso-vehiculos" role="status" class="text-danger"></p></div>
 <div class="mb-3"><label asp-for="Tipo">Tipo</label><select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoTurno>()" class="form-select"></select><span asp-validation-for="Tipo" class="text-danger"></span></div>
-<div class="mb-3"><label for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio.ToString("yyyy-MM-dd")" class="form-control" required /></div>
+@if (inmediata) {
+<div class="form-check mb-3"><input asp-for="AtencionInmediata" class="form-check-input" /><label asp-for="AtencionInmediata">Atencion inmediata (hora del servidor)</label></div>
+}
+<div class="mb-3"><label for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" class="form-control" required /></div>
 <div class="mb-3"><label for="horario-turno">Horario</label>
-<select asp-for="FechaInicio" id="horario-turno" data-seleccionado="@Model.FechaInicio.ToString("yyyy-MM-ddTHH:mm")" class="form-select" required><option value="">Seleccione horario</option></select>
+<select asp-for="FechaInicio" id="horario-turno" data-seleccionado="@Model.FechaInicio?.ToString("yyyy-MM-ddTHH:mm")" class="form-select" required><option value="">Seleccione horario</option></select>
 <span asp-validation-for="FechaInicio" class="text-danger"></span><p id="aviso-horarios" role="status" class="text-danger"></p></div>
 <div class="mb-3"><label asp-for="Motivo"></label><textarea asp-for="Motivo" class="form-control"></textarea><span asp-validation-for="Motivo" class="text-danger"></span></div>
 <div class="mb-3"><label asp-for="Observaciones"></label><textarea asp-for="Observaciones" class="form-control"></textarea><span asp-validation-for="Observaciones" class="text-danger"></span></div>
@@ -32,7 +39,7 @@
     cliente.addEventListener('change', async () => {
         solicitud?.abort();
         const actual = solicitud = new AbortController();
-        vehiculo.replaceChildren(new Option('Seleccione vehículo', ''));
+        vehiculo.replaceChildren(new Option('Sin especificar', ''));
         vehiculo.disabled = true;
         aviso.textContent = '';
         if (!cliente.value) return;
@@ -46,16 +53,16 @@
             if (solicitud !== actual) return;
             data.forEach(v => vehiculo.add(new Option(v.patente, v.id)));
             vehiculo.disabled = false;
-            aviso.textContent = data.length ? '' : 'No hay vehículos activos con titularidad vigente.';
+            aviso.textContent = data.length ? '' : 'Sin vehiculos registrados. Puede reservar sin especificar uno.';
         } catch (error) {
             if (error.name !== 'AbortError' && solicitud === actual)
                 aviso.textContent = 'No se pudieron cargar los vehículos. Vuelva a seleccionar la persona.';
         }
     });
     vehiculo.form.addEventListener('submit', event => {
-        if (vehiculo.disabled || !vehiculo.value) {
+        if (cliente.value && vehiculo.disabled) {
             event.preventDefault();
-            aviso.textContent = 'Seleccione un vehículo antes de guardar.';
+            aviso.textContent = 'Espere la carga de vehiculos o vuelva a seleccionar el cliente.';
         }
     });
 })();

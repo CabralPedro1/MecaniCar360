@@ -1,20 +1,4 @@
 ﻿@model IEnumerable<MecaniCar360.Models.OrdenTrabajo>
-@using System.Security.Claims
-@inject MecaniCar360.Services.PermisoService Permisos
-@{
-    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
-    var verDetalle = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE");
-    var asignar = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ASIGNAR_MECANICO");
-}
-@if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
-@if (TempData["Ok"] is string ok) { <div class="alert alert-success" role="status">@ok</div> }
-<nav class="mb-3">
-<a asp-action="Index" class="btn btn-secondary">Ordenes</a>
-<a asp-action="Pendientes" class="btn btn-outline-primary">Pendientes libres</a>
-@if (ViewData["EsMecanicoConsultable"] is true) { <a asp-action="DeMecanico" class="btn btn-outline-primary">Mis ordenes activas</a> }
-@if (asignar) { <a asp-action="MecanicosDisponibles" class="btn btn-outline-primary">Mecanicos disponibles</a> }
-</nav>
-
 
 @{
     ViewData["Title"] = "Órdenes de Trabajo";
@@ -84,12 +68,12 @@
                     </td>
 
                     <td>
-                        @item.IngresoVehiculo.Turno.Vehiculo.Marca.Nombre
-                        @item.IngresoVehiculo.Turno.Vehiculo.Modelo.Nombre
+                        @item.IngresoVehiculo.Vehiculo.Marca.Nombre
+                        @item.IngresoVehiculo.Vehiculo.Modelo.Nombre
                     </td>
 
                     <td>
-                        @item.IngresoVehiculo.Turno.Vehiculo.Patente
+                        @item.IngresoVehiculo.Vehiculo.Patente
                     </td>
 
                     <td>
@@ -167,7 +151,6 @@
 
                     <td>
 
-@if (verDetalle) {
                         <a asp-action="Detalle"
                            asp-route-id="@item.Id"
                            class="btn btn-primary btn-sm">
@@ -175,11 +158,6 @@
                             Detalle
 
                         </a>
-}
-@if (asignar && item.MecanicoId == null && !item.FechaFin.HasValue && item.EstadoActual is not (MecaniCar360.Models.Enums.EstadoOrden.Finalizado or MecaniCar360.Models.Enums.EstadoOrden.Entregado)) {
-<a asp-action="MecanicosDisponibles" asp-route-ordenTrabajoId="@item.Id" class="btn btn-sm btn-primary">Asignar mecanico</a>
-}
-
 
                     </td>
 

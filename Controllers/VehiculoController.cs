@@ -1,4 +1,4 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using MecaniCar360.Attributes;
 using MecaniCar360.Models;
 using MecaniCar360.Models.ViewModels;
@@ -96,8 +96,9 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Permiso("VEHICULO_CREAR")]
-        public async Task<IActionResult> Crear(int personaId)
+        public async Task<IActionResult> Crear(int personaId, string? returnUrl = null)
         {
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
             if (personaId <= 0)
                 return BadRequest("Seleccione una persona para registrar su vehículo.");
             await CargarMarcasAsync();
@@ -112,8 +113,9 @@ namespace MecaniCar360.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("VEHICULO_CREAR")]
-        public async Task<IActionResult> Crear(VehiculoViewModel model)
+        public async Task<IActionResult> Crear(VehiculoViewModel model, string? returnUrl = null)
         {
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
             PrepararValidacionFormulario();
             if (model.PersonaId <= 0)
                 ModelState.AddModelError(nameof(model.PersonaId), "Seleccione una persona válida.");
@@ -151,6 +153,7 @@ namespace MecaniCar360.Controllers
             }
 
             TempData["Ok"] = resultado.Mensaje;
+            if (Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl!);
 
             return RedirectToAction(
                 "Detalle",
@@ -163,8 +166,9 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Permiso("VEHICULO_MODIFICAR")]
-        public async Task<IActionResult> Editar(int id, int personaId)
+        public async Task<IActionResult> Editar(int id, int personaId, string? returnUrl = null)
         {
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)
@@ -191,8 +195,9 @@ namespace MecaniCar360.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Permiso("VEHICULO_MODIFICAR")]
-        public async Task<IActionResult> Editar(VehiculoViewModel model)
+        public async Task<IActionResult> Editar(VehiculoViewModel model, string? returnUrl = null)
         {
+            ViewData["ReturnUrl"] = Url.IsLocalUrl(returnUrl) ? returnUrl : null;
             PrepararValidacionFormulario();
             if (!ModelState.IsValid)
             {
@@ -225,6 +230,7 @@ namespace MecaniCar360.Controllers
             }
 
             TempData["Ok"] = resultado.Mensaje;
+            if (Url.IsLocalUrl(returnUrl)) return LocalRedirect(returnUrl!);
 
             return RedirectToAction(nameof(Detalle), new { id = model.Vehiculo.Id, personaId = model.PersonaId > 0 ? (int?)model.PersonaId : null });
         }

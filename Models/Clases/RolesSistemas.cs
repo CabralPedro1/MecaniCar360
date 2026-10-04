@@ -7,5 +7,8 @@
         public const string STOCK = "STOCK";
         public const string CAJA = "CAJA";
         public const string CLIENTE = "CLIENTE";
+
+        public static IReadOnlyList<string> Internos { get; } =
+            Array.AsReadOnly(new[] { ADMIN, MECANICO, CAJA, STOCK });
     }
 }

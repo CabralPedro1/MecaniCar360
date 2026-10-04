@@ -1,4 +1,4 @@
-@model IEnumerable<MecaniCar360.Models.IngresoVehiculo>
+﻿@model IEnumerable<MecaniCar360.Models.IngresoVehiculo>
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{
@@ -18,7 +18,7 @@ else {
 @foreach (var ingreso in Model) {
 <tr>
 <td>#@ingreso.Id</td><td>@ingreso.FechaIngreso.ToString("dd/MM/yyyy HH:mm")</td>
-<td>@ingreso.Turno.Vehiculo.Patente — @ingreso.Turno.Vehiculo.Marca.Nombre @ingreso.Turno.Vehiculo.Modelo.Nombre</td>
+<td>@ingreso.Vehiculo.Patente — @ingreso.Vehiculo.Marca.Nombre @ingreso.Vehiculo.Modelo.Nombre</td>
 <td>@ingreso.Turno.Cliente.Nombre @ingreso.Turno.Cliente.Apellido</td><td>@(ingreso.ClienteEspera ? "Sí" : "No")</td>
 <td>
 <a asp-action="Detalle" asp-route-id="@ingreso.Id" class="btn btn-sm btn-info">Detalle de ingreso</a>

@@ -1,4 +1,3 @@
-using MecaniCar360.Models.Enums;
 
 namespace MecaniCar360.Models.ViewModels;
 
@@ -20,7 +19,15 @@ public sealed class PersonaCuentaViewModel
     public string? Username { get; init; }
     public string? EmailLogin { get; init; }
     public bool? UsuarioActivo { get; init; }
-    public ProveedorAutenticacion? Proveedor { get; init; }
+    public bool CredencialLocalDisponible { get; init; }
+    public bool GoogleVinculado { get; init; }
+    public string MetodosAutenticacion => (CredencialLocalDisponible, GoogleVinculado) switch
+    {
+        (true, true) => "Credenciales + Google",
+        (true, false) => "Credenciales",
+        (false, true) => "Google",
+        _ => UsuarioId.HasValue ? "Sin metodo disponible" : "—"
+    };
     public bool EsPersonal { get; init; }
     public bool EsCliente { get; init; }
     public List<RolCuentaViewModel> Roles { get; init; } = new();

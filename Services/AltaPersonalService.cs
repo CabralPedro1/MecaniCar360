@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Data;
+using MecaniCar360.Helpers;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
@@ -58,8 +59,10 @@ public sealed class AltaPersonalService
             var rol = await RolesInternos().SingleOrDefaultAsync(r => r.Id == model.RolId);
             if (rol == null) return ServiceResult.Error("Seleccione un rol interno activo válido.");
             if (await _personas.ExisteDniAsync(model.Dni)) return ServiceResult.Error("Ya existe una persona con ese DNI.");
-            var username = model.Username.Trim();
-            var emailLogin = model.EmailLogin.Trim();
+            var username = IdentificadorCuenta.Normalizar(model.Username);
+            var emailLogin = IdentificadorCuenta.Normalizar(model.EmailLogin);
+            if (!IdentificadorCuenta.UsernameValido(username) || !IdentificadorCuenta.EmailValido(emailLogin))
+                return ServiceResult.Error("Usuario o email no validos; el usuario no admite @.");
             if (await _usuarios.ExisteUsernameAsync(username)) return ServiceResult.Error("Ya existe un usuario con ese nombre.");
             if (await _usuarios.ExisteEmailAsync(emailLogin)) return ServiceResult.Error("Ya existe un usuario con ese email.");
 
@@ -72,7 +75,6 @@ public sealed class AltaPersonalService
             var usuario = new Usuario
             {
                 Persona = persona, Username = username, EmailLogin = emailLogin,
-                ProveedorAutenticacion = ProveedorAutenticacion.Credenciales, IdentificadorExterno = null,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password), PrimerLogin = true,
                 SecurityStamp = Guid.NewGuid().ToString("N"), Activo = true, FechaCreacion = DateTime.Now
             };

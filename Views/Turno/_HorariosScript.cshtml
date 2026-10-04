@@ -1,11 +1,18 @@
-<script>
+﻿<script>
 (() => {
     const fecha = document.getElementById('fecha-turno');
     const horario = document.getElementById('horario-turno');
     const aviso = document.getElementById('aviso-horarios');
+    const inmediata = document.getElementById("AtencionInmediata");
     let solicitud;
     async function cargar() {
         solicitud?.abort();
+        if (inmediata?.checked) {
+            fecha.disabled = true; horario.disabled = true;
+            aviso.textContent = 'Se utilizara la fecha y hora actual del servidor.';
+            return;
+        }
+        fecha.disabled = false;
         const actual = solicitud = new AbortController();
         const seleccionado = horario.dataset.seleccionado;
         horario.dataset.seleccionado = '';
@@ -20,7 +27,7 @@
             if (!response.ok || response.redirected) throw new Error();
             const data = await response.json();
             if (!data.exitoso || !Array.isArray(data.horarios)) throw new Error();
-            if (solicitud !== actual) return;
+            if (solicitud !== actual || inmediata?.checked) return;
             data.horarios.forEach(h => horario.add(new Option(h.hora, h.valor)));
             if (data.horarios.some(h => h.valor === seleccionado)) horario.value = seleccionado;
             horario.disabled = false;
@@ -31,8 +38,9 @@
         }
     }
     fecha.addEventListener('change', cargar);
+    inmediata?.addEventListener('change', cargar);
     horario.form.addEventListener('submit', event => {
-        if (horario.disabled || !horario.value) {
+        if (!inmediata?.checked && (horario.disabled || !horario.value)) {
             event.preventDefault();
             aviso.textContent = 'Seleccione un horario disponible antes de guardar.';
         }

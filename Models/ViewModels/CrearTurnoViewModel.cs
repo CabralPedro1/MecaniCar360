@@ -17,8 +17,8 @@ namespace MecaniCar360.Models.ViewModels
         // VEHÍCULO
         // =====================================
 
-        [Required]
-        public int VehiculoId { get; set; }
+        [Range(1, int.MaxValue)]
+        public int? VehiculoId { get; set; }
 
 
         // =====================================
@@ -33,9 +33,8 @@ namespace MecaniCar360.Models.ViewModels
         // FECHA Y HORARIO
         // =====================================
 
-        [Required]
         [Display(Name = "Fecha y hora")]
-        public DateTime FechaInicio { get; set; }
+        public DateTime? FechaInicio { get; set; }
 
 
         // =====================================
@@ -60,6 +59,8 @@ namespace MecaniCar360.Models.ViewModels
         // =====================================
         // DATOS PARA LA VISTA
         // =====================================
+
+        public bool AtencionInmediata { get; set; }
 
         public string? NombreCliente { get; set; }
 

@@ -225,7 +225,7 @@ namespace MecaniCar360.Services
             vehiculo.Activo = true;
 
             vehiculo.Id = 0; vehiculo.Marca = null!; vehiculo.Modelo = null!;
-            vehiculo.DominiosVehiculares = new(); vehiculo.Turnos = new(); vehiculo.OrdenesTrabajo = new();
+            vehiculo.DominiosVehiculares = new(); vehiculo.Turnos = new(); vehiculo.IngresosVehiculo = new();
             _context.Vehiculos.Add(vehiculo);
 
             await GuardarCambiosAsync();

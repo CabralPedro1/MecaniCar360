@@ -1,4 +1,4 @@
-using System.Data;
+﻿using System.Data;
 using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
@@ -217,7 +217,8 @@ namespace MecaniCar360.Services
 
         private IQueryable<Factura> Consulta() => _context.Facturas.AsNoTracking()
             .Include(f => f.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Cliente)
-            .Include(f => f.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo).ThenInclude(i => i.Turno).ThenInclude(t => t.Vehiculo);
+            .Include(f => f.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Marca)
+            .Include(f => f.OrdenTrabajo).ThenInclude(o => o.IngresoVehiculo!).ThenInclude(i => i.Vehiculo).ThenInclude(v => v!.Modelo);
 
         private async Task<Usuario?> UsuarioAsync(int id, string patente)
         {

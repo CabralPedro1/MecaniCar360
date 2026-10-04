@@ -1,4 +1,4 @@
-using MecaniCar360.Models;
+﻿using MecaniCar360.Models;
 using MecaniCar360.Models.Enums;
 using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Attributes;
@@ -113,7 +113,7 @@ namespace MecaniCar360.Controllers
             var model = new CrearTurnoViewModel
             {
                 ClienteId = clienteId ?? 0,
-                VehiculoId = vehiculoId ?? 0,
+                VehiculoId = vehiculoId,
 
                 // Por defecto proponemos mañana.
                 FechaInicio = DateTime.Today.AddDays(1)
@@ -135,6 +135,8 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Crear(
             CrearTurnoViewModel model)
         {
+            if (!model.AtencionInmediata && !model.FechaInicio.HasValue)
+                ModelState.AddModelError(nameof(model.FechaInicio), "Seleccione fecha y hora.");
             if (!ModelState.IsValid)
             {
                 await CargarSelectoresAsync(model);
@@ -158,7 +160,8 @@ namespace MecaniCar360.Controllers
                 model.FechaInicio,
                 model.Motivo,
                 usuarioId,
-                model.Observaciones);
+                model.Observaciones,
+                model.AtencionInmediata);
 
             if (!resultado.Exitoso)
             {
@@ -349,7 +352,7 @@ namespace MecaniCar360.Controllers
             }
             if (model.VehiculoId > 0 && !vehiculos.Any(v => v.Id == model.VehiculoId))
                 ModelState.AddModelError(nameof(model.VehiculoId), "Seleccione un vehículo disponible para esa persona.");
-            ViewBag.Vehiculos = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(vehiculos, "Id", "Patente", model.VehiculoId);
+            ViewBag.Vehiculos = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(vehiculos.Select(v => new { v.Id, Descripcion = v.Marca.Nombre + " " + v.Modelo.Nombre + " - " + v.Patente }), "Id", "Descripcion", model.VehiculoId);
         }
 
         [HttpGet, Permiso("TURNO_CREAR")]
@@ -360,7 +363,7 @@ namespace MecaniCar360.Controllers
             if (!persona.Exitoso || persona.Data == null || !persona.Data.Activo) return NotFound();
             var resultado = await _dominioService.ObtenerVehiculosDePersonaAsync(clienteId, SolicitanteId());
             if (!resultado.Exitoso) return StatusCode(403, new { mensaje = "No se pudieron cargar los vehículos." });
-            return Json(resultado.Data!.Select(v => new { id = v.Id, patente = v.Patente }));
+            return Json(resultado.Data!.Select(v => new { id = v.Id, patente = v.Marca.Nombre + " " + v.Modelo.Nombre + " - " + v.Patente }));
         }
 
         private int ObtenerUsuarioId()
@@ -393,10 +396,10 @@ namespace MecaniCar360.Controllers
         }
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_TURNO_CREAR")]
-        public async Task<IActionResult> CrearPropio(int vehiculoId, TipoTurno tipo, DateTime fechaInicio, string motivo, string? observaciones)
+        public async Task<IActionResult> CrearPropio(int? vehiculoId, TipoTurno tipo, DateTime? fechaInicio, string motivo, string? observaciones, bool atencionInmediata = false)
         {
             if (!ModelState.IsValid) return BadRequest("Datos inválidos.");
-            var resultado = await _turnoService.CrearPropioAsync(SolicitanteId(), vehiculoId, tipo, fechaInicio, motivo, observaciones);
+            var resultado = await _turnoService.CrearPropioAsync(SolicitanteId(), vehiculoId, tipo, fechaInicio, motivo, observaciones, atencionInmediata);
             return resultado.Exitoso ? Ok(resultado) : BadRequest(resultado.Mensaje);
         }
 

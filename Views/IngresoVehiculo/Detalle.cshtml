@@ -1,4 +1,4 @@
-@model MecaniCar360.Models.IngresoVehiculo
+﻿@model MecaniCar360.Models.IngresoVehiculo
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{
@@ -13,10 +13,18 @@
 <dt>Situación</dt><dd>@(Model.FechaEgreso.HasValue ? "Egresado" : "En taller")</dd>
 @if (Model.FechaEgreso.HasValue) { <dt>Fecha de egreso</dt><dd>@Model.FechaEgreso.Value.ToString("dd/MM/yyyy HH:mm")</dd> }
 <dt>Turno</dt><dd>#@Model.TurnoId — @Model.Turno.FechaInicio.ToString("dd/MM/yyyy HH:mm")</dd>
-<dt>Vehículo</dt><dd>@Model.Turno.Vehiculo.Patente — @Model.Turno.Vehiculo.Marca.Nombre @Model.Turno.Vehiculo.Modelo.Nombre</dd>
-<dt>Cliente del turno</dt><dd>@Model.Turno.Cliente.Nombre @Model.Turno.Cliente.Apellido</dd>
-<dt>Cliente espera</dt><dd>@(Model.ClienteEspera ? "Sí" : "No")</dd>
-<dt>Observaciones de recepción</dt><dd>@(Model.ObservacionesRecepcion ?? "Sin observaciones.")</dd>
+<dt>Vehiculo recibido</dt><dd>@Model.VehiculoPatenteSnapshot - @Model.VehiculoDescripcionSnapshot</dd>
+<dt>Cliente</dt><dd>@Model.ClienteNombreSnapshot</dd>
+<dt>DNI</dt><dd>@Model.ClienteDniSnapshot</dd>
+<dt>Kilometraje al ingreso</dt><dd>@Model.Kilometraje</dd>
+<dt>Combustible</dt><dd>@(Model.NivelCombustible switch { MecaniCar360.Models.Enums.NivelCombustible.UnCuarto => "1/4", MecaniCar360.Models.Enums.NivelCombustible.Medio => "1/2", MecaniCar360.Models.Enums.NivelCombustible.TresCuartos => "3/4", _ => Model.NivelCombustible.ToString() })</dd>
+<dt>Estado exterior</dt><dd>@(Model.EstadoExterior == MecaniCar360.Models.Enums.EstadoExteriorRecepcion.SinDanosVisiblesDeclarados ? "Sin danos visibles declarados" : "Con observaciones") @Model.ObservacionesEstadoExterior</dd>
+<dt>Accesorios</dt><dd>@Model.Accesorios</dd>
+<dt>Otros</dt><dd>@(Model.OtrosAccesorios ?? "No declarados")</dd>
+<dt>Observaciones de recepcion</dt><dd>@(Model.ObservacionesRecepcion ?? "Sin observaciones")</dd>
+<dt>Modalidad</dt><dd>@(Model.ClienteEspera ? "Permanece esperando" : "Deja el vehiculo")</dd>
+<dt>Verificado con cliente</dt><dd>@(Model.DatosVerificadosConCliente ? "Si" : "No")</dd>
+<dt>Operador</dt><dd>Usuario #@Model.RegistradoPorUsuarioId</dd>
 </dl></div></div>
 @if (Model.OrdenTrabajo != null && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE")) {
     <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajo.Id" class="btn btn-primary">Ver orden #@Model.OrdenTrabajo.Id</a>

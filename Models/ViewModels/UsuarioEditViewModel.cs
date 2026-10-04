@@ -8,6 +8,7 @@ namespace MecaniCar360.Models.ViewModels
 
         [Required, StringLength(50)]
         [Display(Name = "Usuario")]
+        [RegularExpression(@"[^@]+", ErrorMessage = "El usuario no puede contener @.")]
         public string Username { get; set; } = string.Empty;
 
         [Required, EmailAddress, StringLength(100)]
