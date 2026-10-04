@@ -3,6 +3,7 @@ using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
+using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Patterns.Observer;
 using MecaniCar360.Patterns.State;
 using Microsoft.Data.SqlClient;
@@ -74,6 +75,26 @@ namespace MecaniCar360.Services
             version.Presupuesto.OrdenTrabajo = orden;
             version.Presupuesto.Total = version.Total;
             return ServiceResult<PresupuestoVersion>.Ok(version);
+        }
+
+        public async Task<ServiceResult<List<PresupuestoPropioResumenViewModel>>> ListarPropiosAsync(int usuarioId)
+        {
+            var usuario = await UsuarioAutorizadoAsync(usuarioId, "CLIENTE_PRESUPUESTO_VER");
+            if (usuario == null)
+                return ServiceResult<List<PresupuestoPropioResumenViewModel>>.Error("Acceso denegado.");
+            // Sólo snapshots enviados; nunca el borrador ni sus ítems editables.
+            var versiones = await _context.PresupuestoVersiones.AsNoTracking()
+                .Where(v => v.Presupuesto.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId == usuario.PersonaId &&
+                    !v.Presupuesto.Versiones.Any(otra => otra.NumeroVersion > v.NumeroVersion))
+                .OrderByDescending(v => v.FechaEnvio)
+                .Select(v => new PresupuestoPropioResumenViewModel
+                {
+                    OrdenTrabajoId = v.Presupuesto.OrdenTrabajoId,
+                    Patente = v.Presupuesto.OrdenTrabajo.IngresoVehiculo.Vehiculo.Patente,
+                    NumeroVersion = v.NumeroVersion, FechaEnvio = v.FechaEnvio,
+                    Total = v.Total, Decision = v.Decision
+                }).ToListAsync();
+            return ServiceResult<List<PresupuestoPropioResumenViewModel>>.Ok(versiones);
         }
 
         // El resultado de las operaciones incluye la OT persistida para redirecciones seguras.

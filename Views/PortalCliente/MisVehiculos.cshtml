@@ -1,0 +1,15 @@
+@model List<Vehiculo>
+@{ ViewData["Title"] = "Mis vehículos"; }
+<h1>Mis vehículos</h1>
+<partial name="_Mensajes" />
+<a asp-action="Index" class="btn btn-secondary mb-3">Volver al portal</a>
+@if (Model.Count == 0) { <p class="alert alert-info">No tiene vehículos disponibles. Consulte al taller para registrar su vehículo.</p> }
+else
+{
+    <div class="table-responsive"><table class="table table-striped">
+    <thead><tr><th>Patente</th><th>Marca</th><th>Modelo</th><th>Año</th><th></th></tr></thead>
+    <tbody>@foreach (var v in Model) {
+        <tr><td>@v.Patente</td><td>@v.Marca.Nombre</td><td>@v.Modelo.Nombre</td><td>@v.Anio</td>
+        <td><a asp-action="Vehiculo" asp-route-id="@v.Id" class="btn btn-outline-primary btn-sm">Ver detalle</a></td></tr>
+    }</tbody></table></div>
+}

@@ -50,10 +50,11 @@
                         }
 
                         <!-- CLIENTE -->
-                        @if (User.IsInRole("CLIENTE"))
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
+                            await Permisos.TieneAlgunoAsync(usuarioPortalId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER"))
                         {
                             <li class="nav-item">
-                                <a class="nav-link" href="/Turno/MisTurnos">Mis Turnos</a>
+                                <a class="nav-link" asp-controller="PortalCliente" asp-action="Index">Portal cliente</a>
                             </li>
                         }
 

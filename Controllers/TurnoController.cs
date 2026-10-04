@@ -16,17 +16,20 @@ namespace MecaniCar360.Controllers
         private readonly AgendaService _agendaService;
         private readonly PersonaService _personaService;
         private readonly DominioVehicularService _dominioService;
+        private readonly IConfiguration _configuration;
 
         public TurnoController(
             TurnoService turnoService,
             AgendaService agendaService,
             PersonaService personaService,
-            DominioVehicularService dominioService)
+            DominioVehicularService dominioService,
+            IConfiguration configuration)
         {
             _turnoService = turnoService;
             _agendaService = agendaService;
             _personaService = personaService;
             _dominioService = dominioService;
+            _configuration = configuration;
         }
 
         // =====================================
@@ -34,8 +37,11 @@ namespace MecaniCar360.Controllers
         // =====================================
 
         [Permiso("TURNO_VER")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(DateTime? fecha = null)
         {
+            if (!ModelState.IsValid || fecha?.Date == DateTime.MaxValue.Date)
+                return BadRequest("Fecha inválida.");
+            var model = new CalendarioViewModel { Fecha = fecha?.Date ?? DateTime.Today };
             var resultado = await _turnoService
                 .ObtenerTodosAsync(ObtenerUsuarioId());
 
@@ -43,10 +49,42 @@ namespace MecaniCar360.Controllers
             {
                 TempData["Error"] = resultado.Mensaje;
 
-                return View(new List<Turno>());
+                return View(model);
             }
 
-            return View(resultado.Data);
+            // Presentación del calendario; la disponibilidad sigue siendo responsabilidad de AgendaService.
+            var capacidad = _configuration.GetValue<int?>("ConfiguracionTaller:TurnosPorFranja") ?? 2;
+            var minutos = _configuration.GetValue<int?>("ConfiguracionTaller:DuracionFranjaTurnoMinutos") ?? 30;
+            var apertura = TimeSpan.TryParse(_configuration["ConfiguracionTaller:HoraApertura"], out var desde)
+                ? desde : TimeSpan.FromHours(8);
+            var cierre = TimeSpan.TryParse(_configuration["ConfiguracionTaller:HoraCierre"], out var hasta)
+                ? hasta : TimeSpan.FromHours(18);
+            if (capacidad <= 0 || minutos <= 0 || apertura < TimeSpan.Zero ||
+                cierre > TimeSpan.FromDays(1) || apertura >= cierre)
+            {
+                TempData["Error"] = "El horario o la capacidad del taller no están configurados correctamente.";
+                return View(model);
+            }
+
+            var turnos = (resultado.Data ?? new List<Turno>())
+                .Where(t => t.FechaInicio.Date == model.Fecha).ToList();
+            var horarios = new SortedSet<DateTime>(turnos.Select(t => t.FechaInicio));
+            // Conservar también las atenciones inmediatas fuera de una franja programada.
+            for (var hora = model.Fecha.Add(apertura); hora < model.Fecha.Add(cierre);)
+            {
+                horarios.Add(hora);
+                if (minutos >= (model.Fecha.Add(cierre) - hora).TotalMinutes) break;
+                hora = hora.AddMinutes(minutos);
+            }
+            model.Horarios = horarios.Select(hora => new HorarioItem
+            {
+                Hora = hora,
+                CapacidadTotal = capacidad,
+                Turnos = turnos.Where(t => t.FechaInicio == hora).ToList(),
+                Ocupados = turnos.Count(t => t.FechaInicio == hora &&
+                    t.Estado != EstadoTurno.Cancelado && t.Estado != EstadoTurno.ClienteAusente)
+            }).ToList();
+            return View(model);
         }
 
 

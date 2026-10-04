@@ -1,0 +1,25 @@
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Portal cliente";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+    var accesos = new[] {
+        ("CLIENTE_VEHICULO_VER", "PortalCliente", "MisVehiculos", "Mis vehículos"),
+        ("CLIENTE_TURNO_VER", "PortalCliente", "MisTurnos", "Mis turnos"),
+        ("CLIENTE_ORDEN_VER", "PortalCliente", "MisOrdenes", "Mis órdenes"),
+        ("CLIENTE_PRESUPUESTO_VER", "PortalCliente", "MisPresupuestos", "Mis presupuestos"),
+        ("CLIENTE_FACTURA_VER", "Factura", "MisFacturas", "Mis facturas") };
+}
+<h1>Portal cliente</h1>
+<p>Consulte sus vehículos, turnos y trabajos del taller.</p>
+<partial name="_Mensajes" />
+<div class="list-group mb-3">
+@foreach (var acceso in accesos)
+{
+    if (await Permisos.TienePermisoAsync(actor, acceso.Item1))
+    {
+        <a class="list-group-item list-group-item-action" asp-controller="@acceso.Item2" asp-action="@acceso.Item3">@acceso.Item4</a>
+    }
+}
+</div>
+<a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver al inicio</a>

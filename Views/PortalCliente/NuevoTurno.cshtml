@@ -1,0 +1,24 @@
+@model MecaniCar360.Models.ViewModels.NuevoTurnoPropioViewModel
+@using MecaniCar360.Models.Enums
+@{ ViewData["Title"] = "Solicitar turno"; }
+<h1>Solicitar turno</h1>
+<p>Seleccione uno de sus vehículos y un horario disponible.</p>
+<form asp-action="NuevoTurno" method="post">
+@Html.AntiForgeryToken()
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<div class="mb-3"><label asp-for="VehiculoId">Vehículo</label>
+<select asp-for="VehiculoId" asp-items="ViewBag.Vehiculos" class="form-select" required><option value="">Seleccione su vehículo</option></select>
+<span asp-validation-for="VehiculoId" class="text-danger"></span></div>
+<div class="mb-3"><label asp-for="Tipo">Tipo</label><select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoTurno>()" class="form-select"></select><span asp-validation-for="Tipo" class="text-danger"></span></div>
+<div class="mb-3"><label for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" class="form-control" required /></div>
+<div class="mb-3"><label for="horario-turno">Horario</label>
+<select asp-for="FechaInicio" id="horario-turno" data-seleccionado="@Model.FechaInicio?.ToString("yyyy-MM-ddTHH:mm")" class="form-select" required><option value="">Seleccione horario</option></select>
+<span asp-validation-for="FechaInicio" class="text-danger"></span><p id="aviso-horarios" role="status" class="text-danger"></p></div>
+<div class="mb-3"><label asp-for="Motivo"></label><textarea asp-for="Motivo" class="form-control" maxlength="500" required></textarea><span asp-validation-for="Motivo" class="text-danger"></span></div>
+<div class="mb-3"><label asp-for="Observaciones"></label><textarea asp-for="Observaciones" class="form-control" maxlength="1000"></textarea><span asp-validation-for="Observaciones" class="text-danger"></span></div>
+<button class="btn btn-primary" type="submit">Solicitar turno</button> <a asp-action="MisTurnos" class="btn btn-secondary">Volver</a>
+</form>
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <partial name="~/Views/Turno/_HorariosScript.cshtml" />
+}

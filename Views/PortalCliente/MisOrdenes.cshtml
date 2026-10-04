@@ -1,0 +1,15 @@
+@model List<OrdenTrabajo>
+@{ ViewData["Title"] = "Mis órdenes"; }
+<h1>Mis órdenes</h1>
+<partial name="_Mensajes" />
+<a asp-action="Index" class="btn btn-secondary mb-3">Volver al portal</a>
+@if (Model.Count == 0) { <p class="alert alert-info">Todavía no tiene órdenes de trabajo.</p> }
+else {
+<div class="table-responsive"><table class="table table-striped">
+<thead><tr><th>Orden</th><th>Vehículo</th><th>Inicio</th><th>Estado</th><th></th></tr></thead>
+<tbody>@foreach (var o in Model) {
+    var v = o.IngresoVehiculo.Vehiculo;
+    <tr><td>#@o.Id</td><td>@v.Patente — @v.Marca.Nombre @v.Modelo.Nombre</td><td>@o.FechaInicio.ToString("dd/MM/yyyy")</td>
+    <td><partial name="_EstadoOrden" model="o.EstadoActual" /></td><td><a asp-action="Orden" asp-route-id="@o.Id" class="btn btn-sm btn-outline-primary">Ver detalle</a></td></tr>
+}</tbody></table></div>
+}

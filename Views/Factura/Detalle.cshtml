@@ -41,6 +41,10 @@
     <partial name="_TablaPagos" model="Model" />
 }
 <div class="d-flex flex-wrap gap-2 mb-3">
+    @if (propia && await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER"))
+    {
+        <a asp-controller="PortalCliente" asp-action="Orden" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-outline-secondary">Ver mi orden</a>
+    }
     <a asp-action="@(propia ? "MisFacturas" : "Index")" class="btn btn-secondary">Volver</a>
     @if (verPagos)
     {

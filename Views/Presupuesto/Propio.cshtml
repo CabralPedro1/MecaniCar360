@@ -7,6 +7,12 @@
     var vigente = ViewData["PuedeDecidir"] is true;
 }
 <h2>Presupuesto — versión @Model.NumeroVersion</h2>
+<div class="mb-3">
+    <a asp-controller="PortalCliente" asp-action="MisPresupuestos" class="btn btn-secondary">Volver a mis presupuestos</a>
+    @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER")) {
+        <a asp-controller="PortalCliente" asp-action="Orden" asp-route-id="@Model.Presupuesto.OrdenTrabajoId" class="btn btn-outline-primary">Ver orden</a>
+    }
+</div>
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
 <p>Enviado: @Model.FechaEnvio — Decisión: @Model.Decision</p>
 @if (!vigente && Model.Decision == MecaniCar360.Models.Enums.EstadoPresupuestoVersion.Pendiente)
