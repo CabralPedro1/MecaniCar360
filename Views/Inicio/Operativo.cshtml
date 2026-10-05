@@ -1,0 +1,29 @@
+@model MecaniCar360.Models.ViewModels.InicioOperativoViewModel
+@{ ViewData["Title"] = Model.Titulo; }
+<h1>@Model.Titulo</h1>
+<p class="text-muted">Actividad y accesos disponibles según sus permisos.</p>
+<nav class="d-flex flex-wrap gap-2 mb-4" aria-label="Tareas operativas">
+@foreach (var a in Model.Accesos) { <a class="btn btn-outline-primary" asp-controller="@a.Controller" asp-action="@a.Action">@a.Texto</a> }
+</nav>
+@if (Model.VerTurnos) {
+<h2>Turnos de hoy</h2>
+@if (Model.Turnos.Count == 0) { <p class="alert alert-info">No hay turnos para hoy.</p> }
+<div class="table-responsive"><table class="table"><thead><tr><th>Hora</th><th>Cliente</th><th>Estado</th><th>Recepción</th></tr></thead><tbody>
+@foreach (var t in Model.Turnos) { <tr><td>@t.FechaInicio.ToString("HH:mm")</td><td>@t.Cliente.Nombre @t.Cliente.Apellido</td><td>@t.Estado</td><td><a asp-controller="Turno" asp-action="Detalle" asp-route-id="@t.Id">Consultar turno</a></td></tr> }
+</tbody></table></div>
+}
+@if (Model.VerOrdenes) {
+<h2>Órdenes para atender</h2>
+<p>Abra el detalle para consultar las acciones disponibles: diagnóstico, presupuesto, reparación, evidencias, finalización o entrega, según corresponda.</p>
+@if (Model.Ordenes.Count == 0) { <p class="alert alert-info">No hay órdenes pendientes de atención en esta sección.</p> }
+<div class="table-responsive"><table class="table"><thead><tr><th>Orden</th><th>Vehículo</th><th>Estado</th><th>Acceso</th></tr></thead><tbody>
+@foreach (var o in Model.Ordenes) { <tr><td>#@o.Id</td><td>@o.IngresoVehiculo.Vehiculo.Marca.Nombre @o.IngresoVehiculo.Vehiculo.Modelo.Nombre — @o.IngresoVehiculo.Vehiculo.Patente</td><td>@o.EstadoActual</td><td>@if (Model.VerDetalleOrden) { <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@o.Id">Abrir orden</a> }</td></tr> }
+</tbody></table></div>
+}
+@if (Model.VerExistencias) {
+<h2>Existencias</h2><p>Alertas: @Model.Existencias.Count(r => r.Actual <= r.Minimo) repuestos en mínimo o por debajo.</p>
+@if (Model.Existencias.Count == 0) { <p class="alert alert-info">No hay repuestos activos.</p> }
+<div class="table-responsive"><table class="table"><thead><tr><th>Repuesto</th><th>Stock actual</th><th>Mínimo</th><th>Estado</th><th>Lotes y movimientos</th></tr></thead><tbody>
+@foreach (var r in Model.Existencias) { <tr><td>@r.Nombre</td><td>@r.Actual</td><td>@r.Minimo</td><td>@(r.Actual <= r.Minimo ? "Reponer" : "Disponible")</td><td><a asp-controller="Stock" asp-action="Detalle" asp-route-id="@r.Id">Consultar</a></td></tr> }
+</tbody></table></div>
+}

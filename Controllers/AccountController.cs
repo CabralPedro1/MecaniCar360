@@ -219,11 +219,11 @@ namespace MecaniCar360.Controllers
                 "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
                 return RedirectToAction("Index", "PortalCliente");
             if (await _permisos.TienePermisoAsync(usuarioId, "TURNO_VER"))
-                return RedirectToAction("Index", "Turno");
-            if (await _permisos.TienePermisoAsync(usuarioId, "ORDEN_VER"))
-                return RedirectToAction("Index", "OrdenTrabajo");
+                return RedirectToAction("Caja", "Inicio");
+            if (await _permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR"))
+                return RedirectToAction("Mecanico", "Inicio");
             if (await _permisos.TienePermisoAsync(usuarioId, "STOCK_VER"))
-                return RedirectToAction("Index", "Stock");
+                return RedirectToAction("Stock", "Inicio");
             return RedirectToAction("Index", "Home");
         }
 

@@ -1,0 +1,7 @@
+@model MecaniCar360.Models.ViewModels.SeguridadViewModel
+@{ ViewData["Title"] = "Seguridad"; }
+<partial name="_Mensajes" />
+<h1>Catálogo técnico de patentes</h1><p>Los códigos son definidos por el sistema. Aquí puede consultar su composición, no crear capacidades arbitrarias.</p><a asp-action="Index" class="btn btn-secondary">Volver</a>
+<div class="table-responsive"><table class="table"><thead><tr><th>Código</th><th>Descripción</th><th>Estado</th><th>Familias directas</th></tr></thead><tbody>
+@foreach (var p in Model.Patentes) { <tr><td>@p.Nombre</td><td>@p.Descripcion</td><td>@(p.Activo ? "Activa" : "Inactiva")</td><td>@foreach (var f in Model.Familias.Where(f => f.Patentes.Any(fp => fp.PatenteId == p.Id))) { <a class="me-2" asp-action="Familia" asp-route-id="@f.Id">@f.Nombre</a> }</td></tr> }
+</tbody></table></div>

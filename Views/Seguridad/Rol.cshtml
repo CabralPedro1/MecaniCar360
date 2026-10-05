@@ -1,0 +1,10 @@
+@model MecaniCar360.Models.ViewModels.SeguridadViewModel
+@{ ViewData["Title"] = "Seguridad"; }
+<partial name="_Mensajes" />
+@{ var rol = Model.Roles.Single(r => r.Id == (int)ViewBag.RolId); }
+<h1>Familias de @rol.Nombre</h1><a asp-action="Index" class="btn btn-secondary">Volver</a>
+<ul>@foreach (var f in Model.Familias.Where(f => rol.Familias.Any(rf => rf.FamiliaId == f.Id))) {
+<li><a asp-action="Familia" asp-route-id="@f.Id">@f.Nombre</a>
+<form asp-action="FamiliaRol" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="rolId" value="@rol.Id" /><input type="hidden" name="familiaId" value="@f.Id" /><input type="hidden" name="agregar" value="false" /><button class="btn btn-sm btn-outline-danger">Quitar</button></form></li>
+}</ul>
+<form asp-action="FamiliaRol" method="post" class="d-flex gap-2">@Html.AntiForgeryToken()<input type="hidden" name="rolId" value="@rol.Id" /><input type="hidden" name="agregar" value="true" /><label for="familiaId">Familia</label><select id="familiaId" name="familiaId" class="form-select" required><option value="">Seleccione</option>@foreach (var f in Model.Familias.Where(f => f.Activo && !rol.Familias.Any(rf => rf.FamiliaId == f.Id))) { <option value="@f.Id">@f.Nombre</option> }</select><button class="btn btn-primary">Asignar</button></form>
