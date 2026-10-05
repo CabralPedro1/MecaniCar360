@@ -5,10 +5,30 @@ namespace MecaniCar360.Data
 {
     public class MecaniCarContext : DbContext
     {
-        public MecaniCarContext(DbContextOptions<MecaniCarContext> options)
+        public MecaniCarContext(DbContextOptions<MecaniCarContext> options, Services.EstadoIntegridad? estadoIntegridad = null)
             : base(options)
         {
+            EstadoIntegridad = estadoIntegridad;
         }
+
+        internal Services.EstadoIntegridad? EstadoIntegridad { get; }
+        internal bool IntegridadFallida { get; set; }
+        public DbSet<DigitoVerificadorVertical> DigitosVerificadoresVerticales { get; set; }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        {
+            base.OnConfiguring(optionsBuilder);
+            optionsBuilder.AddInterceptors(Integridad.IntegridadTransactionInterceptor.Instancia);
+        }
+
+        public override int SaveChanges() => SaveChanges(true);
+        public override int SaveChanges(bool acceptAllChangesOnSuccess) =>
+            Integridad.CoordinadorIntegridad.GuardarAsync(this,
+                () => Task.FromResult(base.SaveChanges(false)), acceptAllChangesOnSuccess, CancellationToken.None).GetAwaiter().GetResult();
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => SaveChangesAsync(true, cancellationToken);
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
+            Integridad.CoordinadorIntegridad.GuardarAsync(this,
+                () => base.SaveChangesAsync(false, cancellationToken), acceptAllChangesOnSuccess, cancellationToken);
 
         // =============================
         // PERSONAS Y SEGURIDAD
@@ -124,6 +144,7 @@ namespace MecaniCar360.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            Integridad.RegistroEntidadesProtegidas.Configurar(modelBuilder);
 
             // =============================
             // PERSONA - ROL
