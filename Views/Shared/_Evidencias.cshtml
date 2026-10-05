@@ -1,0 +1,24 @@
+@model int
+@using System.Security.Claims
+@inject MecaniCar360.Services.EvidenciaTrabajoService Evidencias
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier),out var actorEvidencia);
+    var resultado = await Evidencias.ObtenerPorOrdenTrabajoAsync(Model,actorEvidencia);
+}
+@if (resultado.Exitoso)
+{
+    <section class="mt-4">
+        <h2 class="h4">Evidencias</h2>
+        @if (resultado.Data!.PuedeCargar) { <a asp-controller="Evidencia" asp-action="Crear" asp-route-ordenTrabajoId="@Model" class="btn btn-outline-primary">Agregar evidencia</a> }
+        @if (resultado.Data.Evidencias.Count == 0) { <p>No hay evidencias.</p> }
+        else
+        {
+            <table class="table"><thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Archivo</th></tr></thead><tbody>
+            @foreach (var e in resultado.Data.Evidencias)
+            {
+                <tr><td>@e.Fecha.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Descripcion</td><td>@e.Tipo</td><td><a asp-controller="Evidencia" asp-action="Archivo" asp-route-id="@e.Id">Descargar evidencia #@e.Id</a></td></tr>
+            }
+            </tbody></table>
+        }
+    </section>
+}

@@ -1,0 +1,13 @@
+@model MecaniCar360.Models.ViewModels.CargarEvidenciaViewModel
+@{ ViewData["Title"] = "Agregar evidencia"; }
+<h1>Agregar evidencia a OT #@Model.OrdenTrabajoId</h1>
+<p>JPG, PNG, WEBP o PDF. Máximo 10 MB. La evidencia se conserva como respaldo histórico.</p>
+<form asp-action="Crear" method="post" enctype="multipart/form-data">
+    @Html.AntiForgeryToken()
+    <input asp-for="OrdenTrabajoId" type="hidden" />
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
+    <div class="mb-3"><label asp-for="Descripcion">Descripción</label><textarea asp-for="Descripcion" class="form-control" maxlength="500" required></textarea><span asp-validation-for="Descripcion" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Archivo">Archivo</label><input asp-for="Archivo" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="form-control" required /><span asp-validation-for="Archivo" class="text-danger"></span></div>
+    <button class="btn btn-primary" type="submit">Guardar evidencia</button>
+    <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId">Volver</a>
+</form>
