@@ -1,0 +1,39 @@
+﻿@model MecaniCar360.Models.ViewModels.ReportesViewModel
+@using System.Globalization
+@{ ViewData["Title"] = "Reportes"; var es = CultureInfo.GetCultureInfo("es-AR"); var max = Math.Max(1, Model.Estados.Max(e => e.Cantidad)); }
+<h1>Reportes MecaniCar360</h1>
+<p>Desde @Model.Filtro.Desde?.ToString("dd/MM/yyyy") hasta @Model.Filtro.Hasta?.ToString("dd/MM/yyyy") inclusive.</p>
+<a asp-action="Index">Cambiar período</a>
+<a asp-action="Pdf" asp-route-desde="@Model.Filtro.Desde?.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Filtro.Hasta?.ToString("yyyy-MM-dd")" class="btn btn-outline-primary">Descargar rendimiento PDF</a>
+<section class="my-4"><h2>Rendimiento del taller</h2>
+<p>@Model.Resumen</p>
+<p class="text-muted">Cohorte: órdenes iniciadas en el período. Los estados y porcentajes reflejan su situación actual, no una reconstrucción histórica al último día. Finalizadas incluye entregadas con fecha de fin.</p>
+<dl class="row">
+<dt class="col-sm-6">Ingresadas</dt><dd class="col-sm-6">@Model.Ingresadas</dd>
+<dt class="col-sm-6">Con finalización registrada</dt><dd class="col-sm-6">@Model.Finalizadas (@Model.PorcentajeFinalizadas.ToString("N1")%)</dd>
+<dt class="col-sm-6">Entregadas</dt><dd class="col-sm-6">@Model.Entregadas (@Model.PorcentajeEntregadas.ToString("N1")%)</dd>
+<dt class="col-sm-6">Actualmente en reparación</dt><dd class="col-sm-6">@Model.EnReparacion</dd>
+<dt class="col-sm-6">Actualmente rechazadas</dt><dd class="col-sm-6">@Model.Rechazadas</dd>
+</dl>
+<svg viewBox="0 0 700 340" class="w-100" role="img" aria-labelledby="reporte-grafico">
+<title id="reporte-grafico">Distribución actual por estado de las órdenes del período</title>
+@for (var i = 0; i < Model.Estados.Count; i++) {
+    var e = Model.Estados[i]; var y = 25 + i * 38; var ancho = (int)(400.0 * e.Cantidad / max);
+    <g><text x="5" y="@y">@e.Estado</text><rect x="210" y="@(y - 14)" width="@ancho" height="20" fill="#0d6efd" /><text x="640" y="@y">@e.Cantidad</text></g>
+}
+</svg>
+<table class="table table-sm"><caption>Datos del gráfico</caption><thead><tr><th>Estado</th><th>Órdenes</th></tr></thead><tbody>
+@foreach(var e in Model.Estados) { <tr><td>@e.Estado</td><td>@e.Cantidad</td></tr> }
+</tbody></table></section>
+<section class="my-4"><h2>Facturación y cobranzas</h2>
+<p>Facturado: facturas emitidas en el período, excluyendo anuladas. Cobrado: pagos confirmados en el período de facturas no anuladas, aunque se emitieran antes. Saldo: pendiente actual de las facturas emitidas en el período, descontando todos sus pagos confirmados.</p>
+<table class="table"><thead><tr><th>Facturas</th><th>Facturado</th><th>Cobrado</th><th>Saldo actual de esas facturas</th></tr></thead><tbody><tr>
+<td>@Model.Facturas</td><td>@Model.Facturado.ToString("C2", es)</td><td>@Model.Cobrado.ToString("C2", es)</td><td>@Model.Saldo.ToString("C2", es)</td>
+</tr></tbody></table></section>
+<section class="my-4"><h2>Conceptos sin repuesto de trabajos finalizados</h2>
+<p>Última versión aprobada de OTs finalizadas en el período y actualmente finalizadas o entregadas. Agrupación por descripción libre: no representa un catálogo normalizado de servicios. Importes presupuestados, no cobros.</p>
+@if(Model.Conceptos.Count == 0) { <p>No hay conceptos para este período.</p> }
+else { <div class="table-responsive"><table class="table"><thead><tr><th>Concepto</th><th>Unidades</th><th>Importe aprobado</th><th>% de unidades</th></tr></thead><tbody>
+@foreach(var c in Model.Conceptos) { <tr><td class="text-break">@c.Descripcion</td><td>@c.Cantidad</td><td>@c.Importe.ToString("C2", es)</td><td>@c.Porcentaje.ToString("N1")%</td></tr> }
+</tbody></table></div> }
+</section>

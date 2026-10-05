@@ -1,0 +1,13 @@
+﻿@model MecaniCar360.Models.ViewModels.ReporteFiltro
+@{ ViewData["Title"] = "Reportes"; }
+<h1>Reportes</h1>
+<p>Rendimiento del taller, facturación/cobranzas y conceptos de trabajos finalizados.</p>
+<form asp-action="Resultado" method="get">
+@if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
+<div class="row g-3">
+<div class="col-sm-4"><label asp-for="Desde"></label><input asp-for="Desde" type="date" required class="form-control" /><span asp-validation-for="Desde"></span></div>
+<div class="col-sm-4"><label asp-for="Hasta"></label><input asp-for="Hasta" type="date" required class="form-control" /><span asp-validation-for="Hasta"></span></div>
+</div>
+<p class="text-muted">Hasta 367 días inclusive. Ambas fechas se incluyen.</p>
+<button class="btn btn-primary" type="submit">Generar reportes</button>
+</form>

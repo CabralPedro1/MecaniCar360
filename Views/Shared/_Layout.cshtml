@@ -103,6 +103,7 @@
                             </li>
                         }
                         @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "AUDITORIA_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Auditoria" asp-action="Index">Auditoría</a></li> }
+                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "REPORTES_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Reportes" asp-action="Index">Reportes</a></li> }
                         <!-- ADMIN -->
                         @if (usuarioFacturacionId > 0 &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
