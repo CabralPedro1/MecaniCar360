@@ -1,234 +1,94 @@
-﻿using MecaniCar360.Data;
+﻿using System.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.Enums;
+using MecaniCar360.Models.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
-namespace MecaniCar360.Services
+namespace MecaniCar360.Services;
+
+public sealed class EvidenciaTrabajoService(MecaniCarContext context, PermisoService permisos,
+    AlmacenEvidencias almacen, AuditoriaService auditoria, ILogger<EvidenciaTrabajoService> logger)
 {
-    public class EvidenciaTrabajoService
+    private static bool EstadoPermite(OrdenTrabajo o) => o.EstadoActual is EstadoOrden.Diagnostico or
+        EstadoOrden.EsperandoAprobacion or EstadoOrden.Aprobado or EstadoOrden.EnReparacion or EstadoOrden.Rechazado or EstadoOrden.Finalizado;
+
+    private async Task<bool> AccesoAsync(OrdenTrabajo orden, int usuarioId, bool cargar)
     {
-        private readonly MecaniCarContext _context;
-        private readonly PermisoService _permisos;
+        if (!await permisos.TienePermisoAsync(usuarioId, cargar ? "EVIDENCIA_CREAR" : "EVIDENCIA_VER")) return false;
+        var persona = await permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+        if (!persona.HasValue) return false;
+        if (await permisos.EsAdministradorAsync(usuarioId)) return true;
+        var tecnico = orden.MecanicoId == persona && await context.PersonaRoles.AnyAsync(pr =>
+            pr.PersonaId == persona && pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.MECANICO);
+        if (tecnico) return true;
+        return !cargar && await permisos.TienePermisoAsync(usuarioId,"CLIENTE_ORDEN_VER") &&
+            await context.OrdenesTrabajo.AnyAsync(o => o.Id == orden.Id && o.IngresoVehiculo.Turno.ClienteId == persona);
+    }
 
-        public EvidenciaTrabajoService(
-            MecaniCarContext context, PermisoService permisos)
+    public async Task<ServiceResult<EvidenciasViewModel>> ObtenerPorOrdenTrabajoAsync(int ordenTrabajoId, int usuarioId)
+    {
+        var orden = await context.OrdenesTrabajo.AsNoTracking().SingleOrDefaultAsync(o => o.Id == ordenTrabajoId);
+        if (orden == null || !await AccesoAsync(orden,usuarioId,false)) return ServiceResult<EvidenciasViewModel>.Error("Acceso denegado.");
+        var datos = await context.Evidencias.AsNoTracking().Where(e => e.OrdenTrabajoId == ordenTrabajoId)
+            .OrderByDescending(e => e.Fecha).ThenByDescending(e => e.Id)
+            .Select(e => new {e.Id,e.Fecha,e.Descripcion,e.RutaArchivo}).ToListAsync();
+        return ServiceResult<EvidenciasViewModel>.Ok(new(ordenTrabajoId,EstadoPermite(orden) && await AccesoAsync(orden,usuarioId,true),
+            datos.Select(e => new EvidenciaResumen(e.Id,e.Fecha,e.Descripcion,AlmacenEvidencias.Mime(e.RutaArchivo) ?? "Archivo anterior")).ToList()));
+    }
+
+    public async Task<ServiceResult> CrearAsync(int ordenTrabajoId,int usuarioId,string descripcion,IFormFile? archivo)
+    {
+        if (archivo == null || string.IsNullOrWhiteSpace(descripcion) || descripcion.Trim().Length > 500)
+            return ServiceResult.Error("Ingrese una descripción de hasta 500 caracteres y un archivo.");
+        if (context.Database.CurrentTransaction != null) return ServiceResult.Error("La carga requiere una operación independiente.");
+        var previa = await context.OrdenesTrabajo.AsNoTracking().SingleOrDefaultAsync(o=>o.Id==ordenTrabajoId);
+        if (previa == null || !await AccesoAsync(previa,usuarioId,true)) return ServiceResult.Error("Acceso denegado.");
+        (byte[] Datos,string Extension) validado;
+        try { validado = await almacen.ValidarAsync(archivo); }
+        catch (InvalidDataException ex) { return ServiceResult.Error(ex.Message); }
+        catch (IOException) { return ServiceResult.Error("No se pudo leer el archivo recibido."); }
+        var clave = Guid.NewGuid().ToString("N") + validado.Extension;
+        bool guardado=false, confirmado=false;
+        await using var tx=await context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
         {
-            _context = context;
-            _permisos = permisos;
+            var orden=await context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK,HOLDLOCK) WHERE [Id]={ordenTrabajoId}").SingleOrDefaultAsync();
+            if(orden!=null) await context.Entry(orden).ReloadAsync();
+            if(orden==null || !await AccesoAsync(orden,usuarioId,true) || !EstadoPermite(orden))
+                return ServiceResult.Error("La orden no admite esta carga.");
+            await almacen.GuardarAsync(clave,validado.Datos);guardado=true;
+            var evidencia=new EvidenciaTrabajo {OrdenTrabajoId=orden.Id,Descripcion=descripcion.Trim(),RutaArchivo=clave,SubidaPorUsuarioId=usuarioId,Fecha=DateTime.Now};
+            context.Evidencias.Add(evidencia);
+            await context.SaveChangesAsync();
+            auditoria.RegistrarOperacion("EVIDENCIA_CREADA","EvidenciaTrabajo",evidencia.Id,usuarioId,$"Orden #{orden.Id}.");
+            await context.SaveChangesAsync();
+            await tx.CommitAsync();confirmado=true;
+            return ServiceResult.Ok("Evidencia agregada correctamente.");
         }
-
-        // =====================================================
-        // CONSULTAS
-        // =====================================================
-
-        public async Task<ServiceResult<List<EvidenciaTrabajo>>>
-            ObtenerPorOrdenTrabajoAsync(
-                int ordenTrabajoId,
-                int usuarioSolicitanteId)
+        catch(Exception ex)
         {
-            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "DIAGNOSTICO_VER")) return ServiceResult<List<EvidenciaTrabajo>>.Error("Acceso denegado.");
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
-            if (!personaId.HasValue) return ServiceResult<List<EvidenciaTrabajo>>.Error("Acceso denegado.");
-
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
-
-            if (orden == null)
-            {
-                return ServiceResult<List<EvidenciaTrabajo>>
-                    .Error(
-                        "Orden de trabajo no encontrada.");
-            }
-
-            var puedeConsultar =
-                await PuedeAccederOrdenAsync(
-                    orden,
-                    usuarioSolicitanteId);
-
-            if (!puedeConsultar)
-            {
-                return ServiceResult<List<EvidenciaTrabajo>>
-                    .Error(
-                        "No tiene permisos para consultar las evidencias de esta orden.");
-            }
-
-            var evidencias =
-                await _context.Evidencias
-
-                    .Include(e => e.SubidaPorUsuario)
-                        .ThenInclude(u => u.Persona)
-
-                    .Where(e =>
-                        e.OrdenTrabajoId ==
-                        ordenTrabajoId)
-
-                    .OrderByDescending(e => e.Fecha)
-
-                    .ToListAsync();
-
-            return ServiceResult<List<EvidenciaTrabajo>>
-                .Ok(evidencias);
+            await tx.RollbackAsync();context.ChangeTracker.Clear();
+            logger.LogWarning("No se pudo guardar evidencia en OT {OrdenId}. Tipo de error: {Tipo}",ordenTrabajoId,ex.GetType().Name);
+            return ServiceResult.Error("No se pudo guardar la evidencia. Intente nuevamente.");
         }
+        finally { if(guardado && !confirmado) almacen.EliminarCreado(clave); }
+    }
 
-
-        // =====================================================
-        // ABM
-        // =====================================================
-
-        public async Task<ServiceResult> CrearAsync(
-            int ordenTrabajoId,
-            int usuarioId,
-            string descripcion,
-            string rutaArchivo)
+    public async Task<ServiceResult<ArchivoEvidencia>> ArchivoAsync(int id,int usuarioId)
+    {
+        var evidencia=await context.Evidencias.AsNoTracking().Include(e=>e.OrdenTrabajo).SingleOrDefaultAsync(e=>e.Id==id);
+        if(evidencia==null || !await AccesoAsync(evidencia.OrdenTrabajo,usuarioId,false)) return ServiceResult<ArchivoEvidencia>.Error("Archivo no disponible.");
+        try
         {
-            if (!await _permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR")) return ServiceResult.Error("Acceso denegado.");
-
-            // =====================================
-            // VALIDACIONES BÁSICAS
-            // =====================================
-
-            if (string.IsNullOrWhiteSpace(
-                descripcion))
-            {
-                return ServiceResult.Error(
-                    "La descripción de la evidencia es obligatoria.");
-            }
-
-            if (descripcion.Trim().Length > 500)
-            {
-                return ServiceResult.Error(
-                    "La descripción no puede superar los 500 caracteres.");
-            }
-
-            if (string.IsNullOrWhiteSpace(
-                rutaArchivo))
-            {
-                return ServiceResult.Error(
-                    "Debe indicar el archivo de evidencia.");
-            }
-
-            if (rutaArchivo.Trim().Length > 500)
-            {
-                return ServiceResult.Error(
-                    "La ruta del archivo no puede superar los 500 caracteres.");
-            }
-
-            // =====================================
-            // USUARIO
-            // =====================================
-
-            var usuario =
-                await _context.Usuarios
-
-                    .Include(u => u.Persona)
-
-                    .FirstOrDefaultAsync(u =>
-                        u.Id == usuarioId &&
-                        u.Activo);
-
-            if (usuario == null)
-            {
-                return ServiceResult.Error(
-                    "Usuario no encontrado o inactivo.");
-            }
-
-            if (!usuario.Persona.Activo)
-            {
-                return ServiceResult.Error(
-                    "La persona asociada al usuario está inactiva.");
-            }
-
-            // =====================================
-            // ORDEN
-            // =====================================
-
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
-
-            if (orden == null)
-            {
-                return ServiceResult.Error(
-                    "Orden de trabajo no encontrada.");
-            }
-
-            // =====================================
-            // PERMISOS
-            // =====================================
-
-            var puedeModificar =
-                await PuedeAgregarEvidenciaAsync(
-                    orden,
-                    usuarioId);
-
-            if (!puedeModificar)
-            {
-                return ServiceResult.Error(
-                    "No tiene permisos para agregar evidencias a esta orden.");
-            }
-
-            // =====================================
-            // ESTADO
-            // =====================================
-
-            if (orden.EstadoActual ==
-                EstadoOrden.Entregado)
-            {
-                return ServiceResult.Error(
-                    "No se pueden agregar evidencias a una orden entregada.");
-            }
-
-            // =====================================
-            // CREAR EVIDENCIA
-            // =====================================
-
-            var evidencia =
-                new EvidenciaTrabajo
-                {
-                    OrdenTrabajoId =
-                        ordenTrabajoId,
-
-                    Descripcion =
-                        descripcion.Trim(),
-
-                    RutaArchivo =
-                        rutaArchivo.Trim(),
-
-                    Fecha =
-                        DateTime.Now,
-
-                    SubidaPorUsuarioId =
-                        usuarioId
-                };
-
-            _context.Evidencias.Add(
-                evidencia);
-
-            await _context.SaveChangesAsync();
-
-            return ServiceResult.Ok(
-                "Evidencia agregada correctamente.");
+            var mime=AlmacenEvidencias.Mime(evidencia.RutaArchivo);
+            if(mime==null) return ServiceResult<ArchivoEvidencia>.Error("Archivo no disponible.");
+            var stream=almacen.Abrir(evidencia.RutaArchivo);
+            return ServiceResult<ArchivoEvidencia>.Ok(new(stream,mime,$"evidencia-{id}{Path.GetExtension(evidencia.RutaArchivo)}"));
         }
-
-
-        // =====================================================
-        // MÉTODOS PRIVADOS
-        // =====================================================
-
-        private Task<bool> PuedeAgregarEvidenciaAsync(OrdenTrabajo orden, int usuarioId) =>
-            PuedeAccederOrdenAsync(orden, usuarioId);
-
-        private async Task<bool> PuedeAccederOrdenAsync(OrdenTrabajo orden, int usuarioId)
-        {
-            if (await _permisos.EsAdministradorAsync(usuarioId)) return true;
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioId);
-            return personaId.HasValue && orden.MecanicoId == personaId &&
-                await _context.PersonaRoles.AnyAsync(pr => pr.PersonaId == personaId &&
-                    pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.MECANICO);
-        }
+        catch(Exception ex) when(ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        { return ServiceResult<ArchivoEvidencia>.Error("Archivo no disponible."); }
     }
 }

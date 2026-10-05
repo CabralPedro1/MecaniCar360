@@ -182,6 +182,7 @@ namespace MecaniCar360
             builder.Services.AddScoped<ReportesService>();
             builder.Services.AddScoped<ModeloService>();
             builder.Services.AddScoped<EvidenciaTrabajoService>();
+            builder.Services.AddSingleton<AlmacenEvidencias>();
             builder.Services.AddScoped<CalificacionTrabajoService>();
 
             builder.Services.AddScoped<TurnoService>();
