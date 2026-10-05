@@ -35,6 +35,10 @@ namespace MecaniCar360.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("Descripcion")
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
@@ -61,7 +65,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("UsuarioId");
 
-                    b.ToTable("Auditorias");
+                    b.ToTable("Auditorias", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Auditorias_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.CalificacionTrabajo", b =>
@@ -97,7 +104,7 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("OrdenTrabajoId")
                         .IsUnique();
 
-                    b.ToTable("Calificaciones", t =>
+                    b.ToTable("Calificaciones", null, t =>
                         {
                             t.HasCheckConstraint("CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5");
                         });
@@ -186,6 +193,38 @@ namespace MecaniCar360.Migrations
                     b.ToTable("DiagnosticoHistorialEvidencias");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.DigitoVerificadorVertical", b =>
+                {
+                    b.Property<string>("NombreEntidad")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<long>("CantidadRegistros")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("FechaActualizacionUtc")
+                        .HasColumnType("datetime2(7)");
+
+                    b.Property<string>("Valor")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("VersionAlgoritmo")
+                        .HasColumnType("int");
+
+                    b.HasKey("NombreEntidad");
+
+                    b.ToTable("DigitosVerificadoresVerticales", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_DVV_Cantidad", "[CantidadRegistros] >= 0");
+
+                            t.HasCheckConstraint("CK_DVV_Valor", "DATALENGTH([Valor]) = 64 AND [Valor] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%'");
+
+                            t.HasCheckConstraint("CK_DVV_Version", "[VersionAlgoritmo] > 0");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.DominioVehicular", b =>
                 {
                     b.Property<int>("Id")
@@ -265,6 +304,10 @@ namespace MecaniCar360.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<int>("Estado")
                         .HasColumnType("int");
 
@@ -311,7 +354,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("PresupuestoVersionOrigenId");
 
-                    b.ToTable("Facturas");
+                    b.ToTable("Facturas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Facturas_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.FacturaItem", b =>
@@ -324,6 +370,10 @@ namespace MecaniCar360.Migrations
 
                     b.Property<int>("Cantidad")
                         .HasColumnType("int");
+
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Descripcion")
                         .IsRequired()
@@ -339,7 +389,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("FacturaId");
 
-                    b.ToTable("FacturaItems");
+                    b.ToTable("FacturaItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_FacturaItems_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Familia", b =>
@@ -574,7 +627,7 @@ namespace MecaniCar360.Migrations
                         .IsUnique()
                         .HasFilter("[FechaEgreso] IS NULL");
 
-                    b.ToTable("IngresosVehiculo", t =>
+                    b.ToTable("IngresosVehiculo", null, t =>
                         {
                             t.HasCheckConstraint("CK_IngresosVehiculo_Accesorios", "[Accesorios] >= 0 AND [Accesorios] <= 63");
 
@@ -643,7 +696,7 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("PersonaId", "FechaConsumida", "FechaInvalidacion");
 
-                    b.ToTable("InvitacionesCliente", t =>
+                    b.ToTable("InvitacionesCliente", null, t =>
                         {
                             t.HasCheckConstraint("CK_InvitacionesCliente_Vigencia", "[FechaExpiracion] = DATEADD(hour, 48, [FechaCreacion])");
                         });
@@ -668,6 +721,10 @@ namespace MecaniCar360.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<DateTime>("FechaIngreso")
                         .HasColumnType("datetime2");
 
@@ -690,13 +747,15 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RepuestoId", "FechaIngreso", "Id");
 
-                    b.ToTable("LotesRepuesto", t =>
+                    b.ToTable("LotesRepuesto", null, t =>
                         {
                             t.HasCheckConstraint("CK_LotesRepuesto_CantidadDisponible", "[CantidadDisponible] >= 0 AND [CantidadDisponible] <= [CantidadIngresada]");
 
                             t.HasCheckConstraint("CK_LotesRepuesto_CantidadIngresada", "[CantidadIngresada] > 0");
 
                             t.HasCheckConstraint("CK_LotesRepuesto_CodigoLote", "LEN(LTRIM(RTRIM([CodigoLote]))) > 0");
+
+                            t.HasCheckConstraint("CK_LotesRepuesto_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
 
                             t.HasCheckConstraint("CK_LotesRepuesto_PrecioCompra", "[PrecioCompra] > 0");
                         });
@@ -774,6 +833,10 @@ namespace MecaniCar360.Migrations
                     b.Property<int>("Cantidad")
                         .HasColumnType("int");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<DateTime>("Fecha")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -808,9 +871,11 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RepuestoId");
 
-                    b.ToTable("MovimientosStock", t =>
+                    b.ToTable("MovimientosStock", null, t =>
                         {
                             t.HasCheckConstraint("CK_MovimientosStock_Cantidad", "[Cantidad] <> 0");
+
+                            t.HasCheckConstraint("CK_MovimientosStock_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
 
                             t.HasCheckConstraint("CK_MovimientosStock_TipoDatos", "([Tipo] = 0 AND [Cantidad] > 0 AND [ProveedorRepuestoId] IS NOT NULL) OR ([Tipo] = 1 AND [Cantidad] < 0 AND [OrdenTrabajoId] IS NOT NULL) OR ([Tipo] = 2 AND [Cantidad] <> 0)");
                         });
@@ -827,13 +892,19 @@ namespace MecaniCar360.Migrations
                     b.Property<int>("Cantidad")
                         .HasColumnType("int");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.HasKey("MovimientoStockId", "LoteRepuestoId");
 
                     b.HasIndex("LoteRepuestoId");
 
-                    b.ToTable("MovimientosStockLote", t =>
+                    b.ToTable("MovimientosStockLote", null, t =>
                         {
                             t.HasCheckConstraint("CK_MovimientosStockLote_Cantidad", "[Cantidad] > 0");
+
+                            t.HasCheckConstraint("CK_MovimientosStockLote_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
                         });
                 });
 
@@ -971,6 +1042,10 @@ namespace MecaniCar360.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<int>("Estado")
                         .HasColumnType("int");
 
@@ -997,7 +1072,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RegistradoPorUsuarioId");
 
-                    b.ToTable("Pagos");
+                    b.ToTable("Pagos", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Pagos_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Patente", b =>
@@ -1040,6 +1118,10 @@ namespace MecaniCar360.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("Dni")
                         .HasMaxLength(15)
                         .HasColumnType("nvarchar(15)");
@@ -1058,7 +1140,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Personas");
+                    b.ToTable("Personas", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Personas_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.PersonaRol", b =>
@@ -1068,6 +1153,10 @@ namespace MecaniCar360.Migrations
 
                     b.Property<int>("RolId")
                         .HasColumnType("int");
+
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<DateTime>("FechaAlta")
                         .HasColumnType("datetime2");
@@ -1084,7 +1173,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("RolId");
 
-                    b.ToTable("PersonaRoles");
+                    b.ToTable("PersonaRoles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PersonaRoles_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.Presupuesto", b =>
@@ -1397,6 +1489,10 @@ namespace MecaniCar360.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<DateTime>("FechaCreacion")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime2")
@@ -1434,8 +1530,10 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("SKU")
                         .IsUnique();
 
-                    b.ToTable("Repuestos", t =>
+                    b.ToTable("Repuestos", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Repuestos_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+
                             t.HasCheckConstraint("CK_Repuestos_StockActual", "[StockActual] >= 0");
 
                             t.HasCheckConstraint("CK_Repuestos_StockMinimo", "[StockMinimo] >= 0");
@@ -1453,6 +1551,10 @@ namespace MecaniCar360.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<bool>("EsRolCliente")
                         .HasColumnType("bit");
 
@@ -1466,7 +1568,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Roles");
+                    b.ToTable("Roles", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Roles_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
+                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.RolFamilia", b =>
@@ -1576,6 +1681,10 @@ namespace MecaniCar360.Migrations
                     b.Property<bool>("Activo")
                         .HasColumnType("bit");
 
+                    b.Property<string>("DVH")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("EmailLogin")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1620,6 +1729,8 @@ namespace MecaniCar360.Migrations
                     b.ToTable("Usuarios", null, t =>
                         {
                             t.HasCheckConstraint("CK_Usuarios_CredencialLocal", "[PasswordHash] IS NULL OR LEN(LTRIM(RTRIM([PasswordHash]))) > 0");
+
+                            t.HasCheckConstraint("CK_Usuarios_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
                         });
                 });
 

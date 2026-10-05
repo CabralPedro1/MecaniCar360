@@ -20,6 +20,11 @@ namespace MecaniCar360
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            builder.Services.AddSingleton(sp => new EstadoIntegridad(
+                Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath,
+                    builder.Configuration["Integridad:DirectorioIncidentes"] ?? "App_Data/Integridad")),
+                builder.Environment.WebRootPath ?? Path.Combine(builder.Environment.ContentRootPath, "wwwroot")));
+            builder.Services.AddScoped<IntegridadService>();
 
 
             // =====================================
@@ -287,9 +292,10 @@ namespace MecaniCar360
                         .GetRequiredService<
                             MecaniCarContext>();
 
-                InicializadorBD.Inicializar(
-                    context,
-                    builder.Configuration);
+                ArranqueIntegridad.EjecutarAsync(
+                    scope.ServiceProvider.GetRequiredService<IntegridadService>(),
+                    scope.ServiceProvider.GetRequiredService<EstadoIntegridad>(),
+                    () => InicializadorBD.Inicializar(context, builder.Configuration)).GetAwaiter().GetResult();
             }
 
 
@@ -310,6 +316,7 @@ namespace MecaniCar360
             // MIDDLEWARE
             // =====================================
 
+            app.UseMiddleware<MecaniCar360.Middleware.IntegridadMiddleware>();
             app.UseHttpsRedirection();
 
             app.UseStaticFiles();

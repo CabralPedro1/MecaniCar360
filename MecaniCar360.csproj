@@ -26,4 +26,10 @@
     <Folder Include="Views\Modelo\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="tools/**/*.cs" />
+    <Content Remove="tools/**/bin/**;tools/**/obj/**" />
+    <None Remove="tools/**/bin/**;tools/**/obj/**" />
+  </ItemGroup>
+
 </Project>
