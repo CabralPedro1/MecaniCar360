@@ -11,14 +11,16 @@ namespace MecaniCar360.Services
         private readonly IHttpContextAccessor _accessor;
         private readonly IServiceScopeFactory _scopes;
         private readonly ILogger<AuditoriaService> _logger;
+        private readonly PermisoService _permisos;
 
         public AuditoriaService(MecaniCarContext context, IHttpContextAccessor accessor,
-            IServiceScopeFactory scopes, ILogger<AuditoriaService> logger)
+            IServiceScopeFactory scopes, ILogger<AuditoriaService> logger, PermisoService permisos)
         {
             _context = context;
             _accessor = accessor;
             _scopes = scopes;
             _logger = logger;
+            _permisos = permisos;
         }
 
         // Sólo prepara el INSERT. El Service de negocio controla SaveChanges y la transacción.
@@ -52,6 +54,20 @@ namespace MecaniCar360.Services
             return principal?.Identity?.IsAuthenticated == true &&
                 int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id > 0
                     ? id : null;
+        }
+
+        public async Task<Models.DTOs.ServiceResult<List<Models.ViewModels.AuditoriaConsultaViewModel>>> ConsultarAsync(int usuarioId)
+        {
+            if (!await _permisos.TienePermisoAsync(usuarioId, "AUDITORIA_VER"))
+                return Models.DTOs.ServiceResult<List<Models.ViewModels.AuditoriaConsultaViewModel>>.Error("Acceso denegado.");
+            var registros = await _context.Auditorias.AsNoTracking()
+                .OrderByDescending(a => a.Fecha).ThenByDescending(a => a.Id)
+                .Select(a => new Models.ViewModels.AuditoriaConsultaViewModel
+                {
+                    Fecha = a.Fecha, Actor = a.Usuario == null ? null : a.Usuario.Username,
+                    Accion = a.Accion, Entidad = a.Entidad, EntidadId = a.EntidadId, Descripcion = a.Descripcion
+                }).ToListAsync();
+            return Models.DTOs.ServiceResult<List<Models.ViewModels.AuditoriaConsultaViewModel>>.Ok(registros);
         }
 
         private async Task RegistrarSesionAsync(string accion, int? actor)

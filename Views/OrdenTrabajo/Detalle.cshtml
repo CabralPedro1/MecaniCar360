@@ -9,6 +9,9 @@
     var verFactura = await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER");
     var modificarOrden = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
 }
+@if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER")) {
+    <a asp-controller="Calificacion" asp-action="Detalle" asp-route-ordenTrabajoId="@Model.Id" class="btn btn-outline-primary">Consultar calificación</a>
+}
 
 <div class="container mt-4">
 

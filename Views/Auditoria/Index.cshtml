@@ -1,0 +1,12 @@
+@model List<MecaniCar360.Models.ViewModels.AuditoriaConsultaViewModel>
+@{ ViewData["Title"] = "Auditoría"; }
+<h1>Auditoría</h1>
+@if (Model.Count == 0) { <p>No hay registros.</p> }
+else {
+<div class="table-responsive"><table class="table">
+<thead><tr><th>Fecha/hora</th><th>Actor</th><th>Acción</th><th>Entidad</th><th>ID</th><th>Descripción</th></tr></thead>
+<tbody>@foreach (var r in Model) {
+<tr><td>@r.Fecha.ToString("dd/MM/yyyy HH:mm:ss")</td><td>@(r.Actor ?? "Sin actor registrado")</td><td>@r.Accion</td><td>@r.Entidad</td><td>@r.EntidadId</td><td class="text-break">@r.Descripcion</td></tr>
+}</tbody></table></div>
+}
+<a asp-controller="Dashboard" asp-action="Index">Volver al inicio</a>

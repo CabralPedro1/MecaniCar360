@@ -1,6 +1,11 @@
 @model MecaniCar360.Models.ViewModels.OrdenPropiaViewModel
+@inject MecaniCar360.Services.PermisoService PermisosCalificacion
+@using System.Security.Claims
 @{ ViewData["Title"] = "Mi orden"; var o = Model.Orden; var ingreso = o.IngresoVehiculo; var v = ingreso.Vehiculo; }
 <h1>Orden #@o.Id</h1>
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorCalificacion) && await PermisosCalificacion.TienePermisoAsync(actorCalificacion, "CLIENTE_ORDEN_VER")) {
+    <a asp-controller="Calificacion" asp-action="Detalle" asp-route-ordenTrabajoId="@o.Id" class="btn btn-outline-primary mb-3">Calificación</a>
+}
 <partial name="_Mensajes" />
 <p><strong>Estado:</strong> <partial name="_EstadoOrden" model="o.EstadoActual" /></p>
 <p><strong>Vehículo recibido:</strong> @v.Patente — @v.Marca.Nombre @v.Modelo.Nombre</p>

@@ -42,7 +42,7 @@
                         }
 
                         <!-- TURNOS -->
-                        @if (!User.IsInRole("CLIENTE"))
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var turnoActor) && await Permisos.TienePermisoAsync(turnoActor, "TURNO_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Turno" asp-action="Index">Turnos</a>
@@ -59,7 +59,7 @@
                         }
 
                         <!-- MECANICO -->
-                        @if (User.IsInRole("MECANICO"))
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var ordenActor) && await Permisos.TienePermisoAsync(ordenActor, "ORDEN_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="OrdenTrabajo" asp-action="Index">Ordenes</a>
@@ -67,7 +67,7 @@
                         }
 
                         <!-- STOCK -->
-                        @if (User.IsInRole("STOCK"))
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var stockActor) && await Permisos.TienePermisoAsync(stockActor, "STOCK_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Stock" asp-action="Index">Repuestos</a>
@@ -104,6 +104,7 @@
                                 <a class="nav-link" asp-controller="Persona" asp-action="Clientes">Clientes</a>
                             </li>
                         }
+                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "AUDITORIA_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Auditoria" asp-action="Index">Auditoría</a></li> }
                         <!-- ADMIN -->
                         @if (usuarioFacturacionId > 0 &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
