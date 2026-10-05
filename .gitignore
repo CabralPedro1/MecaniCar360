@@ -263,6 +263,10 @@ ServiceFabricBackup/
 *.rptproj.bak
 
 # SQL Server files
+*.bak
+[Bb]ackups/
+evidencias_*.zip
+[Rr]estoreTemp/
 *.mdf
 *.ldf
 *.ndf
