@@ -9,12 +9,14 @@ namespace MecaniCar360.Services
     public partial class StockService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
 
-        public StockService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
+        public StockService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _permisos = permisos;
         }
@@ -163,75 +165,6 @@ namespace MecaniCar360.Services
         // =====================================
         // NOTIFICACIONES DE STOCK
         // =====================================
-
-        private async Task NotificarResponsableStockAsync(
-            Repuesto repuesto,
-            int ordenTrabajoId,
-            int cantidadFaltante)
-        {
-            var personasStock =
-                await _context.PersonaRoles
-                    .Include(pr => pr.Rol)
-                    .Where(pr =>
-                        pr.FechaBaja == null &&
-                        pr.Rol.Activo &&
-                        pr.Persona.Activo && pr.Persona.Usuario != null && pr.Persona.Usuario.Activo &&
-                        pr.Rol.Nombre ==
-                            RolesSistema.STOCK)
-                    .Select(pr => pr.PersonaId)
-                    .Distinct()
-                    .ToListAsync();
-
-
-            string mensaje;
-
-            if (cantidadFaltante > 0)
-            {
-                mensaje =
-                    $"FALTANTE DE STOCK - Orden #{ordenTrabajoId}. " +
-                    $"El repuesto '{repuesto.Nombre}' " +
-                    $"no tiene cantidad suficiente. " +
-                    $"Faltan {cantidadFaltante} unidad(es). " +
-                    $"Stock actual: {repuesto.StockActual}.";
-            }
-            else
-            {
-                mensaje =
-                    $"ALERTA DE STOCK - Orden #{ordenTrabajoId}. " +
-                    $"El repuesto '{repuesto.Nombre}' " +
-                    $"quedó en {repuesto.StockActual} unidad(es), " +
-                    $"igual o por debajo del stock mínimo " +
-                    $"({repuesto.StockMinimo}).";
-            }
-
-
-            foreach (var personaId in personasStock)
-            {
-                _context.Notificaciones.Add(
-                    new Notificacion
-                    {
-                        PersonaId =
-                            personaId,
-
-                        Mensaje =
-                            mensaje,
-
-                        Fecha =
-                            DateTime.Now,
-
-                        Leida =
-                            false
-                    });
-            }
-        }
-
-
-
-        // =====================================
-        // MÉTODOS PRIVADOS
-        // =====================================
-
-
 
         private async Task<Repuesto?> ObtenerRepuestoActivoAsync(int id)
         {

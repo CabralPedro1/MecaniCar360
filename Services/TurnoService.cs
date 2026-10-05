@@ -9,6 +9,7 @@ namespace MecaniCar360.Services
     public class TurnoService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly AgendaService _agendaService;
         private readonly PermisoService _permisoService;
@@ -18,9 +19,10 @@ namespace MecaniCar360.Services
             MecaniCarContext context,
             AgendaService agendaService,
             PermisoService permisoService,
-            DominioVehicularService dominioVehicularService, AuditoriaService auditoria)
+            DominioVehicularService dominioVehicularService, AuditoriaService auditoria, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _agendaService = agendaService;
             _permisoService = permisoService;
@@ -536,60 +538,76 @@ namespace MecaniCar360.Services
             int usuarioId,
             string? motivo)
         {
-            var turno = await _context.Turnos
-                .Include(t => t.IngresoVehiculo)
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
-
-            if (turno == null)
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
             {
-                return ServiceResult.Error(
-                    "Turno no encontrado.");
-            }
-
-            if (turno.Estado == EstadoTurno.Cancelado)
-            {
-                return ServiceResult.Error(
-                    "El turno ya está cancelado.");
-            }
-
-            if (turno.Estado == EstadoTurno.Finalizado)
-            {
-                return ServiceResult.Error(
-                    "No se puede cancelar un turno finalizado.");
-            }
-
-            if (turno.Estado == EstadoTurno.ClienteAusente)
-            {
-                return ServiceResult.Error(
-                    "No se puede cancelar un turno marcado como cliente ausente.");
-            }
-
-            if (turno.IngresoVehiculo != null)
-            {
-                return ServiceResult.Error(
-                    "No se puede cancelar un turno cuyo vehículo ya ingresó al taller.");
-            }
-
-            turno.Estado = EstadoTurno.Cancelado;
-
-            _context.TurnoEstados.Add(
-                new TurnoEstadoHistorial
+                var turno = await _context.Turnos.FromSqlInterpolated(
+                    $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}").FirstOrDefaultAsync();
+                if (turno != null)
                 {
-                    TurnoId = turno.Id,
-                    Estado = EstadoTurno.Cancelado,
-                    FechaCambio = DateTime.Now,
-                    UsuarioId = usuarioId,
-                    Observaciones =
-                        string.IsNullOrWhiteSpace(motivo)
-                            ? "Turno cancelado."
-                            : motivo.Trim()
-                });
+                    await _context.Entry(turno).ReloadAsync();
+                    await _context.Entry(turno).Reference(t => t.IngresoVehiculo).LoadAsync();
+                }
 
-            _auditoria.RegistrarOperacion("TURNO_CANCELADO", "Turno", turno.Id, usuarioId);
-            await _context.SaveChangesAsync();
+                if (turno == null)
+                {
+                    return ServiceResult.Error(
+                        "Turno no encontrado.");
+                }
 
-            return ServiceResult.Ok(
-                "Turno cancelado correctamente.");
+                if (turno.Estado == EstadoTurno.Cancelado)
+                {
+                    return ServiceResult.Error(
+                        "El turno ya está cancelado.");
+                }
+
+                if (turno.Estado == EstadoTurno.Finalizado)
+                {
+                    return ServiceResult.Error(
+                        "No se puede cancelar un turno finalizado.");
+                }
+
+                if (turno.Estado == EstadoTurno.ClienteAusente)
+                {
+                    return ServiceResult.Error(
+                        "No se puede cancelar un turno marcado como cliente ausente.");
+                }
+
+                if (turno.IngresoVehiculo != null)
+                {
+                    return ServiceResult.Error(
+                        "No se puede cancelar un turno cuyo vehículo ya ingresó al taller.");
+                }
+
+                turno.Estado = EstadoTurno.Cancelado;
+
+                _context.TurnoEstados.Add(
+                    new TurnoEstadoHistorial
+                    {
+                        TurnoId = turno.Id,
+                        Estado = EstadoTurno.Cancelado,
+                        FechaCambio = DateTime.Now,
+                        UsuarioId = usuarioId,
+                        Observaciones =
+                            string.IsNullOrWhiteSpace(motivo)
+                                ? "Turno cancelado."
+                                : motivo.Trim()
+                    });
+
+                await _notificaciones.TurnoAsync(turno, turno.FechaInicio, false);
+                _auditoria.RegistrarOperacion("TURNO_CANCELADO", "Turno", turno.Id, usuarioId);
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ServiceResult.Ok(
+                    "Turno cancelado correctamente.");
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                throw;
+            }
         }
 
 
@@ -667,77 +685,93 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .Include(t => t.IngresoVehiculo)
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
-
-            if (turno == null)
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
             {
-                return ServiceResult.Error(
-                    "Turno no encontrado.");
-            }
-
-            if (turno.Estado != EstadoTurno.Pendiente &&
-                turno.Estado != EstadoTurno.Confirmado)
-            {
-                return ServiceResult.Error(
-                    "Solo se pueden reprogramar turnos pendientes o confirmados.");
-            }
-
-            if (turno.IngresoVehiculo != null)
-            {
-                return ServiceResult.Error(
-                    "No se puede reprogramar un turno cuyo vehículo ya ingresó al taller.");
-            }
-
-            if (nuevaFechaInicio <= DateTime.Now)
-            {
-                return ServiceResult.Error(
-                    "La nueva fecha del turno debe ser futura.");
-            }
-
-
-            // ---------------------------------
-            // VALIDAR NUEVO HORARIO
-            // ---------------------------------
-
-            var disponibilidad =
-                await _agendaService.ValidarDisponibilidadAsync(
-                    nuevaFechaInicio,
-                    turno.Id);
-
-            if (!disponibilidad.Exitoso)
-            {
-                return disponibilidad;
-            }
-
-
-            // ---------------------------------
-            // GUARDAR CAMBIO
-            // ---------------------------------
-
-            var fechaAnterior = turno.FechaInicio;
-
-            turno.FechaInicio = nuevaFechaInicio;
-
-            _context.TurnoEstados.Add(
-                new TurnoEstadoHistorial
+                var turno = await _context.Turnos.FromSqlInterpolated(
+                    $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}").FirstOrDefaultAsync();
+                if (turno != null)
                 {
-                    TurnoId = turno.Id,
-                    Estado = turno.Estado,
-                    FechaCambio = DateTime.Now,
-                    UsuarioId = usuarioId,
-                    Observaciones =
-                        $"Turno reprogramado de " +
-                        $"{fechaAnterior:dd/MM/yyyy HH:mm} " +
-                        $"a {nuevaFechaInicio:dd/MM/yyyy HH:mm}."
-                });
+                    await _context.Entry(turno).ReloadAsync();
+                    await _context.Entry(turno).Reference(t => t.IngresoVehiculo).LoadAsync();
+                }
 
-            _auditoria.RegistrarOperacion("TURNO_REPROGRAMADO", "Turno", turno.Id, usuarioId);
-            await _context.SaveChangesAsync();
+                if (turno == null)
+                {
+                    return ServiceResult.Error(
+                        "Turno no encontrado.");
+                }
 
-            return ServiceResult.Ok(
-                "Turno reprogramado correctamente.");
+                if (turno.Estado != EstadoTurno.Pendiente &&
+                    turno.Estado != EstadoTurno.Confirmado)
+                {
+                    return ServiceResult.Error(
+                        "Solo se pueden reprogramar turnos pendientes o confirmados.");
+                }
+
+                if (turno.IngresoVehiculo != null)
+                {
+                    return ServiceResult.Error(
+                        "No se puede reprogramar un turno cuyo vehículo ya ingresó al taller.");
+                }
+
+                if (nuevaFechaInicio <= DateTime.Now)
+                {
+                    return ServiceResult.Error(
+                        "La nueva fecha del turno debe ser futura.");
+                }
+
+
+                // ---------------------------------
+                // VALIDAR NUEVO HORARIO
+                // ---------------------------------
+
+                var disponibilidad =
+                    await _agendaService.ValidarDisponibilidadAsync(
+                        nuevaFechaInicio,
+                        turno.Id);
+
+                if (!disponibilidad.Exitoso)
+                {
+                    return disponibilidad;
+                }
+
+
+                // ---------------------------------
+                // GUARDAR CAMBIO
+                // ---------------------------------
+
+                var fechaAnterior = turno.FechaInicio;
+
+                turno.FechaInicio = nuevaFechaInicio;
+
+                _context.TurnoEstados.Add(
+                    new TurnoEstadoHistorial
+                    {
+                        TurnoId = turno.Id,
+                        Estado = turno.Estado,
+                        FechaCambio = DateTime.Now,
+                        UsuarioId = usuarioId,
+                        Observaciones =
+                            $"Turno reprogramado de " +
+                            $"{fechaAnterior:dd/MM/yyyy HH:mm} " +
+                            $"a {nuevaFechaInicio:dd/MM/yyyy HH:mm}."
+                    });
+
+                await _notificaciones.TurnoAsync(turno, fechaAnterior, true);
+                _auditoria.RegistrarOperacion("TURNO_REPROGRAMADO", "Turno", turno.Id, usuarioId);
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ServiceResult.Ok(
+                    "Turno reprogramado correctamente.");
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                throw;
+            }
         }
 
         private async Task<int?> ObtenerPersonaIdAsync(int usuarioId)

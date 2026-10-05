@@ -1,4 +1,5 @@
 @inject MecaniCar360.Services.PermisoService Permisos
+@inject MecaniCar360.Services.NotificacionService Notificaciones
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -27,6 +28,11 @@
                 <div class="collapse navbar-collapse" id="navbarMain">
 
                     <ul class="navbar-nav me-auto">
+                        @if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var notificacionActor) && await Permisos.TienePermisoAsync(notificacionActor, "NOTIFICACION_VER"))
+                        {
+                            var contador = await Notificaciones.ContarNoLeidasAsync(notificacionActor);
+                            <li class="nav-item"><a class="nav-link" asp-controller="Notificacion" asp-action="Index">🔔 Mis notificaciones @if (contador.Exitoso && contador.Data!.Cantidad > 0) { <span class="badge bg-primary">@contador.Data!.Cantidad</span> }</a></li>
+                        }
 
                         <!-- DASHBOARD -->
                         @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var dashboardActor) && await Permisos.TienePermisoAsync(dashboardActor, "DASHBOARD_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li> }

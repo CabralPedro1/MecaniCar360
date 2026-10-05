@@ -12,11 +12,13 @@ namespace MecaniCar360.Services
     public class FacturaService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
-        public FacturaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria)
+        public FacturaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _permisos = permisos;
         }
@@ -134,6 +136,7 @@ namespace MecaniCar360.Services
                 }
                 _context.Facturas.Add(factura);
                 await _context.SaveChangesAsync();
+                await _notificaciones.ClienteAsync(orden.Id, "Factura emitida", TipoRecursoNotificacion.FacturaPropia, factura.Id);
                 _auditoria.RegistrarOperacion("FACTURA_EMITIDA", "Factura", factura.Id, usuarioId, $"Orden #{orden.Id}; factura #{factura.Id}.");
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();
@@ -198,6 +201,7 @@ namespace MecaniCar360.Services
                 _context.Pagos.Add(pago);
                 factura.Estado = pagado + monto >= factura.Total ? EstadoFactura.Pagada : EstadoFactura.Emitida;
                 await _context.SaveChangesAsync();
+                await _notificaciones.ClienteAsync(orden.Id, "Pago registrado", TipoRecursoNotificacion.FacturaPropia, factura.Id);
                 _auditoria.RegistrarOperacion("PAGO_REGISTRADO", "Pago", pago.Id, usuarioId, $"Orden #{orden.Id}; factura #{factura.Id}.");
                 await _context.SaveChangesAsync();
                 await tx.CommitAsync();

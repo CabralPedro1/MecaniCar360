@@ -14,6 +14,7 @@ namespace MecaniCar360.Services
     public class PresupuestoService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
         private readonly StockService _stock;
@@ -23,9 +24,10 @@ namespace MecaniCar360.Services
 
         public PresupuestoService(MecaniCarContext context, PermisoService permisos,
             StockService stock, OrdenStateService estados, OrdenSubject observer,
-            ILogger<PresupuestoService> logger, AuditoriaService auditoria)
+            ILogger<PresupuestoService> logger, AuditoriaService auditoria, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _permisos = permisos;
             _stock = stock;
@@ -217,6 +219,7 @@ namespace MecaniCar360.Services
                 presupuesto.MotivoRechazo = null;
                 presupuesto.FechaUltimaModificacion = ahora;
                 await CambiarEstadoAsync(orden, new EstadoEsperandoAprobacionHandler(), usuario, true);
+                await _notificaciones.ClienteAsync(orden.Id, "Nuevo presupuesto disponible", TipoRecursoNotificacion.PresupuestoPropio, orden.Id);
                 _auditoria.RegistrarOperacion("PRESUPUESTO_ENVIADO", "Presupuesto", presupuesto.Id, usuarioSolicitanteId,
                     $"Versión {numero}; orden #{orden.Id}.");
                 return ServiceResult<PresupuestoOperacion>.Ok(new PresupuestoOperacion(orden.Id), "Nueva versión enviada al cliente.");
@@ -273,6 +276,9 @@ namespace MecaniCar360.Services
                 version.Presupuesto.FechaUltimaModificacion = ahora;
                 await CambiarEstadoAsync(orden,
                     aprobar ? new EstadoAprobadoHandler() : new EstadoRechazadoHandler(), usuario, false);
+                if (orden.MecanicoId.HasValue)
+                    await _notificaciones.AgregarAsync(orden.MecanicoId.Value, aprobar ? "Presupuesto aprobado" : "Presupuesto rechazado",
+                        $"Presupuesto versión #{version.Id} de orden #{orden.Id}: " + (aprobar ? "aprobado." : "rechazado."), TipoRecursoNotificacion.OrdenTrabajo, orden.Id);
                 _auditoria.RegistrarOperacion(aprobar ? "PRESUPUESTO_APROBADO" : "PRESUPUESTO_RECHAZADO",
                     "PresupuestoVersion", version.Id, usuarioId, $"Orden #{orden.Id}; versión {version.NumeroVersion}.");
                 return ServiceResult<PresupuestoOperacion>.Ok(new PresupuestoOperacion(orden.Id), mensaje);

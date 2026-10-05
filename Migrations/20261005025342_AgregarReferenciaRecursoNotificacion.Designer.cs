@@ -4,6 +4,7 @@ using MecaniCar360.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MecaniCar360.Migrations
 {
     [DbContext(typeof(MecaniCarContext))]
-    partial class MecaniCarContextModelSnapshot : ModelSnapshot
+    [Migration("20261005025342_AgregarReferenciaRecursoNotificacion")]
+    partial class AgregarReferenciaRecursoNotificacion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -97,7 +100,7 @@ namespace MecaniCar360.Migrations
                     b.HasIndex("OrdenTrabajoId")
                         .IsUnique();
 
-                    b.ToTable("Calificaciones", t =>
+                    b.ToTable("Calificaciones", null, t =>
                         {
                             t.HasCheckConstraint("CK_Calificaciones_Puntuacion", "[Puntuacion] >= 1 AND [Puntuacion] <= 5");
                         });
@@ -574,7 +577,7 @@ namespace MecaniCar360.Migrations
                         .IsUnique()
                         .HasFilter("[FechaEgreso] IS NULL");
 
-                    b.ToTable("IngresosVehiculo", t =>
+                    b.ToTable("IngresosVehiculo", null, t =>
                         {
                             t.HasCheckConstraint("CK_IngresosVehiculo_Accesorios", "[Accesorios] >= 0 AND [Accesorios] <= 63");
 
@@ -643,7 +646,7 @@ namespace MecaniCar360.Migrations
 
                     b.HasIndex("PersonaId", "FechaConsumida", "FechaInvalidacion");
 
-                    b.ToTable("InvitacionesCliente", t =>
+                    b.ToTable("InvitacionesCliente", null, t =>
                         {
                             t.HasCheckConstraint("CK_InvitacionesCliente_Vigencia", "[FechaExpiracion] = DATEADD(hour, 48, [FechaCreacion])");
                         });
