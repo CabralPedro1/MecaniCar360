@@ -28,6 +28,9 @@
 
   <ItemGroup>
     <Compile Remove="tools/**/*.cs" />
+    <Compile Remove="tests/**/*.cs" />
+    <Content Remove="tests/**" />
+    <None Remove="tests/**" />
     <Content Remove="tools/**/bin/**;tools/**/obj/**" />
     <None Remove="tools/**/bin/**;tools/**/obj/**" />
   </ItemGroup>
