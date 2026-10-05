@@ -861,6 +861,12 @@ namespace MecaniCar360.Migrations
                     b.Property<int>("PersonaId")
                         .HasColumnType("int");
 
+                    b.Property<int?>("RecursoId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TipoRecurso")
+                        .HasColumnType("int");
+
                     b.Property<string>("Titulo")
                         .IsRequired()
                         .HasMaxLength(200)

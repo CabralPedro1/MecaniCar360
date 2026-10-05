@@ -12,14 +12,16 @@ namespace MecaniCar360.Services
     public class GarantiaService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly PermisoService _permisos;
         private readonly VehiculoService _vehiculos;
 
         public GarantiaService(MecaniCarContext context, PermisoService permisos, AuditoriaService auditoria,
-            VehiculoService vehiculos)
+            VehiculoService vehiculos, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _permisos = permisos;
             _vehiculos = vehiculos;
@@ -91,6 +93,7 @@ namespace MecaniCar360.Services
                 };
                 _context.Garantias.Add(garantia);
                 await _context.SaveChangesAsync();
+                await _notificaciones.ClienteAsync(orden.Id, "Garantía registrada", TipoRecursoNotificacion.GarantiaPropia, garantia.Id);
                 _auditoria.RegistrarOperacion("GARANTIA_CREADA", "Garantia", garantia.Id, usuarioId);
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();

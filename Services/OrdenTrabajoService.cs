@@ -10,6 +10,7 @@ namespace MecaniCar360.Services
     public class OrdenTrabajoService
     {
         private readonly MecaniCarContext _context;
+        private readonly NotificacionService _notificaciones;
         private readonly AuditoriaService _auditoria;
         private readonly OrdenStateService _ordenStateService;
         private readonly PermisoService _permisoService;
@@ -19,9 +20,10 @@ namespace MecaniCar360.Services
             MecaniCarContext context,
             OrdenStateService ordenStateService,
             PermisoService permisoService,
-            DiagnosticoService diagnosticoService, AuditoriaService auditoria)
+            DiagnosticoService diagnosticoService, AuditoriaService auditoria, NotificacionService notificaciones)
         {
             _context = context;
+            _notificaciones = notificaciones;
             _auditoria = auditoria;
             _ordenStateService = ordenStateService;
             _permisoService = permisoService;
@@ -322,47 +324,59 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "Usuario inactivo o sin permisos para esta operación.");
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
-
-            if (orden == null)
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
             {
-                return ServiceResult.Error(
-                    "Orden de trabajo no encontrada.");
-            }
+                var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                    $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}").FirstOrDefaultAsync();
+                if (orden != null) await _context.Entry(orden).ReloadAsync();
 
-            if (orden.FechaFin.HasValue ||
-                orden.EstadoActual == EstadoOrden.Finalizado ||
-                orden.EstadoActual == EstadoOrden.Entregado)
+                if (orden == null)
+                {
+                    return ServiceResult.Error(
+                        "Orden de trabajo no encontrada.");
+                }
+
+                if (orden.FechaFin.HasValue ||
+                    orden.EstadoActual == EstadoOrden.Finalizado ||
+                    orden.EstadoActual == EstadoOrden.Entregado)
+                {
+                    return ServiceResult.Error(
+                        "La orden de trabajo ya finalizó.");
+                }
+
+                if (!await EsMecanicoActivoAsync(
+                        mecanicoId))
+                {
+                    return ServiceResult.Error(
+                        "La persona seleccionada no es un mecánico activo.");
+                }
+
+                if (orden.MecanicoId.HasValue &&
+                    orden.MecanicoId.Value != mecanicoId)
+                {
+                    return ServiceResult.Error(
+                        "La orden ya está asignada a otro mecánico.");
+                }
+
+                if (orden.MecanicoId == mecanicoId) return ServiceResult.Ok("El mecánico ya estaba asignado.");
+                await _notificaciones.AgregarAsync(mecanicoId, "Nueva orden asignada", $"Orden #{orden.Id} asignada.", TipoRecursoNotificacion.OrdenTrabajo, orden.Id);
+                orden.MecanicoId =
+                    mecanicoId;
+
+                _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return ServiceResult.Ok(
+                    "Mecánico asignado correctamente.");
+            }
+            catch
             {
-                return ServiceResult.Error(
-                    "La orden de trabajo ya finalizó.");
+                await tx.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                throw;
             }
-
-            if (!await EsMecanicoActivoAsync(
-                    mecanicoId))
-            {
-                return ServiceResult.Error(
-                    "La persona seleccionada no es un mecánico activo.");
-            }
-
-            if (orden.MecanicoId.HasValue &&
-                orden.MecanicoId.Value != mecanicoId)
-            {
-                return ServiceResult.Error(
-                    "La orden ya está asignada a otro mecánico.");
-            }
-
-            orden.MecanicoId =
-                mecanicoId;
-
-            _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
-            await _context.SaveChangesAsync();
-
-            return ServiceResult.Ok(
-                "Mecánico asignado correctamente.");
         }
 
 
@@ -622,6 +636,8 @@ namespace MecaniCar360.Services
                     esAdmin ? null : mecanicoId;
             }
 
+            await _notificaciones.ClienteAsync(orden.Id, "Vehículo listo para retirar", TipoRecursoNotificacion.OrdenPropia, orden.Id);
+            await _notificaciones.OrdenFinalizadaAsync(orden.Id);
             _auditoria.RegistrarOperacion("ORDEN_FINALIZADA", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -761,6 +777,7 @@ namespace MecaniCar360.Services
                 ingreso.FechaEgreso =
                     DateTime.Now;
 
+                await _notificaciones.ClienteAsync(orden.Id, "Vehículo entregado", TipoRecursoNotificacion.OrdenPropia, orden.Id);
                 _auditoria.RegistrarOperacion("VEHICULO_ENTREGADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
                 await _context.SaveChangesAsync();
 

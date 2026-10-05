@@ -260,9 +260,8 @@ namespace MecaniCar360
                 IOrdenObserver,
                 EmailOrdenObserver>();
 
-            builder.Services.AddScoped<
-                IOrdenObserver,
-                NotificacionOrdenObserver>();
+            // Los avisos internos se preparan dentro de la transacción de negocio.
+            // El observer externo de email permanece después del commit.
 
             builder.Services.AddScoped<
                 OrdenSubject>();

@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Services
 {
-    public class NotificacionService
+    public partial class NotificacionService
     {
         private readonly MecaniCarContext _context;
         private readonly PermisoService _permisos;
@@ -25,7 +25,7 @@ namespace MecaniCar360.Services
             ObtenerPorPersonaAsync(
                 int usuarioSolicitanteId)
         {
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            var personaId = await PersonaAutorizadaAsync(usuarioSolicitanteId);
             if (!personaId.HasValue) return ServiceResult<List<Notificacion>>.Error("Usuario inactivo o no encontrado.");
 
             var personaExiste =
@@ -47,8 +47,7 @@ namespace MecaniCar360.Services
                     .Where(n =>
                         n.PersonaId == personaId)
 
-                    .OrderBy(n => n.Leida)
-                    .ThenByDescending(n => n.Fecha)
+                    .OrderByDescending(n => n.Fecha).ThenByDescending(n => n.Id)
 
                     .ToListAsync();
 
@@ -61,7 +60,7 @@ namespace MecaniCar360.Services
             ObtenerNoLeidasAsync(
                 int usuarioSolicitanteId)
         {
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            var personaId = await PersonaAutorizadaAsync(usuarioSolicitanteId);
             if (!personaId.HasValue) return ServiceResult<List<Notificacion>>.Error("Usuario inactivo o no encontrado.");
 
             var notificaciones =
@@ -166,7 +165,7 @@ namespace MecaniCar360.Services
                 int notificacionId,
                 int usuarioSolicitanteId)
         {
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            var personaId = await PersonaAutorizadaAsync(usuarioSolicitanteId);
             if (!personaId.HasValue) return ServiceResult.Error("Usuario inactivo o no encontrado.");
 
             var notificacion =
@@ -200,7 +199,7 @@ namespace MecaniCar360.Services
             MarcarTodasComoLeidasAsync(
                 int usuarioSolicitanteId)
         {
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
+            var personaId = await PersonaAutorizadaAsync(usuarioSolicitanteId);
             if (!personaId.HasValue) return ServiceResult.Error("Usuario inactivo o no encontrado.");
 
             var notificaciones =

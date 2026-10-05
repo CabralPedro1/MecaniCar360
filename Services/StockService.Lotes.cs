@@ -122,6 +122,11 @@ namespace MecaniCar360.Services
                 RealizadoPorUsuarioId = usuarioId, Observaciones = observaciones?.Trim(),
                 ProveedorRepuestoId = proveedorRepuestoId, OrdenTrabajoId = ordenTrabajoId, Lotes = detalles
             };
+            if (cantidad < 0)
+            {
+                var repuesto = await _context.Repuestos.SingleAsync(r => r.Id == repuestoId);
+                await _notificaciones.StockAsync(repuesto, checked(repuesto.StockActual - cantidad));
+            }
             _context.MovimientosStock.Add(movimiento);
             await _context.SaveChangesAsync();
             _auditoria.RegistrarOperacion("MOVIMIENTO_STOCK", "MovimientoStock", movimiento.Id, usuarioId,
@@ -233,8 +238,6 @@ namespace MecaniCar360.Services
                 if (!consumo.Exitoso) return ServiceResult.Error(consumo.Mensaje);
                 await GuardarMovimientoAsync(repuestoId, -consumo.Data!.Cantidad, TipoMovimientoStock.EgresoOrdenTrabajo,
                     usuarioId, observaciones, consumo.Data.Detalles, ordenTrabajoId: ordenTrabajoId);
-                if (estado.Data!.Repuesto.StockActual <= estado.Data.Repuesto.StockMinimo)
-                    await NotificarResponsableStockAsync(estado.Data.Repuesto, ordenTrabajoId, 0);
                 return ServiceResult.Ok("Salida registrada mediante FIFO.");
             });
         }
@@ -322,8 +325,6 @@ namespace MecaniCar360.Services
                         usuarioId, $"Aprobación de versión #{presupuestoVersionId}. Faltan {resultado.Faltante} unidad(es).",
                         resultado.Detalles, ordenTrabajoId: ordenTrabajoId);
                 if (resultado.Faltante > 0) faltantes.Add($"Repuesto #{solicitado.RepuestoId}: faltan {resultado.Faltante} unidad(es)");
-                if (resultado.Faltante > 0 || estado.Data!.Repuesto.StockActual <= estado.Data.Repuesto.StockMinimo)
-                    await NotificarResponsableStockAsync(estado.Data!.Repuesto, ordenTrabajoId, resultado.Faltante);
             }
             return ServiceResult.Ok(faltantes.Count == 0 ? "" : "Se registraron sólo las salidas disponibles. Pendiente de reposición: " + string.Join("; ", faltantes) + ".");
         }

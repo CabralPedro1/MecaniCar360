@@ -19,6 +19,15 @@ namespace MecaniCar360.Models
 
         public bool Leida { get; set; } = false;
 
+        public TipoRecursoNotificacion? TipoRecurso { get; set; }
+        public int? RecursoId { get; set; }
+
         public DateTime Fecha { get; set; } = DateTime.Now;
+    }
+
+    public enum TipoRecursoNotificacion
+    {
+        OrdenPropia = 1, PresupuestoPropio = 2, FacturaPropia = 3,
+        GarantiaPropia = 4, OrdenTrabajo = 5, Turno = 6, Repuesto = 7
     }
 }

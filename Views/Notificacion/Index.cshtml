@@ -1,0 +1,40 @@
+@model List<MecaniCar360.Models.Notificacion>
+@{ ViewData["Title"] = "Mis notificaciones"; }
+<h1>Mis notificaciones</h1>
+@if (Model.Any(n => !n.Leida))
+{
+    <form asp-action="MarcarTodas" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">Marcar todas como leídas</button>
+    </form>
+}
+@if (Model.Count == 0)
+{
+    <p>No tiene notificaciones.</p>
+}
+else
+{
+    <ul class="list-group">
+    @foreach (var n in Model)
+    {
+        <li class="list-group-item">
+            <span class="badge @(n.Leida ? "bg-secondary" : "bg-primary")">@(n.Leida ? "Leída" : "No leída")</span>
+            <strong>@n.Titulo</strong>
+            <small>@n.Fecha.ToString("dd/MM/yyyy HH:mm")</small>
+            <p>@n.Mensaje</p>
+            @if (n.RecursoId is > 0 && n.TipoRecurso.HasValue && Enum.IsDefined(n.TipoRecurso.Value))
+            {
+                <a asp-action="Recurso" asp-route-id="@n.Id" class="btn btn-outline-primary btn-sm">Ver recurso</a>
+            }
+            @if (!n.Leida)
+            {
+                <form asp-action="MarcarLeida" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@n.Id" />
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Marcar como leída</button>
+                </form>
+            }
+        </li>
+    }
+    </ul>
+}
