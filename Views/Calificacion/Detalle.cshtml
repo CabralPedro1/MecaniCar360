@@ -1,0 +1,28 @@
+@model MecaniCar360.Models.ViewModels.CalificacionViewModel
+@inject MecaniCar360.Services.PermisoService Permisos
+@using System.Security.Claims
+@{ ViewData["Title"] = "Calificación"; var actual = ViewBag.Calificacion as MecaniCar360.Models.CalificacionTrabajo; }
+<h1>Calificación de la orden #@Model.OrdenTrabajoId</h1>
+@if (TempData["Ok"] is string ok) { <div class="alert alert-success">@ok</div> }
+@if (TempData["Error"] is string error) { <div class="alert alert-danger">@error</div> }
+@if (actual != null) {
+    <p>Puntuación: @actual.Puntuacion / 5</p><p>@actual.Comentario</p><p>@actual.Fecha.ToString("dd/MM/yyyy HH:mm")</p>
+} else if (ViewBag.PuedeCalificar == true) {
+    <form asp-action="Crear" method="post">
+        @Html.AntiForgeryToken()
+        <input asp-for="OrdenTrabajoId" type="hidden" />
+        <div asp-validation-summary="All" class="text-danger"></div>
+        <label asp-for="Puntuacion">Puntuación (1–5)</label>
+        <input asp-for="Puntuacion" type="number" min="1" max="5" class="form-control" />
+        <span asp-validation-for="Puntuacion" class="text-danger"></span>
+        <label asp-for="Comentario">Comentario (opcional)</label>
+        <textarea asp-for="Comentario" maxlength="1000" class="form-control"></textarea>
+        <span asp-validation-for="Comentario" class="text-danger"></span>
+        <button type="submit" class="btn btn-primary mt-2">Enviar calificación</button>
+    </form>
+} else { <p>No hay calificación. Sólo el cliente propietario puede calificar una orden entregada.</p> }
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) && await Permisos.TienePermisoAsync(actor, "ORDEN_VER_DETALLE")) {
+    <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId">Volver a la orden</a>
+} else {
+    <a asp-controller="PortalCliente" asp-action="Orden" asp-route-id="@Model.OrdenTrabajoId">Volver a la orden</a>
+}
