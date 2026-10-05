@@ -198,6 +198,7 @@ namespace MecaniCar360.Data
                 "ADMINISTRACION");
 
             CrearFamilia(context, "AUDITORIA", "ADMINISTRACION");
+            CrearFamilia(context, "DASHBOARD", "ADMINISTRACION");
 
             CrearFamilia(
                 context,
@@ -426,6 +427,7 @@ namespace MecaniCar360.Data
             MecaniCarContext context)
         {
             CrearPatente(context, "AUDITORIA_VER");
+            CrearPatente(context, "DASHBOARD_VER");
             CrearPatente(context, "CLIENTE_CALIFICACION_CREAR");
             // -------------------------------------
             // USUARIOS
@@ -816,6 +818,7 @@ namespace MecaniCar360.Data
             MecaniCarContext context)
         {
             AsociarPatente(context, "AUDITORIA", "AUDITORIA_VER");
+            AsociarPatente(context, "DASHBOARD", "DASHBOARD_VER");
             // Calificar no es una consulta de orden: requiere una patente de escritura propia.
             AsociarPatente(context, "MIS_ORDENES", "CLIENTE_CALIFICACION_CREAR");
             AsociarPatente(context, "MIS_ORDENES", "GARANTIA_VER_PROPIA");

@@ -177,6 +177,8 @@ namespace MecaniCar360
             builder.Services.AddScoped<InvitacionClienteService>();
             builder.Services.AddScoped<AgendaService>();
             builder.Services.AddScoped<AuditoriaService>();
+            builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+            builder.Services.AddScoped<DashboardService>();
             builder.Services.AddScoped<ModeloService>();
             builder.Services.AddScoped<EvidenciaTrabajoService>();
             builder.Services.AddScoped<CalificacionTrabajoService>();

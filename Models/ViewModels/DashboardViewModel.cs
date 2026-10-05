@@ -1,26 +1,18 @@
-﻿using MecaniCar360.Models;
+﻿namespace MecaniCar360.Models.ViewModels;
 
-namespace MecaniCar360.Models.ViewModels
+public sealed class DashboardViewModel
 {
-    public class DashboardViewModel
-    {
-        // CLIENTE
-        public List<Turno> TurnosCliente { get; set; } = new();
-        public List<Presupuesto> PresupuestosPendientes { get; set; } = new();
-
-        // MECANICO
-        public List<OrdenTrabajo> OrdenesMecanico { get; set; } = new();
-
-        // CAJA
-        public List<Turno> TurnosHoy { get; set; } = new();
-        public List<Factura> FacturasPendientes { get; set; } = new();
-
-        // STOCK
-        public List<Repuesto> StockBajo { get; set; } = new();
-
-        // ADMIN
-        public int TotalTurnosHoy { get; set; }
-        public int OrdenesActivas { get; set; }
-        public decimal IngresosHoy { get; set; }
-    }
+    public int TurnosHoy { get; set; }
+    public int EnTaller { get; set; }
+    public int OrdenesActivas { get; set; }
+    public int EsperandoAprobacion { get; set; }
+    public int EnReparacion { get; set; }
+    public int PendientesEntrega { get; set; }
+    public decimal FacturadoMes { get; set; }
+    public decimal SaldoPendiente { get; set; }
+    public List<DashboardMes> Meses { get; set; } = new();
+    public List<AuditoriaConsultaViewModel> Actividad { get; set; } = new();
+    public List<DashboardAcceso> Accesos { get; set; } = new();
 }
+public sealed record DashboardMes(DateTime Mes, int Cantidad);
+public sealed record DashboardAcceso(string Nombre, string Controller, string Action);
