@@ -16,17 +16,20 @@ namespace MecaniCar360.Controllers
         private readonly EmailService _emailService;
         private readonly SessionManager _sessionManager;
         private readonly AuditoriaService _auditoria;
+        private readonly PermisoService _permisos;
 
         public AccountController(
             AccountService accountService,
             EmailService emailService,
             SessionManager sessionManager,
-            AuditoriaService auditoria)
+            AuditoriaService auditoria,
+            PermisoService permisos)
         {
             _accountService = accountService;
             _emailService = emailService;
             _sessionManager = sessionManager;
             _auditoria = auditoria;
+            _permisos = permisos;
         }
 
         // =====================================
@@ -75,7 +78,7 @@ namespace MecaniCar360.Controllers
             if (resultado.Usuario!.PrimerLogin)
                 return RedirectToAction(nameof(CompletarDatos));
 
-            return RedirectToAction("Index", "Dashboard");
+            return await DestinoInicialAsync(resultado.Usuario.Id);
         }
 
         // =====================================
@@ -101,7 +104,7 @@ namespace MecaniCar360.Controllers
             var usuario = resultado.Data!;
 
             if (!usuario.PrimerLogin)
-                return RedirectToAction("Index", "Dashboard");
+                return await DestinoInicialAsync(usuarioId);
 
             var model = new CompletarDatosViewModel
             {
@@ -206,6 +209,22 @@ namespace MecaniCar360.Controllers
         {
             Response.StatusCode = StatusCodes.Status403Forbidden;
             return View();
+        }
+
+        private async Task<IActionResult> DestinoInicialAsync(int usuarioId)
+        {
+            if (await _permisos.TienePermisoAsync(usuarioId, "DASHBOARD_VER"))
+                return RedirectToAction("Index", "Dashboard");
+            if (await _permisos.TieneAlgunoAsync(usuarioId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER",
+                "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
+                return RedirectToAction("Index", "PortalCliente");
+            if (await _permisos.TienePermisoAsync(usuarioId, "TURNO_VER"))
+                return RedirectToAction("Index", "Turno");
+            if (await _permisos.TienePermisoAsync(usuarioId, "ORDEN_VER"))
+                return RedirectToAction("Index", "OrdenTrabajo");
+            if (await _permisos.TienePermisoAsync(usuarioId, "STOCK_VER"))
+                return RedirectToAction("Index", "Stock");
+            return RedirectToAction("Index", "Home");
         }
 
         [Authorize]

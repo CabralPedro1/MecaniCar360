@@ -18,7 +18,7 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
             <div class="container-fluid">
 
-                <a class="navbar-brand" asp-controller="Dashboard" asp-action="Index">🚗 MEC360</a>
+                <a class="navbar-brand" asp-controller="Home" asp-action="Index">🚗 MEC360</a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
                     <span class="navbar-toggler-icon"></span>
@@ -29,9 +29,7 @@
                     <ul class="navbar-nav me-auto">
 
                         <!-- DASHBOARD -->
-                        <li class="nav-item">
-                            <a class="nav-link" asp-controller="Dashboard" asp-action="Index">Inicio</a>
-                        </li>
+                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var dashboardActor) && await Permisos.TienePermisoAsync(dashboardActor, "DASHBOARD_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li> }
 
                         @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioCatalogoId) &&
                             await Permisos.TienePermisoAsync(usuarioCatalogoId, "VEHICULO_VER"))

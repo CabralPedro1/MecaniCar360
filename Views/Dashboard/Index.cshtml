@@ -1,63 +1,61 @@
 ﻿@model MecaniCar360.Models.ViewModels.DashboardViewModel
+@using System.Globalization
 @{
-    ViewData["Title"] = "Dashboard";
+    ViewData["Title"] = "Dashboard administrativo";
+    var es = CultureInfo.GetCultureInfo("es-AR");
+    var maximo = Math.Max(1, Model.Meses.Max(m => m.Cantidad));
+    var tarjetas = new[] {
+        ("Turnos de hoy", Model.TurnosHoy.ToString()), ("Vehículos en taller", Model.EnTaller.ToString()),
+        ("Órdenes activas", Model.OrdenesActivas.ToString()), ("Esperando aprobación", Model.EsperandoAprobacion.ToString()),
+        ("En reparación", Model.EnReparacion.ToString()), ("Finalizadas pendientes de entrega", Model.PendientesEntrega.ToString()),
+        ("Facturado este mes", Model.FacturadoMes.ToString("C2", es)), ("Saldo pendiente de cobro", Model.SaldoPendiente.ToString("C2", es))
+    };
 }
-
-<h2 class="mb-4">Dashboard</h2>
-
-@if (ViewData["MostrarResumen"] is true)
-{
-    <section class="mb-4">
-        <h3>Resumen del taller</h3>
-        <dl class="row">
-            <dt class="col-sm-4">Turnos de hoy</dt>
-            <dd class="col-sm-8">@Model.TotalTurnosHoy</dd>
-            <dt class="col-sm-4">Órdenes activas</dt>
-            <dd class="col-sm-8">@Model.OrdenesActivas</dd>
-            <dt class="col-sm-4">Ingresos de hoy</dt>
-            <dd class="col-sm-8">@Model.IngresosHoy.ToString("N2")</dd>
-        </dl>
-    </section>
+<h1 class="mb-4">Dashboard MecaniCar360</h1>
+<div class="row g-3 mb-4">
+@foreach (var tarjeta in tarjetas) {
+    <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
+        <h2 class="h6 text-muted">@tarjeta.Item1</h2><p class="h3 mb-0">@tarjeta.Item2</p>
+    </div></div></div>
 }
-
-@if (ViewData["MostrarCliente"] is true)
-{
-    <section class="mb-4">
-        <h3>Mi actividad</h3>
-        <dl class="row">
-            <dt class="col-sm-4">Mis turnos</dt>
-            <dd class="col-sm-8">@Model.TurnosCliente.Count</dd>
-            <dt class="col-sm-4">Presupuestos pendientes</dt>
-            <dd class="col-sm-8">@Model.PresupuestosPendientes.Count</dd>
-        </dl>
-    </section>
+</div>
+<p class="text-muted small">Turnos de hoy incluye todos los estados. Activas: pendientes, diagnóstico, aprobación o reparación.
+    En taller: vehículos sin egreso. Facturado: facturas del mes no anuladas; no equivale a cobrado.
+    Saldo: facturas no anuladas menos pagos confirmados, de todos los períodos.</p>
+<section class="card mb-4"><div class="card-body">
+<h2 class="h4">Órdenes de trabajo por mes</h2>
+<p class="text-muted">Últimos seis meses, según fecha de inicio registrada de la OT.</p>
+<svg viewBox="0 0 720 300" class="w-100" role="img" aria-labelledby="grafico-titulo grafico-descripcion">
+    <title id="grafico-titulo">Órdenes de trabajo por mes</title>
+    <desc id="grafico-descripcion">Cantidad mensual de órdenes. Los valores también aparecen en la tabla siguiente.</desc>
+    <line x1="30" y1="250" x2="700" y2="250" stroke="currentColor" />
+    @for (var n = 0; n < Model.Meses.Count; n++) {
+        var m = Model.Meses[n]; var altura = (int)Math.Round(200.0 * m.Cantidad / maximo);
+        var x = 50 + n * 110; var y = 250 - altura;
+        <g>
+            <rect x="@x" y="@y" width="65" height="@altura" fill="#0d6efd" />
+            <text x="@(x + 32)" y="@(y - 10)" text-anchor="middle">@m.Cantidad</text>
+            <text x="@(x + 32)" y="275" text-anchor="middle">@m.Mes.ToString("MMM yy", es)</text>
+        </g>
+    }
+</svg>
+<div class="table-responsive"><table class="table table-sm">
+<caption>Valores del gráfico</caption>
+<thead><tr>@foreach (var m in Model.Meses) { <th scope="col">@m.Mes.ToString("MMMM yyyy", es)</th> }</tr></thead>
+<tbody><tr>@foreach (var m in Model.Meses) { <td>@m.Cantidad</td> }</tr></tbody>
+</table></div>
+</div></section>
+<section class="mb-4">
+<h2 class="h4">Actividad reciente</h2>
+@if (Model.Actividad.Count == 0) { <p>No hay actividad disponible para mostrar.</p> }
+else {
+<div class="table-responsive"><table class="table"><thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Recurso</th></tr></thead><tbody>
+@foreach (var a in Model.Actividad) {
+<tr><td>@a.Fecha.ToString("dd/MM/yyyy HH:mm")</td><td>@(a.Actor ?? "Sin actor registrado")</td><td>@a.Accion</td><td>@a.Entidad #@a.EntidadId</td></tr>
 }
-
-@if (ViewData["MostrarMecanico"] is true)
-{
-    <section class="mb-4">
-        <h3>Trabajo asignado</h3>
-        <p>Órdenes asignadas: @Model.OrdenesMecanico.Count</p>
-    </section>
+</tbody></table></div>
 }
-
-@if (ViewData["MostrarCaja"] is true)
-{
-    <section class="mb-4">
-        <h3>Caja</h3>
-        <dl class="row">
-            <dt class="col-sm-4">Turnos de hoy</dt>
-            <dd class="col-sm-8">@Model.TurnosHoy.Count</dd>
-            <dt class="col-sm-4">Facturas pendientes</dt>
-            <dd class="col-sm-8">@Model.FacturasPendientes.Count</dd>
-        </dl>
-    </section>
-}
-
-@if (ViewData["MostrarStock"] is true)
-{
-    <section class="mb-4">
-        <h3>Stock</h3>
-        <p>Repuestos con stock bajo: @Model.StockBajo.Count</p>
-    </section>
-}
+</section>
+<section><h2 class="h4">Accesos rápidos</h2><div class="d-flex flex-wrap gap-2">
+@foreach (var a in Model.Accesos) { <a class="btn btn-outline-primary" asp-controller="@a.Controller" asp-action="@a.Action">@a.Nombre</a> }
+</div></section>
