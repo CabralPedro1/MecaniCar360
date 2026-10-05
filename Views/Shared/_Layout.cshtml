@@ -110,6 +110,13 @@
                         }
                         @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "AUDITORIA_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Auditoria" asp-action="Index">Auditoría</a></li> }
                         @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "REPORTES_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Reportes" asp-action="Index">Reportes</a></li> }
+                        @if (usuarioFacturacionId > 0) {
+                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "TURNO_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Caja">Mostrador</a></li> }
+                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "ORDEN_MODIFICAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Mecanico">Mi trabajo</a></li> }
+                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "STOCK_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Stock">Inventario</a></li> }
+                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "ROL_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Rol" asp-action="Index">Roles</a></li> }
+                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "SEGURIDAD_ADMINISTRAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Seguridad" asp-action="Index">Seguridad</a></li> }
+                        }
                         <!-- ADMIN -->
                         @if (usuarioFacturacionId > 0 &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
@@ -123,6 +130,7 @@
 
                     </ul>
 
+                    @if (User.Identity?.IsAuthenticated == true) {
                     <!-- USER -->
                     <ul class="navbar-nav">
                         <li class="nav-item">
@@ -131,7 +139,7 @@
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a class="btn btn-outline-light me-2" href="/Account/CambiarContraseña">Cambiar contraseña</a>
+                            <a class="btn btn-outline-light me-2" asp-controller="Account" asp-action="CambiarContraseña">Cambiar contraseña</a>
                         </li>
                         <li class="nav-item">
                             <form asp-controller="Account" asp-action="Logout" method="post">
@@ -140,6 +148,7 @@
                             </form>
                         </li>
                     </ul>
+                    }
 
                 </div>
             </div>

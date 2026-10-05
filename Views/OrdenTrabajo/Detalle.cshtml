@@ -8,7 +8,10 @@
     ViewData["Title"] = $"Orden de Trabajo #{Model.Id}";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
     var verFactura = await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER");
-    var modificarOrden = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
+    var personaId = await Permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+    var asignado = Model.MecanicoId == personaId || await Permisos.EsAdministradorAsync(usuarioId);
+    var modificarOrden = asignado && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR");
+    var verPresupuesto = await Permisos.TienePermisoAsync(usuarioId, "PRESUPUESTO_VER");
 }
 @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER")) {
     <a asp-controller="Calificacion" asp-action="Detalle" asp-route-ordenTrabajoId="@Model.Id" class="btn btn-outline-primary">Consultar calificación</a>
@@ -169,7 +172,7 @@
 
 
                 <!-- TOMAR ORDEN -->
-                @if (Model.Mecanico == null &&
+                @if (await Permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR") && Model.Mecanico == null &&
                                 Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Pendiente)
                 {
                     <form asp-controller="OrdenTrabajo"
@@ -192,7 +195,7 @@
 
 
                 <!-- INICIAR DIAGNÓSTICO -->
-                @if (Model.EstadoActual ==
+                @if (asignado && await Permisos.TienePermisoAsync(usuarioId, "DIAGNOSTICO_CREAR") && Model.EstadoActual ==
                                 MecaniCar360.Models.Enums.EstadoOrden.Pendiente &&
                                 Model.Mecanico != null)
                 {
@@ -216,7 +219,7 @@
 
 
                 <!-- INICIAR REPARACIÓN -->
-                @if (Model.EstadoActual ==
+                @if (asignado && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_CAMBIAR_ESTADO") && Model.EstadoActual ==
                                 MecaniCar360.Models.Enums.EstadoOrden.Aprobado)
                 {
                     <form asp-controller="OrdenTrabajo"
@@ -239,7 +242,7 @@
 
 
                 <!-- FINALIZAR REPARACIÓN -->
-                @if (Model.EstadoActual ==
+                @if (asignado && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_FINALIZAR") && Model.EstadoActual ==
                                 MecaniCar360.Models.Enums.EstadoOrden.EnReparacion)
                 {
                     <form asp-controller="OrdenTrabajo"
@@ -259,7 +262,7 @@
                                placeholder="Horas reales"
                                min="0"
                                max="1000"
-                               style="width: 150px;" />
+                               />
 
                         <button type="submit"
                                 class="btn btn-warning">
@@ -271,7 +274,7 @@
 
 
                 <!-- VER PRESUPUESTO -->
-                @if (Model.Presupuesto != null)
+                @if (verPresupuesto && Model.Presupuesto != null)
                 {
                     <a asp-controller="Presupuesto"
                        asp-action="Detalle"
@@ -349,7 +352,7 @@
 
 
                 <!-- GUARDAR DIAGNÓSTICO -->
-                @if (!Model.FechaFin.HasValue &&
+                @if (asignado && await Permisos.TienePermisoAsync(usuarioId, Model.Diagnostico == null ? "DIAGNOSTICO_CREAR" : "DIAGNOSTICO_MODIFICAR") && !Model.FechaFin.HasValue &&
                     (Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
                      (Model.Diagnostico != null && Model.EstadoActual is
                         MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion or
@@ -444,7 +447,7 @@
     <!-- ===================================== -->
     <!-- CREAR PRESUPUESTO -->
     <!-- ===================================== -->
-    @if (Model.Presupuesto == null &&
+    @if (asignado && await Permisos.TienePermisoAsync(usuarioId, "PRESUPUESTO_CREAR") && Model.Presupuesto == null &&
         Model.EstadoActual ==
         MecaniCar360.Models.Enums.EstadoOrden.Diagnostico &&
         Model.Diagnostico != null)
@@ -490,7 +493,7 @@
     <!-- ===================================== -->
     <!-- PRESUPUESTO EXISTENTE -->
     <!-- ===================================== -->
-    @if (Model.Presupuesto != null)
+    @if (verPresupuesto && Model.Presupuesto != null)
     {
         <div class="card mb-4">
 
@@ -677,7 +680,7 @@
             </p>
 
 
-            @if (Model.EstadoActual !=
+            @if (modificarOrden && Model.EstadoActual !=
                         MecaniCar360.Models.Enums.EstadoOrden.Entregado)
             {
                 <form asp-controller="OrdenTrabajo"

@@ -1,11 +1,16 @@
-﻿<h2>Login</h2>
-
-<form method="post">
-    @Html.AntiForgeryToken()
-
-    <input name="username" placeholder="Usuario" class="form-control mb-2" />
-    <input name="password" type="password" placeholder="Contraseña" class="form-control mb-2" />
-    <button class="btn btn-primary">Ingresar</button>
+@{ ViewData["Title"] = "Iniciar sesión"; }
+<div class="row justify-content-center py-4">
+<div class="col-12 col-sm-10 col-md-7 col-lg-5">
+<section class="card shadow-sm"><div class="card-body p-4">
+<h1 class="h2">MecaniCar360</h1><p class="text-muted">Ingrese a su espacio de trabajo o portal de cliente.</p>
+@if (ViewBag.Error is string error) { <div class="alert alert-danger" role="alert">@error</div> }
+@if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger" role="alert"></div> }
+<form asp-controller="Account" asp-action="Login" method="post">
+@Html.AntiForgeryToken()
+<div class="mb-3"><label for="username" class="form-label">Usuario</label><input id="username" name="username" class="form-control" autocomplete="username" required autofocus /></div>
+<div class="mb-3"><label for="password" class="form-label">Contraseña</label><div class="input-group"><input id="password" name="password" type="password" class="form-control" autocomplete="current-password" required /><button type="button" id="mostrarPassword" class="btn btn-outline-secondary" aria-controls="password" aria-pressed="false">Mostrar</button></div></div>
+<button class="btn btn-primary w-100" type="submit">Iniciar sesión</button>
 </form>
-
-<p class="text-danger">@ViewBag.Error</p>
+<p class="small text-muted mt-3 mb-0">Si recibió una invitación para activar su cuenta, abra el enlace del correo.</p>
+</div></section></div></div>
+@section Scripts { <script src="~/js/login.js" asp-append-version="true"></script> }

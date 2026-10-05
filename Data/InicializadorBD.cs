@@ -22,35 +22,7 @@ namespace MecaniCar360.Data
             // Sólo migrar después de validar la instalación y, si corresponde, el secreto.
             context.Database.Migrate();
 
-            // =====================================
-            // ROLES
-            // =====================================
-
-            CrearRoles(context);
-
-            // =====================================
-            // FAMILIAS
-            // =====================================
-
-            CrearFamilias(context);
-
-            // =====================================
-            // PATENTES
-            // =====================================
-
-            CrearPatentes(context);
-
-            // =====================================
-            // FAMILIA - PATENTE
-            // =====================================
-
-            AsociarPatentesAFamilias(context);
-
-            // =====================================
-            // ROL - FAMILIA
-            // =====================================
-
-            AsociarFamiliasARoles(context);
+            InicializarSeguridad(context);
 
             // =====================================
             // ADMINISTRADOR
@@ -64,6 +36,26 @@ namespace MecaniCar360.Data
             context.SaveChanges();
         }
 
+
+        // La presencia de roles/familias identifica una instalación ya configurada.
+        // No inferir instalación nueva por asociaciones vacías: pueden haberse quitado legítimamente.
+        public static void InicializarSeguridad(MecaniCarContext context)
+        {
+            using var transaction = context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
+            var inicial = !context.Roles.Any() && !context.Familias.Any();
+            CrearRoles(context);
+            CrearPatentes(context);
+            CrearPatente(context, "SEGURIDAD_ADMINISTRAR");
+            context.SaveChanges();
+            if (inicial)
+            {
+                CrearFamilias(context);
+                AsociarPatentesAFamilias(context);
+                AsociarFamiliasARoles(context);
+            }
+            context.SaveChanges();
+            transaction.Commit();
+        }
 
         // =====================================================
         // CATÁLOGO VEHICULAR

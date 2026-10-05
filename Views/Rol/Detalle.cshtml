@@ -4,7 +4,14 @@
     ViewData["Title"] = "Detalle del Rol";
 }
 
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 <h2>Detalle del Rol</h2>
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) &&
+    await Permisos.TienePermisoAsync(actor, "SEGURIDAD_ADMINISTRAR"))
+{
+    <a class="btn btn-outline-primary" asp-controller="Seguridad" asp-action="Rol" asp-route-id="@Model.Id">Administrar familias y permisos</a>
+}
 
 <hr />
 

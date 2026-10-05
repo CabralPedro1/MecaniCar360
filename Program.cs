@@ -89,7 +89,7 @@ namespace MecaniCar360
                         "/Account/Login";
 
                     options.AccessDeniedPath =
-                        "/Account/Login";
+                        "/Account/AccesoDenegado";
 
                     options.ExpireTimeSpan =
                         TimeSpan.FromHours(8);
@@ -183,6 +183,8 @@ namespace MecaniCar360
             builder.Services.AddScoped<AgendaService>();
             builder.Services.AddScoped<AuditoriaService>();
             builder.Services.AddSingleton<TimeProvider>(TimeProvider.System);
+            builder.Services.AddScoped<SeguridadService>();
+            builder.Services.AddScoped<InicioOperativoService>();
             builder.Services.AddScoped<DashboardService>();
             builder.Services.AddScoped<ReportesService>();
             builder.Services.AddScoped<ModeloService>();

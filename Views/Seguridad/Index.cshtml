@@ -1,0 +1,22 @@
+@model MecaniCar360.Models.ViewModels.SeguridadViewModel
+@{ ViewData["Title"] = "Seguridad"; }
+<partial name="_Mensajes" />
+@inject MecaniCar360.Services.PermisoService Permisos
+@using System.Security.Claims
+@{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
+<h1>Seguridad</h1>
+<p>Organice las capacidades técnicas en familias y asigne esas familias a los roles.</p>
+<nav class="d-flex gap-2 mb-3">
+@if (await Permisos.TienePermisoAsync(actor, "ROL_VER")) { <a class="btn btn-outline-primary" asp-controller="Rol" asp-action="Index">Datos de roles</a> }
+<a class="btn btn-outline-primary" asp-action="Patentes">Catálogo de patentes</a>
+<a class="btn btn-primary" asp-action="Editar">Nueva familia</a>
+</nav>
+<h2>Familias</h2>
+@if (Model.Familias.Count == 0) { <p>No hay familias.</p> }
+<div class="table-responsive"><table class="table"><thead><tr><th>Nombre</th><th>Estado</th><th>Padre</th><th>Composición</th></tr></thead><tbody>
+@foreach (var f in Model.Familias) {
+<tr><td>@f.Nombre</td><td>@(f.Activo ? "Activa" : "Inactiva")</td><td>@(Model.Familias.FirstOrDefault(x => x.Id == f.FamiliaPadreId)?.Nombre ?? "Sin padre")</td><td><a asp-action="Familia" asp-route-id="@f.Id">Ver / administrar</a></td></tr>
+}
+</tbody></table></div>
+<h2>Familias por rol</h2>
+<ul>@foreach (var r in Model.Roles) { <li><a asp-action="Rol" asp-route-id="@r.Id">@r.Nombre</a> — @(r.Activo ? "Activo" : "Inactivo")</li> }</ul>

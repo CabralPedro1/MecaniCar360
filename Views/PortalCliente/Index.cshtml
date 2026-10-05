@@ -9,7 +9,8 @@
         ("CLIENTE_ORDEN_VER", "PortalCliente", "MisOrdenes", "Mis órdenes"),
         ("CLIENTE_PRESUPUESTO_VER", "PortalCliente", "MisPresupuestos", "Mis presupuestos"),
         ("CLIENTE_FACTURA_VER", "Factura", "MisFacturas", "Mis facturas"),
-        ("GARANTIA_VER_PROPIA", "Garantia", "MisGarantias", "Mis garantías") };
+        ("GARANTIA_VER_PROPIA", "Garantia", "MisGarantias", "Mis garantías"),
+        ("NOTIFICACION_VER", "Notificacion", "Index", "Mis notificaciones") };
 }
 <h1>Portal cliente</h1>
 <p>Consulte sus vehículos, turnos y trabajos del taller.</p>
@@ -23,4 +24,4 @@
     }
 }
 </div>
-<a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver al inicio</a>
+<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Volver al inicio</a>
