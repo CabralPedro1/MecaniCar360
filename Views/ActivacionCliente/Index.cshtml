@@ -1,21 +1,25 @@
 @model MecaniCar360.Models.ViewModels.ActivarClienteViewModel
 @{ Layout = null; }
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title></head><body>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title>
+<partial name="_EnlaceSeguroHead" />
+</head><body><main class="enlace-seguro">
+<p class="fw-bold">MecaniCar360</p>
+
 <h1>Activar cuenta de MecaniCar</h1>
 <form asp-controller="ActivacionCliente" asp-action="Index" method="post">
     @Html.AntiForgeryToken()
     @if (!ViewData.ModelState.IsValid)
     {
-        <div asp-validation-summary="All"></div>
+        <div asp-validation-summary="All" role="alert"></div>
     }
-    <div><label asp-for="Nombre"></label><input asp-for="Nombre" required /><span asp-validation-for="Nombre"></span></div>
-    <div><label asp-for="Apellido"></label><input asp-for="Apellido" required /><span asp-validation-for="Apellido"></span></div>
-    <div><label asp-for="Dni"></label><input asp-for="Dni" required /><span asp-validation-for="Dni"></span></div>
-    <div><label asp-for="Telefono"></label><input asp-for="Telefono" required /><span asp-validation-for="Telefono"></span></div>
+    <div><label asp-for="Nombre"></label><input class="form-control" asp-for="Nombre" required /><span asp-validation-for="Nombre"></span></div>
+    <div><label asp-for="Apellido"></label><input class="form-control" asp-for="Apellido" required /><span asp-validation-for="Apellido"></span></div>
+    <div><label asp-for="Dni"></label><input class="form-control" asp-for="Dni" required /><span asp-validation-for="Dni"></span></div>
+    <div><label asp-for="Telefono"></label><input class="form-control" asp-for="Telefono" required /><span asp-validation-for="Telefono"></span></div>
     <input asp-for="Token" type="hidden" />
-    <div><label asp-for="Username">Usuario</label><input asp-for="Username" autocomplete="username" maxlength="50" required /><span asp-validation-for="Username"></span></div>
-    <div><label asp-for="Password">Contrasena</label><input asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span></div>
-    <div><label asp-for="ConfirmarPassword">Confirmar contrasena</label><input asp-for="ConfirmarPassword" autocomplete="new-password" required /><span asp-validation-for="ConfirmarPassword"></span></div>
+    <div><label asp-for="Username">Usuario</label><input class="form-control" asp-for="Username" autocomplete="username" maxlength="50" required /><span asp-validation-for="Username"></span></div>
+    <div><label asp-for="Password">Contrasena</label><input class="form-control" asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span></div>
+    <div><label asp-for="ConfirmarPassword">Confirmar contrasena</label><input class="form-control" asp-for="ConfirmarPassword" autocomplete="new-password" required /><span asp-validation-for="ConfirmarPassword"></span></div>
     <p>Use al menos 8 caracteres, mayusculas, minusculas, numeros y un simbolo.</p>
-    <button type="submit">Activar cuenta</button>
-</form></body></html>
+    <button type="submit" class="btn btn-primary w-100">Activar cuenta</button>
+</form></main></body></html>

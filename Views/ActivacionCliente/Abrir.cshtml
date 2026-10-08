@@ -1,6 +1,10 @@
 @{ Layout = null; }
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title></head>
-<body><p id="estado">Abriendo invitacion...</p><noscript>Active JavaScript para abrir la invitacion de forma segura.</noscript>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar cuenta</title>
+<partial name="_EnlaceSeguroHead" />
+</head>
+<body><main class="enlace-seguro">
+<p class="fw-bold">MecaniCar360</p>
+<p id="estado" role="status" aria-live="polite">Abriendo invitacion...</p><noscript>Active JavaScript para abrir la invitacion de forma segura.</noscript>
 <script>
 (async () => {
     const token = location.hash.slice(1);
@@ -18,4 +22,4 @@
         document.getElementById('estado').textContent = 'No se pudo abrir la invitacion. Intente nuevamente desde el correo.';
     }
 })();
-</script></body></html>
+</script></main></body></html>
