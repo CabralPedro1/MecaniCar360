@@ -13,12 +13,12 @@
         @if (resultado.Data.Evidencias.Count == 0) { <p>No hay evidencias.</p> }
         else
         {
-            <table class="table"><thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Archivo</th></tr></thead><tbody>
+            <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table"><thead><tr><th>Fecha</th><th>Descripción</th><th>Tipo</th><th>Archivo</th></tr></thead><tbody>
             @foreach (var e in resultado.Data.Evidencias)
             {
                 <tr><td>@e.Fecha.ToString("dd/MM/yyyy HH:mm")</td><td>@e.Descripcion</td><td>@e.Tipo</td><td><a asp-controller="Evidencia" asp-action="Archivo" asp-route-id="@e.Id">Descargar evidencia #@e.Id</a></td></tr>
             }
-            </tbody></table>
+            </tbody></table></div>
         }
     </section>
 }

@@ -16,7 +16,7 @@
 @if (!Model.Any()) { <p>No hay modelos registrados.</p> }
 else
 {
-    <table class="table table-striped">
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
         <thead><tr><th>Marca</th><th>Nombre</th><th>Estado</th><th>Acciones</th></tr></thead>
         <tbody>
         @foreach (var item in Model)
@@ -39,5 +39,5 @@ else
             </tr>
         }
         </tbody>
-    </table>
+    </table></div>
 }

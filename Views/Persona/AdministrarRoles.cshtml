@@ -14,7 +14,7 @@
 }
 else
 {
-    <table class="table">
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table">
         <thead><tr><th>Rol</th><th>Estado del rol</th><th>Operación</th></tr></thead>
         <tbody>
         @foreach (var rol in Model.RolesActuales)
@@ -36,7 +36,7 @@ else
             </tr>
         }
         </tbody>
-    </table>
+    </table></div>
 }
 @if (Model.PuedeAsignar)
 {

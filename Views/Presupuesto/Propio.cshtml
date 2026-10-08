@@ -17,13 +17,13 @@
 <p>Enviado: @Model.FechaEnvio — Decisión: @Model.Decision</p>
 @if (!vigente && Model.Decision == MecaniCar360.Models.Enums.EstadoPresupuestoVersion.Pendiente)
 { <div class="alert alert-info">Este envío ya no admite decisiones. El taller debe enviar una nueva versión.</div> }
-<table class="table table-striped">
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
 <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
 <tbody>@foreach (var item in Model.Items)
 {
     <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td></tr>
 }</tbody>
-</table>
+</table></div>
 <p><strong>Total enviado: $ @Model.Total.ToString("N2")</strong></p>
 <p>@Model.MotivoRechazo</p>
 @if (Model.FechaDecision.HasValue) { <p>Fecha de decisión: @Model.FechaDecision</p> }

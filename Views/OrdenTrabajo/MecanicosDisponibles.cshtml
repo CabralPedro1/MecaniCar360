@@ -12,7 +12,7 @@
 else { <p>Seleccione una orden desde el listado para iniciar su asignacion.</p> }
 @if (!Model.Any()) { <p>No hay mecanicos activos disponibles.</p> }
 else {
-<table class="table"><thead><tr><th>Mecanico</th><th>Acciones</th></tr></thead><tbody>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table"><thead><tr><th>Mecanico</th><th>Acciones</th></tr></thead><tbody>
 @foreach (var mecanico in Model) {
 <tr><td>@mecanico.Apellido, @mecanico.Nombre</td><td>
 @if (ordenId.HasValue) {
@@ -26,7 +26,7 @@ else {
 @if (verOrdenes) { <a asp-action="DeMecanico" asp-route-mecanicoId="@mecanico.Id">Ver ordenes activas</a> }
 </td></tr>
 }
-</tbody></table>
+</tbody></table></div>
 }
 @if (ordenId.HasValue && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE")) {
 <a asp-action="Detalle" asp-route-id="@ordenId">Volver a la orden</a>
