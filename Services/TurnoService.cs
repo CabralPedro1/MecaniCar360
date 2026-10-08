@@ -45,14 +45,15 @@ namespace MecaniCar360.Services
                     "No posee permisos para consultar turnos.");
             }
 
+            // Estas navegaciones son opcionales; EF traduce ThenInclude sin desreferenciarlas en memoria.
             var turnos = await _context.Turnos
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Marca)
+                    .ThenInclude(v => v!.Marca)
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Modelo)
+                    .ThenInclude(v => v!.Modelo)
                 .Include(t => t.Cliente)
                 .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i.OrdenTrabajo)
+                    .ThenInclude(i => i!.OrdenTrabajo)
                 .OrderBy(t => t.FechaInicio)
                 .ToListAsync();
 
@@ -80,12 +81,12 @@ namespace MecaniCar360.Services
         {
             var turno = await _context.Turnos
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Marca)
+                    .ThenInclude(v => v!.Marca)
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Modelo)
+                    .ThenInclude(v => v!.Modelo)
                 .Include(t => t.Cliente)
                 .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i.OrdenTrabajo)
+                    .ThenInclude(i => i!.OrdenTrabajo)
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (turno == null)
@@ -155,9 +156,9 @@ namespace MecaniCar360.Services
         {
             return await _context.Turnos
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Marca)
+                    .ThenInclude(v => v!.Marca)
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Modelo)
+                    .ThenInclude(v => v!.Modelo)
                 .Where(t => t.ClienteId == personaId)
                 .OrderByDescending(t => t.FechaInicio)
                 .ToListAsync();
@@ -169,12 +170,12 @@ namespace MecaniCar360.Services
         {
             return await _context.Turnos
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Marca)
+                    .ThenInclude(v => v!.Marca)
                 .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v.Modelo)
+                    .ThenInclude(v => v!.Modelo)
                 .Include(t => t.Cliente)
                 .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i.OrdenTrabajo)
+                    .ThenInclude(i => i!.OrdenTrabajo)
                 .FirstOrDefaultAsync(t =>
                     t.Id == turnoId &&
                     t.ClienteId == personaId);

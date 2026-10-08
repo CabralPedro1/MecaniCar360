@@ -219,7 +219,8 @@ namespace MecaniCar360.Services
                 }
 
                 var faltantes = MecaniCar360.Helpers.DatosRecepcionCliente.Faltantes(turno.Cliente);
-                if (faltantes.Count > 0)
+                var dniCliente = turno.Cliente.Dni;
+                if (faltantes.Count > 0 || string.IsNullOrWhiteSpace(dniCliente))
                     return ServiceResult<OrdenTrabajo>.Error("Complete los datos del cliente antes de recibir el vehiculo: " + string.Join(", ", faltantes));
 
                 var vehiculo = await _context.Vehiculos
@@ -264,7 +265,7 @@ namespace MecaniCar360.Services
                     VehiculoId = vehiculo.Id,
                     RegistradoPorUsuarioId = usuarioSolicitanteId,
                     ClienteNombreSnapshot = $"{turno.Cliente.Nombre} {turno.Cliente.Apellido}".Trim(),
-                    ClienteDniSnapshot = turno.Cliente.Dni.Trim(),
+                    ClienteDniSnapshot = dniCliente.Trim(),
                     VehiculoPatenteSnapshot = vehiculo.Patente.Trim(),
                     VehiculoDescripcionSnapshot = $"{vehiculo.Marca.Nombre} {vehiculo.Modelo.Nombre} {vehiculo.Anio}".Trim(),
                     Kilometraje = model.Kilometraje!.Value,
