@@ -12,12 +12,19 @@ public sealed class ClienteHabilitadoService(MecaniCarContext context)
 
     public async Task<bool> EstaHabilitadoAsync(int personaId)
     {
-        var usuario = await context.Usuarios.AsNoTracking()
+        var usuario = await context.Usuarios.AsNoTracking().Include(u => u.Persona)
             .Where(u => u.PersonaId == personaId && u.Activo && u.Persona.Activo &&
                 u.Persona.Roles.Any(pr => pr.FechaBaja == null && pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.CLIENTE))
-            .Select(u => new { u.PasswordHash, Externa = u.IdentidadesExternas.Any(i =>
-                i.Proveedor == ProveedorIdentidadExterna.Google && i.IdentificadorExterno.Trim() != "") })
             .SingleOrDefaultAsync();
-        return usuario != null && (CredencialEstablecida(usuario.PasswordHash) || usuario.Externa);
+        return usuario != null && !usuario.PrimerLogin && (CredencialEstablecida(usuario.PasswordHash) ||
+            await context.IdentidadesExternas.AnyAsync(i => i.UsuarioId == usuario.Id &&
+                i.Proveedor == ProveedorIdentidadExterna.Google && i.IdentificadorExterno.Trim() != ""))
+            && Helpers.RegistroCompletoCliente.PersonaCompleta(usuario.Persona)
+            && await CorreoVerificadoAsync(usuario);
     }
+
+    public async Task<bool> CorreoVerificadoAsync(Usuario usuario) => await context.IdentidadesExternas.AnyAsync(i =>
+        i.UsuarioId == usuario.Id && i.Proveedor == ProveedorIdentidadExterna.Google && i.IdentificadorExterno.Trim() != "")
+        || await context.InvitacionesCliente.AnyAsync(i => i.PersonaId == usuario.PersonaId
+            && i.FechaConsumida != null && i.EmailDestino == usuario.EmailLogin);
 }

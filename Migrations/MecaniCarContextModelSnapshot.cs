@@ -258,6 +258,55 @@ namespace MecaniCar360.Migrations
                     b.ToTable("DominiosVehiculares");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.EnlacePasswordCliente", b =>
+                {
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EmailHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("FechaConsumida")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaCreacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("FechaExpiracion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaInvalidacion")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Finalidad")
+                        .HasColumnType("int");
+
+                    b.Property<string>("StampHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("TeniaPassword")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("UsuarioId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("EnlacesPasswordCliente", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_EnlacesPasswordCliente_Vigencia", "[Finalidad] IN (1,2,3) AND [FechaExpiracion] > [FechaCreacion]");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.EvidenciaTrabajo", b =>
                 {
                     b.Property<int>("Id")
@@ -1140,6 +1189,10 @@ namespace MecaniCar360.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Dni")
+                        .IsUnique()
+                        .HasFilter("[Dni] IS NOT NULL");
+
                     b.ToTable("Personas", null, t =>
                         {
                             t.HasCheckConstraint("CK_Personas_DVH", "[DVH] IS NULL OR (DATALENGTH([DVH]) = 64 AND [DVH] COLLATE Latin1_General_100_BIN2 NOT LIKE '%[^0-9A-F]%')");
@@ -1900,6 +1953,17 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Persona");
 
                     b.Navigation("Vehiculo");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.EnlacePasswordCliente", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.Usuario", "Usuario")
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.EvidenciaTrabajo", b =>

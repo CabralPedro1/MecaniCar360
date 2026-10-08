@@ -13,9 +13,33 @@ namespace MecaniCar360.Controllers;
 public sealed class PortalClienteController(
     VehiculoService vehiculos, TurnoService turnos, OrdenTrabajoService ordenes,
     PresupuestoService presupuestos, FacturaService facturas,
-    PermisoService permisos, VehiculoPropioAltaService altaVehiculo, DatosClienteService datosCliente) : Controller
+    PermisoService permisos, VehiculoPropioAltaService altaVehiculo, DatosClienteService datosCliente,
+    RegistroCompletoClienteService registro, ClienteHabilitadoService habilitado) : Controller
 {
     private int Actor => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
+
+    [HttpGet, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")]
+    public async Task<IActionResult> MisDatos()
+    {
+        var u = await registro.ObtenerAsync(Actor);
+        if (u == null || !await habilitado.EstaHabilitadoAsync(u.PersonaId)) return Forbid();
+        return View(new ContactoClienteViewModel { Nombre = u.Persona.Nombre!, Apellido = u.Persona.Apellido!,
+            Dni = u.Persona.Dni!, Email = u.EmailLogin, Telefono = u.Persona.Telefono! });
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")]
+    public async Task<IActionResult> MisDatos(ContactoClienteViewModel vm)
+    {
+        var u = await registro.ObtenerAsync(Actor);
+        if (u == null || !await habilitado.EstaHabilitadoAsync(u.PersonaId)) return Forbid();
+        if (ModelState.IsValid) {
+            var r = await registro.ActualizarContactoAsync(Actor, vm);
+            if (r.Exitoso) { TempData["Ok"] = r.Mensaje; return RedirectToAction(nameof(MisDatos)); }
+            ModelState.AddModelError("", r.Mensaje);
+        }
+        vm.Nombre = u.Persona.Nombre!; vm.Apellido = u.Persona.Apellido!; vm.Dni = u.Persona.Dni!; vm.Email = u.EmailLogin;
+        return View(vm);
+    }
 
     [HttpGet, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")]
     public async Task<IActionResult> Index()

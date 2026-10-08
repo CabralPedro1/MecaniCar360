@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Models.ViewModels;
+using MecaniCar360.Models.ViewModels;
 using MecaniCar360.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,7 +20,7 @@ public sealed class ActivacionClienteController(InvitacionClienteService invitac
         ProtegerRespuesta();
         if (token == null) return View("Abrir");
         if (!await invitaciones.ValidarAsync(token)) return View("NoDisponible");
-        return View(new ActivarClienteViewModel { Token = token });
+        return View(await invitaciones.PrepararActivacionAsync(token));
     }
 
     [HttpPost, ValidateAntiForgeryToken, Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(Program.LoginRateLimitPolicy)]

@@ -12,6 +12,7 @@
 <div class="mb-3"><label for="password" class="form-label">Contraseña</label><div class="input-group"><input id="password" name="password" type="password" class="form-control" autocomplete="current-password" required /><button type="button" id="mostrarPassword" class="btn btn-outline-secondary" aria-controls="password" aria-pressed="false">Mostrar</button></div></div>
 <button class="btn btn-primary w-100" type="submit">Iniciar sesión</button>
 </form>
+<p class="mt-3"><a asp-controller="SeguridadCliente" asp-action="Recuperar">¿Olvidaste tu contraseña?</a></p>
 <p class="mt-3">¿No tiene cuenta? <a asp-controller="RegistroCliente" asp-action="Index">Crear cuenta</a></p>
 @if (MecaniCar360.Helpers.GoogleClienteConfiguracion.Disponible(Configuracion)) {
 <form asp-controller="GoogleCliente" asp-action="Ingresar" method="post">

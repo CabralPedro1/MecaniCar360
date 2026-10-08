@@ -79,7 +79,12 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
         if (!ContextoDisponible()) return ServiceResult.Error("Hay otra operacion pendiente.");
         Uri baseUri;
         try { baseUri = UrlBase(); }
-        catch (InvalidOperationException) { return ServiceResult.Error("Falta una URL publica de activacion valida en Invitaciones:UrlBase."); }
+        catch (InvalidOperationException)
+        {
+            logger.LogWarning(new EventId(4100, "INVITACION_URLBASE_INVALIDA"),
+                "Emisión detenida: falta una configuración válida de Invitaciones:UrlBase. No se generó token ni se intentó SMTP.");
+            return ServiceResult.Error("Falta una URL publica de activacion valida en Invitaciones:UrlBase.");
+        }
         var token = TokenInvitacion.Generar();
         InvitacionCliente nueva;
         var anteriores = db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
@@ -120,15 +125,22 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
             // El token viaja en el fragmento: nunca llega en URL/query a servidor o proxy.
             // La pagina lo retira del historial y lo envia por encabezado GET; el consumo usa POST con antiforgery.
             var enlace = new Uri(baseUri, "ActivacionCliente/Index").AbsoluteUri + "#" + token;
+            logger.LogInformation(new EventId(4101, "INVITACION_ENVIO_INICIADO"),
+                "Iniciando envío de invitación {InvitacionId}.", nueva.Id);
             await correo.EnviarCorreoAsync(nueva.EmailDestino, "Activar cuenta MecaniCar",
                 "Recibio una invitacion para activar su cuenta de MecaniCar. Elija su usuario y contrasena. " +
                 "La invitacion vence en 48 horas. <a href=\"" + WebUtility.HtmlEncode(enlace) + "\">Activar cuenta</a>");
+            logger.LogInformation(new EventId(4102, "INVITACION_SMTP_ACEPTADO"),
+                "SMTP aceptó la invitación {InvitacionId}. Esto no confirma entrega al buzón.", nueva.Id);
             return ServiceResult.Ok("Invitacion enviada.");
         }
         catch (Exception ex)
         {
             // SMTP puede tener resultado ambiguo. Se revoca conservadoramente el token incluso si fue entregado.
-            logger.LogWarning("No se confirmo el envio de una invitacion. Tipo: {Tipo}", ex.GetType().Name);
+            // No registrar Message/ToString: el proveedor puede incluir direcciones u otros datos.
+            logger.LogWarning(new EventId(4103, "INVITACION_ENVIO_FALLIDO"),
+                "No se confirmó el envío de invitación {InvitacionId}. Tipo: {Tipo}; código SMTP: {CodigoSmtp}.",
+                nueva.Id, ex.GetType().Name, ex is System.Net.Mail.SmtpException smtp ? (int)smtp.StatusCode : (int?)null);
             try
             {
                 await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -161,8 +173,18 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
         return await ElegibleAsync(p) && Vigente(i, p!, DateTime.UtcNow);
     }
 
+    public async Task<ActivarClienteViewModel?> PrepararActivacionAsync(string token)
+    {
+        if (!await ValidarAsync(token)) return null;
+        var hash = TokenInvitacion.Hash(token);
+        return await db.InvitacionesCliente.AsNoTracking().Where(i => i.TokenHash == hash)
+            .Select(i => new ActivarClienteViewModel { Token = token, Nombre = i.Persona.Nombre ?? "",
+                Apellido = i.Persona.Apellido ?? "", Dni = i.Persona.Dni ?? "", Telefono = i.Persona.Telefono ?? "", Email = i.EmailDestino }).SingleOrDefaultAsync();
+    }
+
     public async Task<ServiceResult> ActivarAsync(ActivarClienteViewModel vm)
     {
+        if (!RegistroCompletoCliente.DatosValidos(vm)) return ServiceResult.Error("Complete nombre, apellido, DNI y telefono validos.");
         if (!TokenInvitacion.FormatoValido(vm.Token)) return ServiceResult.Error(InvitacionNoDisponible);
         var username = IdentificadorCuenta.Normalizar(vm.Username);
         if (!IdentificadorCuenta.UsernameValido(username)) return ServiceResult.Error("Usuario obligatorio, hasta 50 caracteres y sin @.");
@@ -175,6 +197,9 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
             .Select(i => (int?)i.PersonaId).SingleOrDefaultAsync();
         if (!personaId.HasValue) return ServiceResult.Error(InvitacionNoDisponible);
         var anteriores = db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
+        Persona? modificada = null;
+        Microsoft.EntityFrameworkCore.ChangeTracking.PropertyValues? valores = null;
+        var confirmado = false;
         try
         {
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -186,6 +211,14 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
                 return ServiceResult.Error("El nombre de usuario no esta disponible.");
             if (await db.Usuarios.AnyAsync(u => u.EmailLogin == i.EmailDestino))
                 return ServiceResult.Error("No se puede activar la cuenta. Contacte al taller.");
+            if (await DniPersona.ExisteAsync(db, vm.Dni, p!.Id)) return ServiceResult.Error(DniPersona.Error);
+            // La lectura bloqueada usa AsNoTracking. Recargar con seguimiento conserva
+            // también el DVH sombra original antes de guardar Persona + cuenta + consumo.
+            p = db.Personas.Local.SingleOrDefault(x => x.Id == personaId.Value) ?? p;
+            db.Personas.Attach(p);
+            await db.Entry(p).ReloadAsync();
+            modificada = p; valores = db.Entry(p).CurrentValues.Clone();
+            RegistroCompletoCliente.Aplicar(p, vm);
             var usuario = new Usuario { PersonaId = p!.Id, Username = username, EmailLogin = i.EmailDestino,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(vm.Password), Activo = true, PrimerLogin = false,
                 SecurityStamp = Guid.NewGuid().ToString("N") };
@@ -198,6 +231,7 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
             auditoria.RegistrarActivacionCliente(usuario.Id);
             await db.SaveChangesAsync();
             await tx.CommitAsync();
+            confirmado = true;
             return ServiceResult.Ok("Cuenta activada. Ya puede iniciar sesion con su usuario y contrasena.");
         }
         catch (Exception ex) when (EsVictimaDeadlock(ex))
@@ -211,7 +245,14 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
             logger.LogWarning("No se pudo completar una activacion. Tipo: {Tipo}", ex.GetType().Name);
             return ServiceResult.Error("No se pudo activar la cuenta. Verifique la invitacion y la disponibilidad del usuario.");
         }
-        finally { DesvincularNuevas(anteriores); }
+        finally {
+            if (!confirmado && modificada != null && valores != null) {
+                db.Entry(modificada).CurrentValues.SetValues(valores);
+                db.Entry(modificada).OriginalValues.SetValues(valores);
+                db.Entry(modificada).State = EntityState.Unchanged;
+            }
+            DesvincularNuevas(anteriores);
+        }
     }
 
     private static bool EsVictimaDeadlock(Exception excepcion)

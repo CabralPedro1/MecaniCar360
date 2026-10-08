@@ -1,9 +1,11 @@
+@inject MecaniCar360.Services.PresentacionCuentaService Presentacion
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @inject IConfiguration Configuracion
 @{
     ViewData["Title"] = "Portal cliente";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+    var cuenta = await Presentacion.ObtenerAsync(actor);
     var accesos = new[] {
         ("CLIENTE_VEHICULO_VER", "PortalCliente", "MisVehiculos", "Mis vehículos"),
         ("CLIENTE_TURNO_VER", "PortalCliente", "MisTurnos", "Mis turnos"),
@@ -14,6 +16,7 @@
         ("NOTIFICACION_VER", "Notificacion", "Index", "Mis notificaciones") };
 }
 <h1>Portal cliente</h1>
+<a asp-action="MisDatos" class="btn btn-outline-primary mb-3">Mis datos</a>
 @if (ViewBag.DatosPendientes is IReadOnlyList<string> pendientes && pendientes.Count > 0)
 {
     <p class="alert alert-info">Para la atención presencial, el taller deberá completar: @string.Join(", ", pendientes). Puede reservar su turno mientras tanto.</p>
@@ -22,7 +25,14 @@
 {
     <a asp-action="NuevoVehiculo" class="btn btn-primary mb-3">Registrar mi vehículo</a>
 }
-@if (MecaniCar360.Helpers.GoogleClienteConfiguracion.Disponible(Configuracion))
+@if (cuenta.PuedeGestionarPassword)
+{
+    <form asp-controller="SeguridadCliente" asp-action="SolicitarEnlace" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-outline-primary">@(cuenta.PasswordLocal ? "Cambiar contraseña" : "Agregar contraseña")</button>
+    </form>
+}
+@if (MecaniCar360.Helpers.GoogleClienteConfiguracion.Disponible(Configuracion) && cuenta.PuedeVincularGoogle)
 {
     <form asp-controller="GoogleCliente" asp-action="Vincular" method="post" class="mb-3">
         @Html.AntiForgeryToken()

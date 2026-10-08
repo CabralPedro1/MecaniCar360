@@ -1,0 +1,10 @@
+@model MecaniCar360.Models.ViewModels.RecuperarPasswordClienteViewModel
+@{ ViewData["Title"] = "Recuperar contraseña de cliente"; }
+<h1>Recuperar contraseña de cliente</h1>
+<form asp-action="Recuperar" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
+    <label asp-for="Email">Correo electrónico</label><input asp-for="Email" autocomplete="email" class="form-control" required />
+    <span asp-validation-for="Email"></span>
+    <button type="submit" class="btn btn-primary">Enviar enlace</button>
+</form>

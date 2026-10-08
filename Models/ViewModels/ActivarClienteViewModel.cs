@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 namespace MecaniCar360.Models.ViewModels;
 
-public sealed class ActivarClienteViewModel
+public sealed class ActivarClienteViewModel : DatosRegistroClienteViewModel
 {
     [Required, StringLength(43, MinimumLength = 43)] public string Token { get; set; } = "";
     [Required, MaxLength(50), RegularExpression(@"[^@]+")]

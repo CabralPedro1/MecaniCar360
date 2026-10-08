@@ -8,6 +8,10 @@
     {
         <div asp-validation-summary="All"></div>
     }
+    <div><label asp-for="Nombre"></label><input asp-for="Nombre" required /><span asp-validation-for="Nombre"></span></div>
+    <div><label asp-for="Apellido"></label><input asp-for="Apellido" required /><span asp-validation-for="Apellido"></span></div>
+    <div><label asp-for="Dni"></label><input asp-for="Dni" required /><span asp-validation-for="Dni"></span></div>
+    <div><label asp-for="Telefono"></label><input asp-for="Telefono" required /><span asp-validation-for="Telefono"></span></div>
     <input asp-for="Token" type="hidden" />
     <div><label asp-for="Username">Usuario</label><input asp-for="Username" autocomplete="username" maxlength="50" required /><span asp-validation-for="Username"></span></div>
     <div><label asp-for="Password">Contrasena</label><input asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span></div>

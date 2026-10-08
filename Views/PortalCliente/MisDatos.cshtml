@@ -1,0 +1,18 @@
+@model MecaniCar360.Models.ViewModels.ContactoClienteViewModel
+@{ ViewData["Title"] = "Mis datos"; }
+<h1>Mis datos</h1>
+<partial name="_Mensajes" />
+<dl><dt>Nombre y apellido</dt><dd>@Model.Nombre @Model.Apellido</dd>
+    <dt>DNI</dt><dd>@Model.Dni</dd><dt>Correo de acceso verificado</dt><dd>@Model.Email</dd></dl>
+<p>Para corregir nombre, apellido o DNI, solicite asistencia al taller. Esta pantalla no modifica su correo de acceso.</p>
+<form asp-action="MisDatos" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div asp-validation-summary="All" class="text-danger"></div>
+    }
+    <label asp-for="Telefono">Teléfono</label><input asp-for="Telefono" class="form-control" required />
+    <span asp-validation-for="Telefono" class="text-danger"></span>
+    <button type="submit" class="btn btn-primary mt-3">Guardar</button>
+</form>
+<a asp-action="Index">Volver al portal</a>

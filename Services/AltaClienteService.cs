@@ -24,7 +24,7 @@ public sealed class AltaClienteService
         var datos = new NuevoClienteViewModel
         {
             Nombre = model.Nombre?.Trim() ?? "", Apellido = model.Apellido?.Trim() ?? "",
-            Dni = model.Dni?.Trim() ?? "",
+            Dni = MecaniCar360.Helpers.DniPersona.Normalizar(model.Dni) ?? "",
             Telefono = string.IsNullOrWhiteSpace(model.Telefono) ? null : model.Telefono.Trim(),
             Email = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim()
         };
@@ -46,7 +46,7 @@ public sealed class AltaClienteService
                 .Select(r => (int?)r.Id).SingleOrDefaultAsync();
             if (!rolId.HasValue)
                 return ServiceResult<ClienteOperativoViewModel>.Error("El rol CLIENTE no está disponible o está inactivo.");
-            if (await _db.Personas.AnyAsync(p => p.Dni != null && p.Dni.Trim() == datos.Dni))
+            if (await MecaniCar360.Helpers.DniPersona.ExisteAsync(_db, datos.Dni))
                 return ServiceResult<ClienteOperativoViewModel>.Error("Ya existe una persona con ese DNI. Revise el registro existente.");
             if (datos.Email != null)
             {
