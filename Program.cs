@@ -179,6 +179,9 @@ namespace MecaniCar360
             // =====================================
 
             builder.Services.AddScoped<AltaPersonalService>();
+            builder.Services.AddScoped(sp => new PermisosVista(
+                sp.GetRequiredService<PermisoService>().ResolverParaVistaAsync,
+                sp.GetRequiredService<IHttpContextAccessor>()));
             builder.Services.AddScoped<AltaClienteService>();
             builder.Services.AddScoped<IdentidadClienteService>();
             builder.Services.AddScoped<RegistroClienteService>();
@@ -328,6 +331,7 @@ namespace MecaniCar360
             // MIDDLEWARE
             // =====================================
 
+            app.UseMiddleware<MecaniCar360.Middleware.CabecerasHtmlMiddleware>();
             app.UseMiddleware<MecaniCar360.Middleware.IntegridadMiddleware>();
             app.UseHttpsRedirection();
 

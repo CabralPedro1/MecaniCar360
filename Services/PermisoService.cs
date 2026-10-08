@@ -153,6 +153,16 @@ namespace MecaniCar360.Services
             && !usuario.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Nombre != RolesSistema.CLIENTE)
             && !await new ClienteHabilitadoService(_context).EstaHabilitadoAsync(usuario.PersonaId);
 
+        public async Task<PermisosVisuales> ResolverParaVistaAsync(int usuarioId)
+        {
+            var usuario = await ObtenerUsuarioConPermisosAsync(usuarioId);
+            if (usuario == null || await ClientePendienteAsync(usuario))
+                return new(false, Array.Empty<string>());
+            if (EsAdministrador(usuario)) return new(true, Array.Empty<string>());
+            return new(false, RecorridoPermisos.ObtenerPatentes(
+                await ConstruirComponentesAsync(usuario)).ToArray());
+        }
+
         private async Task<IReadOnlyList<IComponentePermiso>> ConstruirComponentesAsync(Usuario usuario)
         {
             var raices = usuario.Persona.Roles

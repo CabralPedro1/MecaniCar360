@@ -1,6 +1,6 @@
 ﻿@model IEnumerable<MecaniCar360.Models.Repuesto>
 @using System.Security.Claims
-@inject MecaniCar360.Services.PermisoService Permisos
+@inject MecaniCar360.Services.PermisosVista Permisos
 
 @{
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
@@ -42,25 +42,26 @@
     }
 </p>
 
+<div class="table-responsive" role="region" aria-label="Repuestos" tabindex="0">
 <table class="table table-striped table-hover">
 
     <thead class="table-dark">
 
         <tr>
 
-            <th>SKU</th>
+            <th scope="col">SKU</th>
 
-            <th>Nombre</th>
+            <th scope="col">Nombre</th>
 
-            <th>Proveedor Principal</th>
+            <th scope="col">Proveedor Principal</th>
 
-            <th>Precio Venta</th>
+            <th scope="col">Precio Venta</th>
 
-            <th>Stock</th>
+            <th scope="col">Stock</th>
 
-            <th>Mínimo</th>
+            <th scope="col">Mínimo</th>
 
-            <th>Estado</th>
+            <th scope="col">Estado</th>
 
             <th style="width:280px"></th>
 
@@ -165,3 +166,4 @@
     </tbody>
 
 </table>
+</div>
