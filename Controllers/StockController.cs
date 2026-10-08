@@ -255,7 +255,7 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] = resultado.Mensaje;
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
 
                 await CargarProveedores();
 
@@ -299,7 +299,7 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] = resultado.Mensaje;
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
 
                 await CargarProveedores();
 
