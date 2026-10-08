@@ -39,7 +39,7 @@ else
     </dl>
 }
 <h3>Asignaciones de roles</h3>
-<table class="table">
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table">
     <thead><tr><th>Rol</th><th>Estado del rol</th><th>Asignación</th></tr></thead>
     <tbody>
     @foreach (var rol in Model.Roles)
@@ -47,5 +47,5 @@ else
         <tr><td>@rol.Nombre</td><td>@(rol.Activo ? "Activo" : "Inactivo")</td><td>@(rol.FechaBaja.HasValue ? $"Finalizada: {rol.FechaBaja.Value:dd/MM/yyyy}" : "Vigente")</td></tr>
     }
     </tbody>
-</table>
+</table></div>
 <a asp-action="Administracion" class="btn btn-secondary">Volver a personas y cuentas</a>

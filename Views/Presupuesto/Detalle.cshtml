@@ -35,7 +35,7 @@
     </form>
 }
 <h4 class="mt-4">Ítems actuales</h4>
-<table class="table table-striped">
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
     <thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th><th></th></tr></thead>
     <tbody>
     @foreach (var item in Model.Items)
@@ -52,7 +52,7 @@
         }</td></tr>
     }
     </tbody>
-</table>
+</table></div>
 @if (enviar)
 {
     <form asp-action="EnviarAprobacion" method="post">
@@ -72,11 +72,11 @@
     <details class="mb-3">
         <summary>Versión @version.NumeroVersion — @version.Decision — $ @version.Total.ToString("N2") — @version.FechaEnvio</summary>
         <p>@version.MotivoRechazo</p>
-        <table class="table"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+        <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
         <tbody>@foreach (var item in version.Items)
         {
             <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td></tr>
-        }</tbody></table>
+        }</tbody></table></div>
         @foreach (var e in version.Evidencias) { <p>Evidencia: @e.EvidenciaTrabajo.Descripcion</p> }
     </details>
 }
@@ -87,9 +87,9 @@
 @if (Model.Historial.Any())
 {
     <h4 class="mt-4">Historial legado</h4>
-    <table class="table"><thead><tr><th>Fecha</th><th>Total anterior</th><th>Motivo</th></tr></thead><tbody>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table"><thead><tr><th>Fecha</th><th>Total anterior</th><th>Motivo</th></tr></thead><tbody>
     @foreach (var h in Model.Historial.OrderByDescending(h => h.Fecha))
     { <tr><td>@h.Fecha</td><td>@h.TotalAnterior.ToString("N2")</td><td>@h.Motivo</td></tr> }
-    </tbody></table>
+    </tbody></table></div>
 }
 <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-secondary">Volver a la orden</a>

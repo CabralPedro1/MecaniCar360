@@ -28,7 +28,7 @@
 @if (!Model.Modelos.Any()) { <p>Esta marca no tiene modelos registrados.</p> }
 else
 {
-    <table class="table">
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table">
         <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
         <tbody>
         @foreach (var modelo in Model.Modelos.OrderBy(m => m.Nombre))
@@ -37,5 +37,5 @@ else
             <td><a asp-controller="Modelo" asp-action="Detalle" asp-route-id="@modelo.Id">Detalle</a></td></tr>
         }
         </tbody>
-    </table>
+    </table></div>
 }

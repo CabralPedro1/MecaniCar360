@@ -6,7 +6,7 @@
 @{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
 <h1>Seguridad</h1>
 <p>Organice las capacidades técnicas en familias y asigne esas familias a los roles.</p>
-<nav class="d-flex gap-2 mb-3">
+<nav class="d-flex flex-column flex-sm-row flex-wrap gap-2 mb-3">
 @if (await Permisos.TienePermisoAsync(actor, "ROL_VER")) { <a class="btn btn-outline-primary" asp-controller="Rol" asp-action="Index">Datos de roles</a> }
 <a class="btn btn-outline-primary" asp-action="Patentes">Catálogo de patentes</a>
 <a class="btn btn-primary" asp-action="Editar">Nueva familia</a>
