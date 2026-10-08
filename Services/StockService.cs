@@ -57,7 +57,8 @@ namespace MecaniCar360.Services
             var movimientos = await _context.MovimientosStock
                 .Include(m => m.Repuesto)
                 .Include(m => m.ProveedorRepuesto)
-                    .ThenInclude(pr => pr.Proveedor)
+                    // Navegacion opcional traducida por EF; no se evalua sobre objetos en memoria.
+                    .ThenInclude(pr => pr!.Proveedor)
                 .Include(m => m.RealizadoPorUsuario)
                     .ThenInclude(u => u.Persona)
                 .OrderByDescending(m => m.Fecha)
