@@ -166,9 +166,9 @@
 
                     <div class="mb-3">
 
-                        <label>Proveedor</label>
+                        <label for="ingreso-proveedorRepuestoId">Proveedor</label>
 
-                        <select name="proveedorRepuestoId" required
+                        <select id="ingreso-proveedorRepuestoId" name="proveedorRepuestoId" required
                                 class="form-select">
                             <option value="">Seleccione un proveedor activo</option>
 
@@ -187,9 +187,9 @@
 
                     <div class="mb-3">
 
-                        <label>Cantidad</label>
+                        <label for="ingreso-cantidad">Cantidad</label>
 
-                        <input type="number"
+                        <input id="ingreso-cantidad" type="number"
                                name="cantidad"
                                min="1" step="1" max="2147483647" required
                                class="form-control" />
@@ -198,9 +198,9 @@
 
                     <div class="mb-3">
 
-                        <label>Observaciones</label>
+                        <label for="ingreso-observaciones">Observaciones</label>
 
-                        <textarea name="observaciones" maxlength="500"
+                        <textarea id="ingreso-observaciones" name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
                     </div>
@@ -243,9 +243,9 @@
 
                     <div class="mb-3">
 
-                        <label>Cantidad</label>
+                        <label for="salida-cantidad">Cantidad</label>
 
-                        <input type="number"
+                        <input id="salida-cantidad" type="number"
                                name="cantidad"
                                min="1" step="1" max="2147483647" required
                                class="form-control" />
@@ -254,9 +254,9 @@
 
                     <div class="mb-3">
 
-                        <label>Observaciones</label>
+                        <label for="salida-observaciones">Observaciones</label>
 
-                        <textarea name="observaciones" maxlength="500"
+                        <textarea id="salida-observaciones" name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
                     </div>
@@ -301,7 +301,7 @@
 
                     <div class="mb-3">
 
-                        <label>Diferencia (+/-)</label>
+                        <label for="diferencia">Diferencia (+/-)</label>
 
                         <input type="number"
                                id="diferencia" name="diferencia" step="1" min="-2147483647" max="2147483647" required
@@ -311,9 +311,9 @@
 
                     <div class="mb-3">
 
-                        <label>Motivo</label>
+                        <label for="ajuste-observaciones">Motivo</label>
 
-                        <textarea required name="observaciones" maxlength="500"
+                        <textarea id="ajuste-observaciones" required name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
 
                     </div>

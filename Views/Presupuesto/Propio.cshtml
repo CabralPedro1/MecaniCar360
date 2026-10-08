@@ -44,7 +44,7 @@
         <form asp-action="Rechazar" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
-            <label>Motivo del rechazo</label><input name="motivo" maxlength="1000" required class="form-control mb-2" />
+            <label for="presupuesto-motivo">Motivo del rechazo</label><input name="motivo" id="presupuesto-motivo" maxlength="1000" required class="form-control mb-2" />
             <button class="btn btn-warning">Rechazar esta versión</button>
         </form>
     }

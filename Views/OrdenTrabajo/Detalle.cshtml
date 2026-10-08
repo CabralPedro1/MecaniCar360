@@ -256,7 +256,8 @@
                                name="ordenTrabajoId"
                                value="@Model.Id" />
 
-                        <input type="number"
+                        <label for="ot-horasReales" class="form-label">Horas reales</label>
+                        <input id="ot-horasReales" type="number"
                                name="horasReales"
                                class="form-control"
                                placeholder="Horas reales"
@@ -344,11 +345,11 @@
 
                         <div class="mb-3">
 
-                            <label class="form-label">
+                            <label for="ot-diagnostico" class="form-label">
                                 Descripción del diagnóstico
                             </label>
 
-                            <textarea name="descripcion"
+                            <textarea name="descripcion" id="ot-diagnostico"
                               class="form-control"
                               rows="5"
                               required></textarea>
@@ -667,11 +668,11 @@
 
                     <div class="mb-3">
 
-                        <label class="form-label">
+                        <label for="ot-observaciones" class="form-label">
                             Actualizar observaciones
                         </label>
 
-                        <textarea name="observaciones"
+                        <textarea name="observaciones" id="ot-observaciones"
                               class="form-control"
                               rows="3">@Model.Observaciones</textarea>
 
