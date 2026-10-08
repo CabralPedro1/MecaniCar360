@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using System.Net;
 using MecaniCar360.Data;
 using MecaniCar360.Helpers;
@@ -31,7 +31,7 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
         .AsNoTracking().SingleOrDefaultAsync();
 
     private async Task<bool> ElegibleAsync(Persona? persona) => persona?.Activo == true &&
-        IdentificadorCuenta.EmailValido(persona.Email) && await EsClienteAsync(persona.Id) &&
+        IdentificadorCuenta.EmailValido(persona.Email) && await new IdentidadClienteService(db).ExclusivamenteClienteAsync(persona.Id) &&
         !await db.Usuarios.AnyAsync(u => u.PersonaId == persona.Id);
 
     internal static bool Vigente(InvitacionCliente i, Persona p, DateTime ahora) =>
@@ -52,8 +52,12 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
         var elegible = await ElegibleAsync(p);
         var pendientes = await db.InvitacionesCliente.AsNoTracking().Where(i => i.PersonaId == personaId &&
             i.FechaConsumida == null && i.FechaInvalidacion == null && i.FechaExpiracion > DateTime.UtcNow).ToListAsync();
+        var ultima = await db.InvitacionesCliente.AsNoTracking().Where(i => i.PersonaId == personaId)
+            .OrderByDescending(i => i.Id).Select(i => new { i.EmitidaPorUsuarioId,
+                Username = i.EmitidaPorUsuario == null ? null : i.EmitidaPorUsuario.Username }).FirstOrDefaultAsync();
         return ServiceResult<EstadoCuentaCliente>.Ok(new(tiene, await habilitacion.EstaHabilitadoAsync(personaId),
-            elegible && await PuedeEmitirAsync(actor), elegible && pendientes.Any(i => Vigente(i, p, DateTime.UtcNow))));
+            elegible && await PuedeEmitirAsync(actor), elegible && pendientes.Any(i => Vigente(i, p, DateTime.UtcNow)),
+            ultima == null ? null : OrigenInvitacion.Describir(ultima.EmitidaPorUsuarioId, ultima.Username)));
     }
 
     private Uri UrlBase()
@@ -65,9 +69,13 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
         return new Uri(uri.AbsoluteUri.TrimEnd('/') + "/");
     }
 
-    public async Task<ServiceResult> EmitirAsync(int personaId, int actor)
+    public Task<ServiceResult> EmitirAsync(int personaId, int actor) => EmitirCoreAsync(personaId, actor);
+
+    internal Task<ServiceResult> EmitirPublicaAsync(int personaId) => EmitirCoreAsync(personaId, null);
+
+    private async Task<ServiceResult> EmitirCoreAsync(int personaId, int? actor)
     {
-        if (!await PuedeEmitirAsync(actor)) return ServiceResult.Error("Acceso denegado.");
+        if (actor.HasValue && !await PuedeEmitirAsync(actor.Value)) return ServiceResult.Error("Acceso denegado.");
         if (!ContextoDisponible()) return ServiceResult.Error("Hay otra operacion pendiente.");
         Uri baseUri;
         try { baseUri = UrlBase(); }
@@ -80,7 +88,9 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             var p = await BloquearPersonaAsync(personaId);
             if (!await ElegibleAsync(p)) return ServiceResult.Error("El cliente no es elegible para una invitacion.");
-            if (!await PuedeEmitirAsync(actor)) return ServiceResult.Error("Acceso denegado.");
+            if (actor.HasValue && !await PuedeEmitirAsync(actor.Value)) return ServiceResult.Error("Acceso denegado.");
+            if (!actor.HasValue && !await new IdentidadClienteService(db).ExclusivamenteClienteAsync(personaId))
+                return ServiceResult.Error("No disponible.");
             var email = IdentificadorCuenta.Normalizar(p!.Email);
             if (await db.Usuarios.AnyAsync(u => u.EmailLogin == email))
                 return ServiceResult.Error("No se puede emitir la invitacion con el email indicado.");
@@ -92,8 +102,9 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
                 EmitidaPorUsuarioId = actor };
             db.InvitacionesCliente.Add(nueva);
             await db.SaveChangesAsync();
-            auditoria.RegistrarOperacion(reemision ? "INVITACION_REEMITIDA" : "INVITACION_EMITIDA",
-                "InvitacionCliente", nueva.Id, actor);
+            if (actor.HasValue) auditoria.RegistrarOperacion(reemision ? "INVITACION_REEMITIDA" : "INVITACION_EMITIDA",
+                "InvitacionCliente", nueva.Id, actor.Value);
+            else auditoria.RegistrarOnboarding("INVITACION_PUBLICA_EMITIDA", "InvitacionCliente", nueva.Id);
             await db.SaveChangesAsync();
             await tx.CommitAsync();
         }
@@ -124,8 +135,9 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
                 await BloquearPersonaAsync(personaId);
                 await db.InvitacionesCliente.Where(i => i.Id == nueva.Id && i.FechaConsumida == null && i.FechaInvalidacion == null)
                     .ExecuteUpdateAsync(s => s.SetProperty(i => i.FechaInvalidacion, DateTime.UtcNow));
-                auditoria.RegistrarOperacion("INVITACION_ENVIO_FALLIDO", "InvitacionCliente", nueva.Id, actor,
+                if (actor.HasValue) auditoria.RegistrarOperacion("INVITACION_ENVIO_FALLIDO", "InvitacionCliente", nueva.Id, actor.Value,
                     "No se confirmo el envio. Se solicito invalidar la invitacion.");
+                else auditoria.RegistrarOnboarding("INVITACION_PUBLICA_ENVIO_FALLIDO", "InvitacionCliente", nueva.Id);
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
             }

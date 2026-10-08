@@ -1,4 +1,4 @@
-using MecaniCar360.Data;
+﻿using MecaniCar360.Data;
 using MecaniCar360.Helpers;
 using MecaniCar360.Models;
 using MecaniCar360.Models.Enums;
@@ -227,7 +227,7 @@ namespace MecaniCar360.Services
                     .ThenInclude(p => p.Roles)
                         .ThenInclude(pr => pr.Rol)
                 .FirstOrDefaultAsync(u =>
-                    u.Username == username &&
+                    (username.Contains("@") ? u.EmailLogin == username : u.Username == username) &&
                     u.Activo &&
                     u.Persona.Activo);
         }

@@ -8,6 +8,7 @@
 @if (estado?.Exitoso == true)
 {
     var cuenta = estado.Data!;
+    @if (cuenta.OrigenInvitacion != null) { <p>@cuenta.OrigenInvitacion</p> }
     <p>@(cuenta.Habilitado ? "Cuenta activa: cliente habilitado." : cuenta.TieneUsuario ? "Cuenta existente: cliente no habilitado." : "Cuenta pendiente de activacion.")</p>
     @if (cuenta.PuedeInvitar)
     {

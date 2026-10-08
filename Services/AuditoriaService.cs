@@ -46,6 +46,8 @@ namespace MecaniCar360.Services
 
         public Task RegistrarLoginExitosoAsync() => RegistrarSesionAsync("LOGIN_EXITOSO", ObtenerActor());
         public Task RegistrarLoginFallidoAsync() => RegistrarSesionAsync("LOGIN_FALLIDO", null);
+        public Task RegistrarLoginGoogleFallidoAsync() => RegistrarSesionAsync("LOGIN_GOOGLE_FALLIDO", null);
+        public Task RegistrarVinculacionGoogleRechazadaAsync() => RegistrarSesionAsync("GOOGLE_VINCULACION_RECHAZADA", ObtenerActor());
         public Task RegistrarLogoutAsync() => RegistrarSesionAsync("LOGOUT", ObtenerActor());
 
         private int? ObtenerActor()
@@ -54,6 +56,14 @@ namespace MecaniCar360.Services
             return principal?.Identity?.IsAuthenticated == true &&
                 int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var id) && id > 0
                     ? id : null;
+        }
+
+        internal void RegistrarOnboarding(string accion, string entidad, int entidadId, int? actor = null)
+        {
+            if (accion is not ("AUTORREGISTRO_SOLICITADO" or "CLIENTE_CREADO" or "GOOGLE_VINCULADO" or
+                "LOGIN_GOOGLE_EXITOSO" or "GOOGLE_VINCULACION_RECHAZADA" or "INVITACION_PUBLICA_EMITIDA" or "INVITACION_PUBLICA_ENVIO_FALLIDO"))
+                throw new ArgumentException("Evento de onboarding no permitido.");
+            _context.Auditorias.Add(Crear(accion, entidad, entidadId, actor, null));
         }
 
         public async Task<Models.DTOs.ServiceResult<List<Models.ViewModels.AuditoriaConsultaViewModel>>> ConsultarAsync(int usuarioId)
@@ -74,7 +84,7 @@ namespace MecaniCar360.Services
         {
             try
             {
-                if (accion != "LOGIN_FALLIDO" && !actor.HasValue)
+                if (accion is not ("LOGIN_FALLIDO" or "LOGIN_GOOGLE_FALLIDO") && !actor.HasValue)
                     throw new UnauthorizedAccessException("El evento requiere una identidad autenticada.");
 
                 // Contexto independiente: no confirma entidades rastreadas por la operación HTTP.

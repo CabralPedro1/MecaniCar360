@@ -43,9 +43,11 @@ namespace MecaniCar360.Data
         {
             using var transaction = context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
             var inicial = !context.Roles.Any() && !context.Familias.Any();
+            var agregarAltaVehiculoPropio = !context.Patentes.Any(p => p.Nombre == "CLIENTE_VEHICULO_CREAR");
             CrearRoles(context);
             CrearPatentes(context);
             CrearPatente(context, "SEGURIDAD_ADMINISTRAR");
+            CrearPatente(context, "CLIENTE_VEHICULO_CREAR");
             context.SaveChanges();
             if (inicial)
             {
@@ -53,6 +55,9 @@ namespace MecaniCar360.Data
                 AsociarPatentesAFamilias(context);
                 AsociarFamiliasARoles(context);
             }
+            // Alta única de la capacidad nueva; no restaurar asociaciones revocadas posteriormente.
+            if (agregarAltaVehiculoPropio)
+                AsociarPatente(context, "MIS_VEHICULOS", "CLIENTE_VEHICULO_CREAR");
             context.SaveChanges();
             transaction.Commit();
         }

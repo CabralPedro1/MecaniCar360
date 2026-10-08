@@ -1,0 +1,13 @@
+@model MecaniCar360.Models.ViewModels.RegistroClienteViewModel
+@{ ViewData["Title"] = "Crear cuenta de cliente"; }
+<h1>Crear cuenta de cliente</h1>
+<p>Recibirá un enlace para verificar su email y elegir su usuario y contraseña.</p>
+<form asp-action="Index" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
+    <div class="mb-3"><label asp-for="Nombre"></label><input asp-for="Nombre" class="form-control" autocomplete="given-name" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Apellido"></label><input asp-for="Apellido" class="form-control" autocomplete="family-name" /><span asp-validation-for="Apellido" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Email"></label><input asp-for="Email" class="form-control" autocomplete="email" /><span asp-validation-for="Email" class="text-danger"></span></div>
+    <button type="submit" class="btn btn-primary">Solicitar cuenta</button>
+    <a asp-controller="Account" asp-action="Login" class="btn btn-secondary">Volver</a>
+</form>

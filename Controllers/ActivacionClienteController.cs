@@ -23,7 +23,7 @@ public sealed class ActivacionClienteController(InvitacionClienteService invitac
         return View(new ActivarClienteViewModel { Token = token });
     }
 
-    [HttpPost, ValidateAntiForgeryToken]
+    [HttpPost, ValidateAntiForgeryToken, Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(Program.LoginRateLimitPolicy)]
     public async Task<IActionResult> Index(ActivarClienteViewModel model)
     {
         ProtegerRespuesta();

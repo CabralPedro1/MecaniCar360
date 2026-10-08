@@ -661,7 +661,7 @@ namespace MecaniCar360.Migrations
                         .HasColumnType("nvarchar(100)")
                         .UseCollation("Latin1_General_100_CI_AS");
 
-                    b.Property<int>("EmitidaPorUsuarioId")
+                    b.Property<int?>("EmitidaPorUsuarioId")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("FechaConsumida")
@@ -2066,8 +2066,7 @@ namespace MecaniCar360.Migrations
                     b.HasOne("MecaniCar360.Models.Usuario", "EmitidaPorUsuario")
                         .WithMany()
                         .HasForeignKey("EmitidaPorUsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("MecaniCar360.Models.Persona", "Persona")
                         .WithMany()

@@ -11,4 +11,5 @@ public sealed class ActivarClienteViewModel
     public string ConfirmarPassword { get; set; } = "";
 }
 
-public sealed record EstadoCuentaCliente(bool TieneUsuario, bool Habilitado, bool PuedeInvitar, bool InvitacionPendiente);
+public sealed record EstadoCuentaCliente(bool TieneUsuario, bool Habilitado, bool PuedeInvitar, bool InvitacionPendiente,
+    string? OrigenInvitacion = null);
