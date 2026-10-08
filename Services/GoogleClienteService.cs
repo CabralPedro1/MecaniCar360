@@ -15,7 +15,8 @@ public sealed class GoogleClienteService(MecaniCarContext db, IdentidadClienteSe
     public const string ErrorPublico = "No se pudo completar el acceso. Si ya tiene cuenta, utilice sus credenciales o el enlace de activación y vincule Google desde el portal.";
 
     // Sólo el callback autenticado por el middleware oficial suministra estos claims.
-    internal async Task<ServiceResult<ClaimsIdentity>> ResolverAsync(ClaimsPrincipal externa, int? vincularUsuario = null)
+    internal async Task<ServiceResult<ClaimsIdentity>> ResolverAsync(ClaimsPrincipal externa, int? vincularUsuario = null,
+        string? stampVerificado = null)
     {
         var verificada = IdentidadGoogleVerificada.Leer(externa);
         if (verificada == null) return ServiceResult<ClaimsIdentity>.Error(ErrorPublico);
@@ -34,9 +35,10 @@ public sealed class GoogleClienteService(MecaniCarContext db, IdentidadClienteSe
             {
                 usuario = await db.Usuarios.Include(u => u.Persona).SingleOrDefaultAsync(u => u.Id == vincularUsuario);
                 if (usuario == null || !usuario.Activo || !await identidad.ExclusivamenteClienteAsync(usuario.PersonaId) ||
+                    string.IsNullOrEmpty(stampVerificado) || usuario.SecurityStamp != stampVerificado ||
                     !ClienteHabilitadoService.CredencialEstablecida(usuario.PasswordHash) ||
                     !string.Equals(usuario.EmailLogin, email, StringComparison.OrdinalIgnoreCase) ||
-                    existente != null && existente.UsuarioId != usuario.Id ||
+                    existente != null ||
                     await db.IdentidadesExternas.AnyAsync(i => i.UsuarioId == usuario.Id && i.IdentificadorExterno != sub))
                     return ServiceResult<ClaimsIdentity>.Error(ErrorPublico);
             }
@@ -54,7 +56,7 @@ public sealed class GoogleClienteService(MecaniCarContext db, IdentidadClienteSe
                     Apellido = Nombre(externa.FindFirstValue(ClaimTypes.Surname)), Email = email };
                 persona.Roles.Add(new PersonaRol { RolId = rol.Id });
                 usuario = new Usuario { Persona = persona, Username = "google_" + Guid.NewGuid().ToString("N"),
-                    EmailLogin = email, PasswordHash = null, PrimerLogin = false, Activo = true };
+                    EmailLogin = email, PasswordHash = null, PrimerLogin = true, Activo = true };
                 db.Usuarios.Add(usuario);
                 await db.SaveChangesAsync();
                 auditoria.RegistrarOnboarding("CLIENTE_CREADO", "Persona", persona.Id);
@@ -63,6 +65,7 @@ public sealed class GoogleClienteService(MecaniCarContext db, IdentidadClienteSe
                 return ServiceResult<ClaimsIdentity>.Error(ErrorPublico);
             if (existente == null)
             {
+                if (vincularUsuario.HasValue) usuario.SecurityStamp = Guid.NewGuid().ToString("N");
                 db.IdentidadesExternas.Add(new IdentidadExterna { UsuarioId = usuario.Id,
                     Proveedor = ProveedorIdentidadExterna.Google, IdentificadorExterno = sub });
                 await db.SaveChangesAsync();

@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Models;
+using MecaniCar360.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MecaniCar360.Data
@@ -22,13 +22,30 @@ namespace MecaniCar360.Data
         }
 
         public override int SaveChanges() => SaveChanges(true);
-        public override int SaveChanges(bool acceptAllChangesOnSuccess) =>
-            Integridad.CoordinadorIntegridad.GuardarAsync(this,
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            NormalizarDnis();
+            return Integridad.CoordinadorIntegridad.GuardarAsync(this,
                 () => Task.FromResult(base.SaveChanges(false)), acceptAllChangesOnSuccess, CancellationToken.None).GetAwaiter().GetResult();
+        }
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => SaveChangesAsync(true, cancellationToken);
-        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) =>
-            Integridad.CoordinadorIntegridad.GuardarAsync(this,
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            NormalizarDnis();
+            return Integridad.CoordinadorIntegridad.GuardarAsync(this,
                 () => base.SaveChangesAsync(false, cancellationToken), acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void NormalizarDnis()
+        {
+            foreach (var e in ChangeTracker.Entries<Persona>())
+                if (e.State == EntityState.Added || (e.State == EntityState.Modified && e.Property(p => p.Dni).IsModified))
+                {
+                    if (e.Entity.Dni == null) continue;
+                    e.Entity.Dni = Helpers.DniPersona.Normalizar(e.Entity.Dni)
+                        ?? throw new System.ComponentModel.DataAnnotations.ValidationException("DNI no valido.");
+                }
+        }
 
         // =============================
         // PERSONAS Y SEGURIDAD
@@ -37,6 +54,7 @@ namespace MecaniCar360.Data
         public DbSet<Usuario> Usuarios { get; set; }
         public DbSet<IdentidadExterna> IdentidadesExternas { get; set; }
         public DbSet<InvitacionCliente> InvitacionesCliente { get; set; }
+        public DbSet<EnlacePasswordCliente> EnlacesPasswordCliente { get; set; }
         public DbSet<Persona> Personas { get; set; }
         public DbSet<Rol> Roles { get; set; }
         public DbSet<PersonaRol> PersonaRoles { get; set; }
@@ -144,7 +162,15 @@ namespace MecaniCar360.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<EnlacePasswordCliente>(entity =>
+            {
+                entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);
+                entity.HasIndex(e => e.TokenHash).IsUnique();
+                entity.ToTable("EnlacesPasswordCliente", table => table.HasCheckConstraint("CK_EnlacesPasswordCliente_Vigencia",
+                    "[Finalidad] IN (1,2,3) AND [FechaExpiracion] > [FechaCreacion]"));
+            });
             Integridad.RegistroEntidadesProtegidas.Configurar(modelBuilder);
+            modelBuilder.Entity<Persona>().HasIndex(p => p.Dni).IsUnique().HasFilter("[Dni] IS NOT NULL");
 
             // =============================
             // PERSONA - ROL

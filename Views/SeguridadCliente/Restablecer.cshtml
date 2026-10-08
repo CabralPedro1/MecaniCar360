@@ -1,0 +1,13 @@
+@model MecaniCar360.Models.ViewModels.RestablecerPasswordClienteViewModel
+@{ Layout = null; }
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Establecer contraseña</title></head><body>
+<h1>Establecer contraseña</h1>
+<form asp-controller="SeguridadCliente" asp-action="Restablecer" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All"></div> }
+    <input asp-for="Token" type="hidden" />
+    <label asp-for="Password">Nueva contraseña</label><input asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span>
+    <label asp-for="ConfirmarPassword">Confirmar contraseña</label><input asp-for="ConfirmarPassword" autocomplete="new-password" required /><span asp-validation-for="ConfirmarPassword"></span>
+    <p>Al menos 8 caracteres: mayúscula, minúscula, número y símbolo.</p>
+    <button type="submit">Establecer contraseña</button>
+</form></body></html>

@@ -68,7 +68,7 @@ public sealed class AltaPersonalService
 
             var persona = new Persona
             {
-                Nombre = model.Nombre.Trim(), Apellido = model.Apellido.Trim(), Dni = model.Dni.Trim(),
+                Nombre = model.Nombre.Trim(), Apellido = model.Apellido.Trim(), Dni = MecaniCar360.Helpers.DniPersona.Normalizar(model.Dni),
                 Telefono = model.Telefono?.Trim(), Email = model.Email?.Trim(), Activo = true
             };
             var password = UsuarioService.GenerarContraseñaTemporal();

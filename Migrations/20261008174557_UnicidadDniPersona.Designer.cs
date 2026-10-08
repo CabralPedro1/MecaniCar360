@@ -4,6 +4,7 @@ using MecaniCar360.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MecaniCar360.Migrations
 {
     [DbContext(typeof(MecaniCarContext))]
-    partial class MecaniCarContextModelSnapshot : ModelSnapshot
+    [Migration("20261008174557_UnicidadDniPersona")]
+    partial class UnicidadDniPersona
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -256,55 +259,6 @@ namespace MecaniCar360.Migrations
                         .HasFilter("[FechaHasta] IS NULL");
 
                     b.ToTable("DominiosVehiculares");
-                });
-
-            modelBuilder.Entity("MecaniCar360.Models.EnlacePasswordCliente", b =>
-                {
-                    b.Property<int>("UsuarioId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("EmailHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<DateTime?>("FechaConsumida")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("FechaCreacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime>("FechaExpiracion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("FechaInvalidacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Finalidad")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StampHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.Property<bool>("TeniaPassword")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
-
-                    b.HasKey("UsuarioId");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.ToTable("EnlacesPasswordCliente", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_EnlacesPasswordCliente_Vigencia", "[Finalidad] IN (1,2,3) AND [FechaExpiracion] > [FechaCreacion]");
-                        });
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.EvidenciaTrabajo", b =>
@@ -1953,17 +1907,6 @@ namespace MecaniCar360.Migrations
                     b.Navigation("Persona");
 
                     b.Navigation("Vehiculo");
-                });
-
-            modelBuilder.Entity("MecaniCar360.Models.EnlacePasswordCliente", b =>
-                {
-                    b.HasOne("MecaniCar360.Models.Usuario", "Usuario")
-                        .WithMany()
-                        .HasForeignKey("UsuarioId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Usuario");
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.EvidenciaTrabajo", b =>

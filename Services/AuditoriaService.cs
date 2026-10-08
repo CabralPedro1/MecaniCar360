@@ -58,6 +58,13 @@ namespace MecaniCar360.Services
                     ? id : null;
         }
 
+        internal void RegistrarPasswordCliente(int usuarioId, bool agregada)
+        {
+            // La prueba de titularidad es el enlace; no atribuir el evento a una cookie ajena.
+            _context.Auditorias.Add(Crear(agregada ? "PASSWORD_CLIENTE_AGREGADA" : "PASSWORD_CLIENTE_RESTABLECIDA",
+                "Usuario", usuarioId, null, "Credencial establecida mediante enlace de correo verificado."));
+        }
+
         internal void RegistrarOnboarding(string accion, string entidad, int entidadId, int? actor = null)
         {
             if (accion is not ("AUTORREGISTRO_SOLICITADO" or "CLIENTE_CREADO" or "GOOGLE_VINCULADO" or

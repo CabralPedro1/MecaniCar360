@@ -97,7 +97,7 @@ namespace MecaniCar360.Services
                 await ObtenerUsuarioConPermisosAsync(
                     usuarioId);
 
-            if (usuario == null)
+            if (usuario == null || await ClientePendienteAsync(usuario))
                 return false;
 
 
@@ -127,7 +127,7 @@ namespace MecaniCar360.Services
                 await ObtenerUsuarioConPermisosAsync(
                     usuarioId);
 
-            if (usuario == null)
+            if (usuario == null || await ClientePendienteAsync(usuario))
                 return new List<string>();
 
 
@@ -147,6 +147,11 @@ namespace MecaniCar360.Services
             var componentes = await ConstruirComponentesAsync(usuario);
             return RecorridoPermisos.ObtenerPatentes(componentes).ToList();
         }
+
+        private async Task<bool> ClientePendienteAsync(Usuario usuario) =>
+            usuario.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Nombre == RolesSistema.CLIENTE)
+            && !usuario.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Nombre != RolesSistema.CLIENTE)
+            && !await new ClienteHabilitadoService(_context).EstaHabilitadoAsync(usuario.PersonaId);
 
         private async Task<IReadOnlyList<IComponentePermiso>> ConstruirComponentesAsync(Usuario usuario)
         {

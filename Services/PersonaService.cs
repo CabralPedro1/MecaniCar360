@@ -1,4 +1,4 @@
-﻿using MecaniCar360.Data;
+using MecaniCar360.Data;
 using MecaniCar360.Models;
 using MecaniCar360.Models.DTOs;
 using MecaniCar360.Models.ViewModels;
@@ -244,14 +244,18 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error(
                     "Ya existe una persona con ese DNI.");
 
-            persona.Dni = persona.Dni.Trim();
+            persona.Dni = MecaniCar360.Helpers.DniPersona.Normalizar(persona.Dni);
 
+            if (_context.Database.CurrentTransaction != null || _context.ChangeTracker.HasChanges())
+                return ServiceResult.Error("Hay otra operacion pendiente.");
+            var entradasPrevias = _context.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
             persona.Id = 0;
             persona.Usuario = null;
             persona.Roles = new();
             await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Personas.Add(persona);
 
+            try {
             await _context.SaveChangesAsync();
             _auditoria.RegistrarOperacion("PERSONA_CREADA", "Persona", persona.Id, usuarioSolicitanteId);
             await _context.SaveChangesAsync();
@@ -259,6 +263,12 @@ namespace MecaniCar360.Services
 
             return ServiceResult.Ok(
                 "Persona creada correctamente.");
+            } catch (Exception ex) when (MecaniCar360.Helpers.DniPersona.Conflicto(ex)) {
+                try { await transaction.RollbackAsync(); } catch { /* El coordinador puede haber revertido la transaccion. */ } finally {
+                    foreach (var e in _context.ChangeTracker.Entries().Where(e => !entradasPrevias.Contains(e.Entity)).ToList()) e.State = EntityState.Detached;
+                }
+                return ServiceResult.Error(MecaniCar360.Helpers.DniPersona.Error);
+            }
         }
 
 
@@ -318,7 +328,7 @@ namespace MecaniCar360.Services
             {
                 existente.Nombre = persona.Nombre;
                 existente.Apellido = persona.Apellido;
-                existente.Dni = persona.Dni.Trim();
+                existente.Dni = MecaniCar360.Helpers.DniPersona.Normalizar(persona.Dni);
                 existente.Telefono = persona.Telefono;
                 existente.Email = string.IsNullOrEmpty(emailNuevo) ? null : emailNuevo;
 
@@ -335,11 +345,14 @@ namespace MecaniCar360.Services
                 return ServiceResult.Ok(
                     "Persona actualizada correctamente.");
             }
+            catch (Exception ex) when (MecaniCar360.Helpers.DniPersona.Conflicto(ex)) {
+                return ServiceResult.Error(MecaniCar360.Helpers.DniPersona.Error);
+            }
             finally
             {
                 if (!confirmado)
                 {
-                    await transaction.RollbackAsync();
+                    try { await transaction.RollbackAsync(); } catch { /* Ya revertida por el coordinador. */ }
                     _context.Entry(existente).CurrentValues.SetValues(valoresPrevios);
                     _context.Entry(existente).OriginalValues.SetValues(valoresPrevios);
                     _context.Entry(existente).State = EntityState.Unchanged;
@@ -751,12 +764,7 @@ namespace MecaniCar360.Services
             string dni,
             int? excluirId = null)
         {
-            dni = dni.Trim();
-
-            return await _context.Personas.AnyAsync(p =>
-                p.Dni == dni &&
-                (!excluirId.HasValue ||
-                 p.Id != excluirId.Value));
+            return await MecaniCar360.Helpers.DniPersona.ExisteAsync(_context, dni, excluirId);
         }
     }
 }
