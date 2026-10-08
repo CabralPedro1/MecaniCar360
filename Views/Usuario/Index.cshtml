@@ -1,6 +1,6 @@
 @model IEnumerable<MecaniCar360.Models.Usuario>
 @using System.Security.Claims
-@inject MecaniCar360.Services.PermisoService Permisos
+@inject MecaniCar360.Services.PermisosVista Permisos
 
 @{
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
@@ -28,14 +28,15 @@
     }
 </p>
 
+<div class="table-responsive" role="region" aria-label="Usuarios" tabindex="0">
 <table class="table table-striped align-middle">
     <thead>
         <tr>
-            <th>Usuario</th>
-            <th>Email</th>
-            <th>Persona</th>
-            <th>Estado</th>
-            <th></th>
+            <th scope="col">Usuario</th>
+            <th scope="col">Email</th>
+            <th scope="col">Persona</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
         </tr>
     </thead>
     <tbody>
@@ -64,3 +65,4 @@
     }
     </tbody>
 </table>
+</div>

@@ -18,7 +18,8 @@
 <h2>Ordenes activas del mecanico</h2>
 @if (!Model.Any()) { <p>No hay ordenes para mostrar.</p> }
 else {
-<table class="table table-striped"><thead><tr><th>Orden</th><th>Vehiculo</th><th>Patente</th><th>Inicio</th><th>Estado</th><th>Urgencia</th><th>Acciones</th></tr></thead><tbody>
+<div class="table-responsive" role="region" aria-label="Órdenes asignadas" tabindex="0">
+<table class="table table-striped"><thead><tr><th scope="col">Orden</th><th scope="col">Vehiculo</th><th scope="col">Patente</th><th scope="col">Inicio</th><th scope="col">Estado</th><th scope="col">Urgencia</th><th scope="col">Acciones</th></tr></thead><tbody>
 @foreach (var orden in Model) {
 <tr><td>@orden.Id</td><td>@orden.IngresoVehiculo.Vehiculo.Marca.Nombre @orden.IngresoVehiculo.Vehiculo.Modelo.Nombre</td>
 <td>@orden.IngresoVehiculo.Vehiculo.Patente</td><td>@orden.FechaInicio.ToString("dd/MM/yyyy HH:mm")</td><td>@orden.EstadoActual</td><td>@orden.Urgencia</td><td>
@@ -29,4 +30,5 @@ else {
 </td></tr>
 }
 </tbody></table>
+</div>
 }

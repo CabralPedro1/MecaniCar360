@@ -1,6 +1,6 @@
 @inject MecaniCar360.Services.PresentacionCuentaService PresentacionCuenta
 @{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var cuentaActor); var cuentaVisible = await PresentacionCuenta.ObtenerAsync(cuentaActor); }
-@inject MecaniCar360.Services.PermisoService Permisos
+@inject MecaniCar360.Services.PermisosVista Permisos
 @inject MecaniCar360.Services.NotificacionService Notificaciones
 <!DOCTYPE html>
 <html lang="es">
@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="~/MecaniCar360.styles.css" asp-append-version="true" />
 </head>
 <body>
+    <a href="#contenido-principal" class="visually-hidden-focusable">Saltar al contenido principal</a>
 
     <header>
         @using System.Security.Claims
@@ -23,13 +24,13 @@
 
                 <a class="navbar-brand" asp-controller="Account" asp-action="Inicio">🚗 MEC360</a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Abrir o cerrar navegación">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 <div class="collapse navbar-collapse" id="navbarMain">
 
-                    <ul class="navbar-nav me-auto">
+                    <ul class="navbar-nav me-auto flex-wrap">
                         @if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var notificacionActor) && await Permisos.TienePermisoAsync(notificacionActor, "NOTIFICACION_VER"))
                         {
                             var contador = await Notificaciones.ContarNoLeidasAsync(notificacionActor);
@@ -165,7 +166,7 @@
     </header>
 
     <div class="container">
-        <main role="main" class="pb-3">
+        <main id="contenido-principal" tabindex="-1" class="pb-3">
             @RenderBody()
         </main>
     </div>
