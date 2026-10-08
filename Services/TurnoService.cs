@@ -34,6 +34,18 @@ namespace MecaniCar360.Services
         // CONSULTAS
         // =====================================
 
+        // Solo componen el grafo: filtros, orden y ejecucion permanecen en cada operacion.
+        // Conservan el tracking configurado en el contexto y no abren consultas adicionales.
+        private IQueryable<Turno> ConsultarConVehiculo() =>
+            _context.Turnos
+                .Include(t => t.Vehiculo).ThenInclude(v => v!.Marca)
+                .Include(t => t.Vehiculo).ThenInclude(v => v!.Modelo);
+
+        private IQueryable<Turno> ConsultarConDetalle() =>
+            ConsultarConVehiculo()
+                .Include(t => t.Cliente)
+                .Include(t => t.IngresoVehiculo).ThenInclude(i => i!.OrdenTrabajo);
+
         public async Task<ServiceResult<List<Turno>>> ObtenerTodosAsync(
             int usuarioSolicitanteId)
         {
@@ -45,15 +57,7 @@ namespace MecaniCar360.Services
                     "No posee permisos para consultar turnos.");
             }
 
-            // Estas navegaciones son opcionales; EF traduce ThenInclude sin desreferenciarlas en memoria.
-            var turnos = await _context.Turnos
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Marca)
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Modelo)
-                .Include(t => t.Cliente)
-                .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i!.OrdenTrabajo)
+            var turnos = await ConsultarConDetalle()
                 .OrderBy(t => t.FechaInicio)
                 .ToListAsync();
 
@@ -79,14 +83,7 @@ namespace MecaniCar360.Services
         private async Task<ServiceResult<Turno>> ObtenerPorIdInternoAsync(
             int id)
         {
-            var turno = await _context.Turnos
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Marca)
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Modelo)
-                .Include(t => t.Cliente)
-                .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i!.OrdenTrabajo)
+            var turno = await ConsultarConDetalle()
                 .FirstOrDefaultAsync(t => t.Id == id);
 
             if (turno == null)
@@ -154,11 +151,7 @@ namespace MecaniCar360.Services
         private async Task<List<Turno>> ObtenerTurnosDePersonaInternoAsync(
             int personaId)
         {
-            return await _context.Turnos
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Marca)
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Modelo)
+            return await ConsultarConVehiculo()
                 .Where(t => t.ClienteId == personaId)
                 .OrderByDescending(t => t.FechaInicio)
                 .ToListAsync();
@@ -168,14 +161,7 @@ namespace MecaniCar360.Services
             int personaId,
             int turnoId)
         {
-            return await _context.Turnos
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Marca)
-                .Include(t => t.Vehiculo)
-                    .ThenInclude(v => v!.Modelo)
-                .Include(t => t.Cliente)
-                .Include(t => t.IngresoVehiculo)
-                    .ThenInclude(i => i!.OrdenTrabajo)
+            return await ConsultarConDetalle()
                 .FirstOrDefaultAsync(t =>
                     t.Id == turnoId &&
                     t.ClienteId == personaId);
