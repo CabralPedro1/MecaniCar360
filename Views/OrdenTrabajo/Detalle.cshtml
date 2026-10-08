@@ -273,34 +273,6 @@
                 }
 
 
-                <!-- VER PRESUPUESTO -->
-                @if (verPresupuesto && Model.Presupuesto != null)
-                {
-                    <a asp-controller="Presupuesto"
-                       asp-action="Detalle"
-                       asp-route-ordenTrabajoId="@Model.Id"
-                       class="btn btn-outline-warning">
-
-                        Ver presupuesto
-
-                    </a>
-                }
-
-
-                <!-- VER FACTURA -->
-                @if (verFactura && Model.Factura != null)
-                {
-                    <a asp-controller="Factura"
-                       asp-action="Detalle"
-                       asp-route-ordenTrabajoId="@Model.Id"
-                       class="btn btn-outline-success">
-
-                        Ver factura
-
-                    </a>
-                }
-
-
                 <!-- ENTREGAR VEHÍCULO -->
                 @if (await Permisos.TienePermisoAsync(usuarioId, "ORDEN_ENTREGAR") &&
                     Model.Factura?.Estado == EstadoFactura.Pagada &&

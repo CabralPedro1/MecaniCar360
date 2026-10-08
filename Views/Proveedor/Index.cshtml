@@ -1,15 +1,24 @@
 ﻿@model IEnumerable<MecaniCar360.Models.Proveedor>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 
 @{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+    var puedeCrear = await Permisos.TienePermisoAsync(actor, "PROVEEDOR_CREAR");
+    var puedeEditar = await Permisos.TienePermisoAsync(actor, "PROVEEDOR_MODIFICAR");
+    var puedeCambiarEstado = await Permisos.TienePermisoAsync(actor, "PROVEEDOR_DESACTIVAR");
     ViewData["Title"] = "Proveedores";
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Proveedores</h2>
 
-    <a asp-action="Crear" class="btn btn-primary">
-        Nuevo proveedor
-    </a>
+    @if (puedeCrear)
+    {
+        <a asp-action="Crear" class="btn btn-primary">
+            Nuevo proveedor
+        </a>
+    }
 </div>
 
 @if (TempData["Ok"] != null)
@@ -77,30 +86,36 @@
                         Detalle
                     </a>
 
-                    <a asp-action="Editar"
-                       asp-route-id="@item.Id"
-                       class="btn btn-warning btn-sm">
-                        Editar
-                    </a>
+                    @if (puedeEditar)
+                    {
+                        <a asp-action="Editar"
+                           asp-route-id="@item.Id"
+                           class="btn btn-warning btn-sm">
+                            Editar
+                        </a>
+                    }
 
-                    <form asp-action="CambiarEstado"
-                          method="post"
-                          class="d-inline">
+                    @if (puedeCambiarEstado)
+                    {
+                        <form asp-action="CambiarEstado"
+                              method="post"
+                              class="d-inline">
 
-                        @Html.AntiForgeryToken()
+                            @Html.AntiForgeryToken()
 
-                        <input type="hidden"
-                               name="id"
-                               value="@item.Id" />
+                            <input type="hidden"
+                                   name="id"
+                                   value="@item.Id" />
 
-                        <button class="btn @(item.Activo ? "btn-danger" : "btn-success") btn-sm"
-                                onclick="return confirm('¿Está seguro que desea @(item.Activo ? "desactivar" : "activar") este proveedor?')">
+                            <button class="btn @(item.Activo ? "btn-danger" : "btn-success") btn-sm"
+                                    onclick="return confirm('¿Está seguro que desea @(item.Activo ? "desactivar" : "activar") este proveedor?')">
 
-                            @(item.Activo ? "Desactivar" : "Activar")
+                                @(item.Activo ? "Desactivar" : "Activar")
 
-                        </button>
+                            </button>
 
-                    </form>
+                        </form>
+                    }
                 </td>
 
             </tr>

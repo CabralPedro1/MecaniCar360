@@ -1,0 +1,26 @@
+@model IReadOnlyList<MecaniCar360.Models.DTOs.RepuestoTecnicoDto>
+@{ ViewData["Title"] = "Consulta de repuestos"; }
+<h1>Consulta de repuestos</h1>
+@if (Model.Count == 0)
+{
+    <p class="alert alert-info">No hay repuestos activos disponibles.</p>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead><tr><th>SKU</th><th>Nombre</th><th>Compatibilidad</th><th>Stock</th><th>Mínimo</th></tr></thead>
+            <tbody>
+            @foreach (var repuesto in Model)
+            {
+                <tr><td>@repuesto.SKU</td><td>@repuesto.Nombre</td><td>@(repuesto.Compatibilidad ?? "-")</td><td>@repuesto.StockActual</td><td>@repuesto.StockMinimo</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}
+@if (ViewData["EsDetalle"] is true)
+{
+    <a asp-action="Index" class="btn btn-secondary">Volver a repuestos</a>
+}
+<a asp-controller="Account" asp-action="Inicio" class="btn btn-outline-secondary">Volver al inicio</a>

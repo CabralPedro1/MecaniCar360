@@ -211,6 +211,15 @@ namespace MecaniCar360.Controllers
             return View();
         }
 
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> Inicio()
+        {
+            if (User.Identity?.IsAuthenticated != true) return RedirectToAction(nameof(Login));
+            if (!int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId)) return Forbid();
+            return await DestinoInicialAsync(usuarioId);
+        }
+
         private async Task<IActionResult> DestinoInicialAsync(int usuarioId)
         {
             if (await _permisos.TienePermisoAsync(usuarioId, "DASHBOARD_VER"))

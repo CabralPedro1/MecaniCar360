@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MecaniCar360.Services;
 
 public sealed record PresentacionCuenta(string Nombre, bool PasswordLocal, bool PuedeVincularGoogle,
-    bool PuedeAgregarPassword = false, bool PuedeGestionarPassword = false);
+    bool PuedeAgregarPassword = false, bool PuedeGestionarPassword = false, bool EsClienteHabilitado = false);
 public sealed class PresentacionCuentaService(MecaniCarContext db, IdentidadClienteService identidad, ClienteHabilitadoService habilitado)
 {
     public async Task<PresentacionCuenta> ObtenerAsync(int actor)
@@ -17,6 +17,6 @@ public sealed class PresentacionCuentaService(MecaniCarContext db, IdentidadClie
         var password = ClienteHabilitadoService.CredencialEstablecida(u.PasswordHash);
         var cliente = await identidad.ExclusivamenteClienteAsync(u.PersonaId) && await habilitado.EstaHabilitadoAsync(u.PersonaId);
         return new(nombre.Length == 0 ? "Mi cuenta" : nombre, password,
-            password && !u.Google && cliente, u.PasswordHash == null && u.Google && cliente, cliente);
+            password && !u.Google && cliente, u.PasswordHash == null && u.Google && cliente, cliente, cliente);
     }
 }

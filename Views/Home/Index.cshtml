@@ -1,8 +1,10 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+@{ ViewData["Title"] = "Inicio"; }
+<h1>MecaniCar360</h1>
+@if (User.Identity?.IsAuthenticated == true)
+{
+    <p>No hay una pantalla de inicio disponible para sus permisos actuales. Consulte al administrador.</p>
 }
-
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+else
+{
+    <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Iniciar sesión</a>
+}

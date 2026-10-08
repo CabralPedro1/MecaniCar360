@@ -16,6 +16,8 @@
         ("NOTIFICACION_VER", "Notificacion", "Index", "Mis notificaciones") };
 }
 <h1>Portal cliente</h1>
+@if (cuenta.EsClienteHabilitado)
+{
 <a asp-action="MisDatos" class="btn btn-outline-primary mb-3">Mis datos</a>
 @if (ViewBag.DatosPendientes is IReadOnlyList<string> pendientes && pendientes.Count > 0)
 {
@@ -24,13 +26,6 @@
 @if (await Permisos.TienePermisoAsync(actor, "CLIENTE_VEHICULO_CREAR"))
 {
     <a asp-action="NuevoVehiculo" class="btn btn-primary mb-3">Registrar mi vehículo</a>
-}
-@if (cuenta.PuedeGestionarPassword)
-{
-    <form asp-controller="SeguridadCliente" asp-action="SolicitarEnlace" method="post" class="mb-3">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-outline-primary">@(cuenta.PasswordLocal ? "Cambiar contraseña" : "Agregar contraseña")</button>
-    </form>
 }
 @if (MecaniCar360.Helpers.GoogleClienteConfiguracion.Disponible(Configuracion) && cuenta.PuedeVincularGoogle)
 {
@@ -52,4 +47,9 @@
     }
 }
 </div>
-<a asp-controller="Home" asp-action="Index" class="btn btn-secondary">Volver al inicio</a>
+}
+else
+{
+    <p class="alert alert-info">El portal de autogestión requiere una cuenta de cliente habilitada.</p>
+}
+<a asp-controller="Account" asp-action="Inicio" class="btn btn-secondary">Volver al inicio</a>
