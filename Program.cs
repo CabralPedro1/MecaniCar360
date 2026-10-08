@@ -1,5 +1,6 @@
 ﻿using MecaniCar360.Data;
 using MecaniCar360.Patterns.Facade;
+using MecaniCar360.Helpers;
 using MecaniCar360.Patterns.Observer;
 using MecaniCar360.Patterns.State;
 using MecaniCar360.Services;
@@ -149,6 +150,7 @@ namespace MecaniCar360
             // AUTHORIZATION
             // =====================================
 
+            builder.Services.AgregarGoogleCliente(builder.Configuration);
             builder.Services.AddAuthorization();
 
 
@@ -178,6 +180,11 @@ namespace MecaniCar360
 
             builder.Services.AddScoped<AltaPersonalService>();
             builder.Services.AddScoped<AltaClienteService>();
+            builder.Services.AddScoped<IdentidadClienteService>();
+            builder.Services.AddScoped<RegistroClienteService>();
+            builder.Services.AddScoped<GoogleClienteService>();
+            builder.Services.AddScoped<VehiculoPropioAltaService>();
+            builder.Services.AddScoped<DatosClienteService>();
             builder.Services.AddScoped<ClienteHabilitadoService>();
             builder.Services.AddScoped<InvitacionClienteService>();
             builder.Services.AddScoped<AgendaService>();

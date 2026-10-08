@@ -211,6 +211,12 @@ namespace MecaniCar360.Services
                     "No posee permisos para crear vehículos.");
             }
 
+            return await CrearValidadoAsync(vehiculo);
+        }
+
+        // Sólo para los casos de uso que ya resolvieron actor, permiso y titular en servidor.
+        internal async Task<ServiceResult> CrearValidadoAsync(Vehiculo vehiculo)
+        {
             var validacion = await ValidarVehiculoAsync(vehiculo);
 
             if (!validacion.Exitoso)

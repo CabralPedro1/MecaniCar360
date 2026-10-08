@@ -11,6 +11,10 @@
     var abierto = turno.IngresoVehiculo == null && (turno.Estado == EstadoTurno.Pendiente || turno.Estado == EstadoTurno.Confirmado);
 }
 <h2>Registrar recepcion</h2>
+@{ var pendientes = MecaniCar360.Helpers.DatosRecepcionCliente.Faltantes(turno.Cliente); }
+@if (pendientes.Count > 0) {
+    <p class="alert alert-warning">Antes del ingreso debe completar los datos del cliente: @string.Join(", ", pendientes).</p>
+}
 <div asp-validation-summary="All" class="text-danger" role="alert"></div>
 <p>Turno #@turno.Id - @turno.Estado - @turno.Tipo</p>
 <p><strong>Cliente:</strong> @turno.Cliente.Nombre @turno.Cliente.Apellido - DNI @turno.Cliente.Dni</p>

@@ -62,7 +62,9 @@ namespace MecaniCar360.Services
 
             mail.To.Add(destino);
 
-            await smtp.SendMailAsync(mail);
+            await EnviarMensajeAsync(smtp, mail);
         }
+
+        protected virtual Task EnviarMensajeAsync(SmtpClient smtp, MailMessage mail) => smtp.SendMailAsync(mail);
     }
 }

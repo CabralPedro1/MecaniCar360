@@ -1,5 +1,6 @@
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
+@inject IConfiguration Configuracion
 @{
     ViewData["Title"] = "Portal cliente";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
@@ -13,6 +14,23 @@
         ("NOTIFICACION_VER", "Notificacion", "Index", "Mis notificaciones") };
 }
 <h1>Portal cliente</h1>
+@if (ViewBag.DatosPendientes is IReadOnlyList<string> pendientes && pendientes.Count > 0)
+{
+    <p class="alert alert-info">Para la atención presencial, el taller deberá completar: @string.Join(", ", pendientes). Puede reservar su turno mientras tanto.</p>
+}
+@if (await Permisos.TienePermisoAsync(actor, "CLIENTE_VEHICULO_CREAR"))
+{
+    <a asp-action="NuevoVehiculo" class="btn btn-primary mb-3">Registrar mi vehículo</a>
+}
+@if (MecaniCar360.Helpers.GoogleClienteConfiguracion.Disponible(Configuracion))
+{
+    <form asp-controller="GoogleCliente" asp-action="Vincular" method="post" class="mb-3">
+        @Html.AntiForgeryToken()
+        <label for="passwordGoogle" class="form-label">Para vincular Google, confirme su contraseña local</label>
+        <input id="passwordGoogle" name="password" type="password" autocomplete="current-password" class="form-control mb-2" required />
+        <button type="submit" class="btn btn-outline-primary">Vincular Google a mi cuenta</button>
+    </form>
+}
 <p>Consulte sus vehículos, turnos y trabajos del taller.</p>
 <partial name="_Mensajes" />
 <div class="list-group mb-3">

@@ -12,6 +12,6 @@ public sealed class InvitacionCliente
     public DateTime FechaExpiracion { get; set; }
     public DateTime? FechaConsumida { get; set; }
     public DateTime? FechaInvalidacion { get; set; }
-    public int EmitidaPorUsuarioId { get; set; }
-    public Usuario EmitidaPorUsuario { get; set; } = null!;
+    public int? EmitidaPorUsuarioId { get; set; }
+    public Usuario? EmitidaPorUsuario { get; set; }
 }

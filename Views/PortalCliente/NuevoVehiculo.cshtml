@@ -1,0 +1,16 @@
+@model MecaniCar360.Models.ViewModels.VehiculoPropioNuevoViewModel
+@{ ViewData["Title"] = "Registrar mi vehículo"; }
+<h1>Registrar mi vehículo</h1>
+<p>El vehículo quedará asociado a su cuenta. Si ya está registrado, solicite asistencia al taller.</p>
+<form asp-action="NuevoVehiculo" method="post">
+    @Html.AntiForgeryToken()
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
+    <div class="mb-3"><label asp-for="Patente"></label><input asp-for="Patente" class="form-control" /><span asp-validation-for="Patente" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="ModeloId">Marca y modelo</label><select asp-for="ModeloId" asp-items="ViewBag.Modelos" class="form-select"><option value="">Seleccione</option></select><span asp-validation-for="ModeloId" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Anio">Año</label><input asp-for="Anio" class="form-control" /><span asp-validation-for="Anio" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Vin">VIN (opcional)</label><input asp-for="Vin" class="form-control" /><span asp-validation-for="Vin" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Color">Color (opcional)</label><input asp-for="Color" class="form-control" /><span asp-validation-for="Color" class="text-danger"></span></div>
+    <div class="mb-3"><label asp-for="Kilometraje">Kilometraje (opcional)</label><input asp-for="Kilometraje" class="form-control" /><span asp-validation-for="Kilometraje" class="text-danger"></span></div>
+    <button type="submit" class="btn btn-primary">Registrar</button>
+    <a asp-action="MisVehiculos" class="btn btn-secondary">Volver</a>
+</form>

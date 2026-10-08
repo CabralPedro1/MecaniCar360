@@ -13,12 +13,40 @@ namespace MecaniCar360.Controllers;
 public sealed class PortalClienteController(
     VehiculoService vehiculos, TurnoService turnos, OrdenTrabajoService ordenes,
     PresupuestoService presupuestos, FacturaService facturas,
-    PermisoService permisos) : Controller
+    PermisoService permisos, VehiculoPropioAltaService altaVehiculo, DatosClienteService datosCliente) : Controller
 {
     private int Actor => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
 
     [HttpGet, Permiso("CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")]
-    public IActionResult Index() => View();
+    public async Task<IActionResult> Index()
+    {
+        ViewBag.DatosPendientes = await datosCliente.PendientesRecepcionAsync(Actor);
+        return View();
+    }
+
+    [HttpGet, Permiso("CLIENTE_VEHICULO_CREAR")]
+    public async Task<IActionResult> NuevoVehiculo()
+    {
+        var r = await altaVehiculo.CatalogoAsync(Actor);
+        if (!r.Exitoso) return Forbid();
+        ViewBag.Modelos = new SelectList(r.Data, "Id", "Nombre");
+        return View(new VehiculoPropioNuevoViewModel());
+    }
+
+    [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_VEHICULO_CREAR")]
+    public async Task<IActionResult> NuevoVehiculo(VehiculoPropioNuevoViewModel model)
+    {
+        var catalogo = await altaVehiculo.CatalogoAsync(Actor);
+        if (!catalogo.Exitoso) return Forbid();
+        if (ModelState.IsValid)
+        {
+            var r = await altaVehiculo.CrearAsync(model, Actor);
+            if (r.Exitoso) { TempData["Ok"] = r.Mensaje; return RedirectToAction(nameof(MisVehiculos)); }
+            ModelState.AddModelError("", r.Mensaje);
+        }
+        ViewBag.Modelos = new SelectList(catalogo.Data, "Id", "Nombre", model.ModeloId);
+        return View(model);
+    }
 
     [HttpGet, Permiso("CLIENTE_VEHICULO_VER")]
     public async Task<IActionResult> MisVehiculos()

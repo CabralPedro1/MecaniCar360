@@ -218,6 +218,10 @@ namespace MecaniCar360.Services
                         "El vehículo ya posee un ingreso registrado.");
                 }
 
+                var faltantes = MecaniCar360.Helpers.DatosRecepcionCliente.Faltantes(turno.Cliente);
+                if (faltantes.Count > 0)
+                    return ServiceResult<OrdenTrabajo>.Error("Complete los datos del cliente antes de recibir el vehiculo: " + string.Join(", ", faltantes));
+
                 var vehiculo = await _context.Vehiculos
                     .FromSqlInterpolated($"SELECT * FROM [Vehiculos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {model.VehiculoId!.Value}")
                     .Include(v => v.Marca)
