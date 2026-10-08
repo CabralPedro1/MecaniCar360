@@ -13,6 +13,10 @@
         await Permisos.TienePermisoAsync(usuarioId, "PRESUPUESTO_ENVIAR");
 }
 <h2>Presupuesto #@Model.Id</h2>
+@if (ViewData["ErrorRepuestos"] is string errorRepuestos)
+{
+    <div class="alert alert-warning" role="alert">@errorRepuestos</div>
+}
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
 <p>Cliente: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Cliente.Nombre</p>
 <p>Vehículo: @Model.OrdenTrabajo.IngresoVehiculo.VehiculoPatenteSnapshot</p>

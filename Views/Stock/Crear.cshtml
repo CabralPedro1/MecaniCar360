@@ -8,7 +8,8 @@
 
 <hr />
 
-<form asp-action="Crear">
+<form asp-action="Crear" method="post">
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
 
     <div class="mb-3">
         <label asp-for="SKU"></label>
@@ -19,36 +20,39 @@
     <div class="mb-3">
         <label asp-for="Nombre"></label>
         <input asp-for="Nombre" class="form-control" />
+        <span asp-validation-for="Nombre" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="Marca"></label>
         <input asp-for="Marca" class="form-control" />
+        <span asp-validation-for="Marca" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="Modelo"></label>
         <input asp-for="Modelo" class="form-control" />
+        <span asp-validation-for="Modelo" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="Compatibilidad"></label>
         <input asp-for="Compatibilidad" class="form-control" />
+        <span asp-validation-for="Compatibilidad" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
         <label asp-for="PrecioVenta"></label>
         <input asp-for="PrecioVenta" class="form-control" />
+        <span asp-validation-for="PrecioVenta" class="text-danger"></span>
     </div>
 
-    <div class="mb-3">
-        <label asp-for="StockActual"></label>
-        <input asp-for="StockActual" class="form-control" />
-    </div>
+    <p class="alert alert-info">El repuesto se crea con stock cero. Para incorporar existencias, registre un movimiento de ingreso después de crearlo.</p>
 
     <div class="mb-3">
         <label asp-for="StockMinimo"></label>
         <input asp-for="StockMinimo" class="form-control" />
+        <span asp-validation-for="StockMinimo" class="text-danger"></span>
     </div>
 
     <button class="btn btn-success">Guardar</button>
