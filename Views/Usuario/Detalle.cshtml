@@ -1,4 +1,6 @@
 @model MecaniCar360.Models.Usuario
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 
 @{
     ViewData["Title"] = "Detalle de usuario";
@@ -17,5 +19,8 @@
     <dt class="col-sm-3">Primer login</dt>
     <dd class="col-sm-9">@(Model.PrimerLogin ? "Pendiente" : "Completado")</dd>
 </dl>
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) && await Permisos.TienePermisoAsync(actor, "USUARIO_MODIFICAR"))
+{
 <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a>
+}
 <a asp-action="Index" class="btn btn-secondary">Volver</a>

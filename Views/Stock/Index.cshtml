@@ -1,6 +1,12 @@
 ﻿@model IEnumerable<MecaniCar360.Models.Repuesto>
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
 
 @{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+    var puedeCrear = await Permisos.TienePermisoAsync(actor, "STOCK_CREAR");
+    var puedeEditar = await Permisos.TienePermisoAsync(actor, "STOCK_MODIFICAR");
+    var puedeCambiarEstado = await Permisos.TienePermisoAsync(actor, "STOCK_MODIFICAR");
     ViewData["Title"] = "Stock";
 }
 
@@ -21,13 +27,19 @@
 }
 
 <p>
-    <a asp-action="Crear" class="btn btn-primary">
-        Nuevo Repuesto
-    </a>
+    @if (puedeCrear)
+    {
+        <a asp-action="Crear" class="btn btn-primary">
+            Nuevo Repuesto
+        </a>
+    }
 
-    <a asp-action="Movimientos" class="btn btn-secondary">
-        Historial
-    </a>
+    @if (await Permisos.TienePermisoAsync(actor, "STOCK_MOVIMIENTO"))
+    {
+        <a asp-action="Movimientos" class="btn btn-secondary">
+            Historial
+        </a>
+    }
 </p>
 
 <table class="table table-striped table-hover">
@@ -107,34 +119,43 @@
 
                 <td>
 
-                    <a asp-action="Detalle"
-                       asp-route-id="@item.Id"
-                       class="btn btn-info btn-sm">
-                        Detalle
-                    </a>
+                    @if (item.Activo)
+                    {
+                        <a asp-action="Detalle"
+                           asp-route-id="@item.Id"
+                           class="btn btn-info btn-sm">
+                            Detalle
+                        </a>
+                    }
 
-                    <a asp-action="Editar"
-                       asp-route-id="@item.Id"
-                       class="btn btn-warning btn-sm">
-                        Editar
-                    </a>
+                    @if (puedeEditar && item.Activo)
+                    {
+                        <a asp-action="Editar"
+                           asp-route-id="@item.Id"
+                           class="btn btn-warning btn-sm">
+                            Editar
+                        </a>
+                    }
 
-                    <form asp-action="CambiarEstado"
-                          asp-route-id="@item.Id"
-                          method="post"
-                          class="d-inline">
+                    @if (puedeCambiarEstado)
+                    {
+                        <form asp-action="CambiarEstado"
+                              asp-route-id="@item.Id"
+                              method="post"
+                              class="d-inline">
 
-                        @Html.AntiForgeryToken()
+                            @Html.AntiForgeryToken()
 
-                        <button type="submit"
-                                class="btn @(item.Activo ? "btn-danger" : "btn-success") btn-sm"
-                                onclick="return confirm('¿Desea @(item.Activo ? "desactivar" : "activar") este repuesto?')">
+                            <button type="submit"
+                                    class="btn @(item.Activo ? "btn-danger" : "btn-success") btn-sm"
+                                    onclick="return confirm('¿Desea @(item.Activo ? "desactivar" : "activar") este repuesto?')">
 
-                            @(item.Activo ? "Desactivar" : "Activar")
+                                @(item.Activo ? "Desactivar" : "Activar")
 
-                        </button>
+                            </button>
 
-                    </form>
+                        </form>
+                    }
 
                 </td>
 

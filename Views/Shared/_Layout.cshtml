@@ -21,7 +21,7 @@
         <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
             <div class="container-fluid">
 
-                <a class="navbar-brand" asp-controller="Home" asp-action="Index">🚗 MEC360</a>
+                <a class="navbar-brand" asp-controller="Account" asp-action="Inicio">🚗 MEC360</a>
 
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain">
                     <span class="navbar-toggler-icon"></span>
@@ -56,7 +56,7 @@
                         }
 
                         <!-- CLIENTE -->
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
+                        @if (cuentaVisible.EsClienteHabilitado && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
                             await Permisos.TieneAlgunoAsync(usuarioPortalId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
                         {
                             <li class="nav-item">
@@ -90,7 +90,7 @@
                                 <a class="nav-link" asp-controller="Factura" asp-action="Index">Facturas</a>
                             </li>
                         }
-                        else if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "CLIENTE_FACTURA_VER"))
+                        else if (cuentaVisible.EsClienteHabilitado && usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "CLIENTE_FACTURA_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Factura" asp-action="MisFacturas">Mis facturas</a>

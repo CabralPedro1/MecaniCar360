@@ -1,0 +1,22 @@
+@model string
+@using System.Security.Claims
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    ViewData["Title"] = "Operación de presupuesto";
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
+}
+<h1>No se pudo completar la operación</h1>
+<div class="alert alert-danger" role="alert">@Model</div>
+<p>No vuelva a enviar el formulario sin revisar el estado actual del presupuesto.</p>
+@if (ViewData["EsCliente"] is true)
+{
+    if (await Permisos.TienePermisoAsync(actor, "CLIENTE_PRESUPUESTO_VER"))
+    {
+        <a asp-controller="PortalCliente" asp-action="MisPresupuestos" class="btn btn-primary">Mis presupuestos</a>
+    }
+}
+else if (await Permisos.TienePermisoAsync(actor, "ORDEN_VER"))
+{
+    <a asp-controller="OrdenTrabajo" asp-action="Index" class="btn btn-primary">Órdenes de trabajo</a>
+}
+<a asp-controller="Account" asp-action="Inicio" class="btn btn-secondary">Volver al inicio</a>

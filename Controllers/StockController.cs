@@ -448,13 +448,14 @@ namespace MecaniCar360.Controllers
         // MÉTODOS PRIVADOS
         // ======================================
 
-        // Contrato técnico JSON: no entrega entidades comerciales a las vistas administrativas.
+        // Consulta MVC tecnica: solo utiliza la proyeccion sin datos comerciales.
         private async Task<IActionResult> ConsultaTecnica(int? id)
         {
             var resultado = await _service.ObtenerRepuestosTecnicosAsync(SolicitanteId(), id);
             if (!resultado.Exitoso) return Forbid();
-            if (id.HasValue) return resultado.Data!.Count == 0 ? NotFound() : Json(resultado.Data[0]);
-            return Json(resultado.Data);
+            if (id.HasValue && resultado.Data!.Count == 0) return NotFound();
+            ViewData["EsDetalle"] = id.HasValue;
+            return View("ConsultaTecnica", resultado.Data);
         }
 
         private async Task CargarProveedores()

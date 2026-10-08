@@ -25,7 +25,7 @@ namespace MecaniCar360.Controllers
         {
             if (!UsuarioId(out var usuario)) return Forbid();
             var resultado = await _service.ObtenerAsync(ordenTrabajoId, usuario);
-            if (!resultado.Exitoso) return BadRequest(resultado.Mensaje);
+            if (!resultado.Exitoso) return ErrorOperacion(resultado.Mensaje);
             var repuestos = await _stock.ObtenerRepuestosTecnicosAsync(usuario);
             if (!repuestos.Exitoso)
                 ViewData["ErrorRepuestos"] = "No se pudieron cargar los repuestos. Intente nuevamente antes de agregar un ítem con repuesto.";
@@ -60,7 +60,7 @@ namespace MecaniCar360.Controllers
         {
             if (!UsuarioId(out var usuario)) return Forbid();
             var resultado = await _service.ObtenerPropioAsync(ordenTrabajoId, usuario);
-            if (!resultado.Exitoso) return BadRequest(resultado.Mensaje);
+            if (!resultado.Exitoso) return ErrorOperacion(resultado.Mensaje, true);
             ViewData["PuedeDecidir"] = PuedeDecidir(resultado.Data!);
             return View(resultado.Data);
         }
@@ -79,7 +79,7 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Crear(int ordenTrabajoId)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Datos inválidos.");
+            if (!ModelState.IsValid) return ErrorOperacion("Datos inválidos.");
             return Resultado(await _service.CrearAsync(ordenTrabajoId, usuario));
         }
 
@@ -88,7 +88,7 @@ namespace MecaniCar360.Controllers
             int cantidad, decimal precioUnitario, int? repuestoId)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Datos del ítem inválidos.");
+            if (!ModelState.IsValid) return ErrorOperacion("Datos del ítem inválidos.");
             return Resultado(await _service.AgregarItemAsync(presupuestoId, usuario, descripcion, cantidad, precioUnitario, repuestoId));
         }
 
@@ -96,7 +96,7 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> EliminarItem(int presupuestoId, int itemId)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Datos inválidos.");
+            if (!ModelState.IsValid) return ErrorOperacion("Datos inválidos.");
             return Resultado(await _service.EliminarItemAsync(presupuestoId, itemId, usuario));
         }
 
@@ -104,7 +104,7 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> EnviarAprobacion(int presupuestoId, IEnumerable<int>? evidenciaIds = null)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Datos de envío inválidos.");
+            if (!ModelState.IsValid) return ErrorOperacion("Datos de envío inválidos.");
             return Resultado(await _service.EnviarAprobacionAsync(presupuestoId, usuario, evidenciaIds));
         }
 
@@ -112,7 +112,7 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Aprobar(int presupuestoVersionId)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Versión inválida.");
+            if (!ModelState.IsValid) return ErrorOperacion("Versión inválida.", true);
             return Resultado(await _service.AprobarAsync(presupuestoVersionId, usuario), true);
         }
 
@@ -120,16 +120,23 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> Rechazar(int presupuestoVersionId, string motivo)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return BadRequest("Versión o motivo inválidos.");
+            if (!ModelState.IsValid) return ErrorOperacion("Versión o motivo inválidos.", true);
             return Resultado(await _service.RechazarAsync(presupuestoVersionId, usuario, motivo), true);
         }
 
         private IActionResult Resultado(ServiceResult<PresupuestoOperacion> resultado, bool cliente = false)
         {
-            if (!resultado.Exitoso) return BadRequest(resultado.Mensaje);
+            if (!resultado.Exitoso) return ErrorOperacion(resultado.Mensaje, cliente);
             TempData["Ok"] = resultado.Mensaje;
             return RedirectToAction(cliente ? nameof(Propio) : nameof(Detalle),
                 new { ordenTrabajoId = resultado.Data!.OrdenTrabajoId });
+        }
+
+        private ViewResult ErrorOperacion(string mensaje, bool cliente = false)
+        {
+            Response.StatusCode = StatusCodes.Status400BadRequest;
+            ViewData["EsCliente"] = cliente;
+            return View("ErrorOperacion", mensaje);
         }
 
         private bool UsuarioId(out int usuarioId) =>
