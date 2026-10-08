@@ -53,7 +53,7 @@
     }
     else
     {
-        <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver</a>
+        <a asp-controller="Account" asp-action="Inicio" class="btn btn-secondary">Volver</a>
     }
     <a asp-action="RegistrarPago" asp-route-facturaId="@factura.Id" class="btn btn-outline-primary">Actualizar saldo</a>
     @if (await Permisos.TienePermisoAsync(usuarioId, "PAGO_VER"))

@@ -11,6 +11,22 @@ namespace MecaniCar360.Tests;
 
 public class NavegacionCierreTests
 {
+    [Theory]
+    [InlineData("Views/Account/AccesoDenegado.cshtml")]
+    [InlineData("Views/Factura/RegistrarPago.cshtml")]
+    [InlineData("Views/Auditoria/Index.cshtml")]
+    public void RetornoGeneral_NoExigePermisoDashboard(string archivo)
+    {
+        var vista = Fuente(archivo);
+        Assert.Contains("asp-controller=\"Account\" asp-action=\"Inicio\"", vista);
+        Assert.DoesNotContain("asp-controller=\"Dashboard\"", vista);
+        if (archivo.Contains("RegistrarPago"))
+        {
+            Assert.Contains("asp-action=\"PorId\"", vista);
+            Assert.Contains("FACTURA_VER", vista);
+        }
+    }
+
     private static string Fuente(string ruta)
     {
         var directorio = new DirectoryInfo(AppContext.BaseDirectory);
