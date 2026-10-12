@@ -50,7 +50,7 @@ public sealed class AltaClienteService
                 return ServiceResult<ClienteOperativoViewModel>.Error("Ya existe una persona con ese DNI. Revise el registro existente.");
             if (datos.Email != null)
             {
-                var email = datos.Email.ToUpperInvariant();
+                var email = MecaniCar360.Helpers.IdentificadorCuenta.ClaveEmailInvariante(datos.Email);
                 if (await _db.Personas.AnyAsync(p => p.Email != null && p.Email.Trim().ToUpper() == email) ||
                     await _db.Usuarios.AnyAsync(u => u.EmailLogin.Trim().ToUpper() == email))
                     return ServiceResult<ClienteOperativoViewModel>.Error("El email ya está registrado. Revise el registro existente.");

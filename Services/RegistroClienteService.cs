@@ -31,7 +31,7 @@ public sealed class RegistroClienteService(MecaniCarContext db, IdentidadCliente
             await using (var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable))
             {
                 await identidad.BloquearEmailAsync(model.Email);
-                var email = model.Email.ToUpperInvariant();
+                var email = IdentificadorCuenta.ClaveEmailInvariante(model.Email);
                 cuentaExistente = await db.Usuarios.Where(u => u.EmailLogin.Trim().ToUpper() == email)
                     .Select(u => (int?)u.Id).SingleOrDefaultAsync();
                 if (!cuentaExistente.HasValue)

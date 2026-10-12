@@ -15,7 +15,7 @@ public sealed class IdentidadClienteService(MecaniCarContext db)
     {
         // Un mutex por email normalizado, sin datos personales en el nombre del lock.
         var recurso = "MecaniCar360.Onboarding." + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(
-            System.Text.Encoding.UTF8.GetBytes(email.Trim().ToUpperInvariant())));
+            System.Text.Encoding.UTF8.GetBytes(MecaniCar360.Helpers.IdentificadorCuenta.ClaveEmailInvariante(email))));
         return db.Database.ExecuteSqlInterpolatedAsync($"DECLARE @r int; EXEC @r = sys.sp_getapplock @Resource={recurso}, @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=10000; IF @r < 0 THROW 51001, 'Operacion ocupada.', 1;");
     }
 }

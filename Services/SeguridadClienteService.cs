@@ -90,7 +90,7 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
 
     public async Task SolicitarRecuperacionAsync(string email)
     {
-        var normalizado = IdentificadorCuenta.Normalizar(email).ToUpperInvariant();
+        var normalizado = IdentificadorCuenta.ClaveEmailInvariante(IdentificadorCuenta.Normalizar(email));
         if (!IdentificadorCuenta.EmailValido(normalizado)) return;
         try
         {
@@ -106,7 +106,7 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
 
     public Task<bool> SolicitarPasswordAsync(int actor) => EmitirEnlaceAsync(actor, false);
 
-    private static string HashEmail(string email) => TokenInvitacion.Hash(email.Trim().ToUpperInvariant());
+    private static string HashEmail(string email) => TokenInvitacion.Hash(IdentificadorCuenta.ClaveEmailInvariante(email));
     private bool Disponible() => db.Database.CurrentTransaction == null && !db.ChangeTracker.HasChanges();
     private async Task BloquearPersonaAsync(int personaId) => await db.Personas.FromSqlInterpolated(
         $"SELECT * FROM [Personas] WITH (UPDLOCK,HOLDLOCK) WHERE [Id]={personaId}").AsNoTracking().SingleAsync();
