@@ -436,8 +436,11 @@ namespace MecaniCar360.Services
                     "No posee permisos para confirmar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            // El inicio adquiere el mutex DVH/DVV antes del bloqueo del turno.
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await _context.Turnos.FromSqlInterpolated(
+                $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}").FirstOrDefaultAsync();
+            if (turno != null) await _context.Entry(turno).ReloadAsync();
 
             if (turno == null)
             {
@@ -465,6 +468,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("TURNO_CONFIRMADO", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
 
             return ServiceResult.Ok(
                 "Turno confirmado correctamente.");
@@ -618,8 +622,11 @@ namespace MecaniCar360.Services
                     "No posee permisos para modificar turnos.");
             }
 
-            var turno = await _context.Turnos
-                .FirstOrDefaultAsync(t => t.Id == turnoId);
+            // El inicio adquiere el mutex DVH/DVV antes del bloqueo del turno.
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var turno = await _context.Turnos.FromSqlInterpolated(
+                $"SELECT * FROM [Turnos] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {turnoId}").FirstOrDefaultAsync();
+            if (turno != null) await _context.Entry(turno).ReloadAsync();
 
             if (turno == null)
             {
@@ -653,6 +660,7 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("CLIENTE_AUSENTE", "Turno", turno.Id, usuarioId);
             await _context.SaveChangesAsync();
+            await tx.CommitAsync();
 
             return ServiceResult.Ok(
                 "Cliente marcado como ausente.");
