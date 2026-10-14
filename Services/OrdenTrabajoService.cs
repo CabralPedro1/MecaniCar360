@@ -406,10 +406,12 @@ namespace MecaniCar360.Services
                     "La persona seleccionada no es un mecánico activo.");
             }
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .FirstOrDefaultAsync(o =>
-                        o.Id == ordenTrabajoId);
+            // Adquirir el bloqueo de integridad antes de leer la disponibilidad,
+            // en el mismo orden que la asignacion administrativa.
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}").FirstOrDefaultAsync();
+            if (orden != null) await _context.Entry(orden).ReloadAsync();
 
             if (orden == null)
             {
@@ -448,6 +450,8 @@ namespace MecaniCar360.Services
 
             _auditoria.RegistrarOperacion("MECANICO_ASIGNADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId, $"Mecánico #{orden.MecanicoId}.");
             await _context.SaveChangesAsync();
+
+            await tx.CommitAsync();
 
             return ServiceResult.Ok(
                 "Orden tomada correctamente.");
