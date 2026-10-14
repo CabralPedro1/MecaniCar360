@@ -341,6 +341,11 @@ namespace MecaniCar360.Services
             // EVITAR TURNO DUPLICADO
             // ---------------------------------
 
+            // El interceptor de integridad adquiere el mutex de escritura al iniciar
+            // la transaccion. Validar duplicados y cupo despues de obtenerlo evita
+            // confirmar reservas basadas en lecturas anteriores a otra alta.
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+
             var tieneTurnoActivo = vehiculoId.HasValue && await _context.Turnos
                 .AnyAsync(t =>
                     t.VehiculoId == vehiculoId.Value &&
@@ -387,7 +392,6 @@ namespace MecaniCar360.Services
                         : observaciones.Trim()
             };
 
-            await using var transaction = await _context.Database.BeginTransactionAsync();
             _context.Turnos.Add(turno);
 
             await _context.SaveChangesAsync();
