@@ -171,7 +171,11 @@ namespace MecaniCar360.Services
                     .FirstOrDefaultAsync(t =>
                         t.Id == model.TurnoId);
 
-                if (turno == null)
+                // La consulta bloqueada puede devolver una instancia ya rastreada.
+                // Refrescar sus valores persistidos antes de validar el estado.
+                if (turno != null) await _context.Entry(turno).ReloadAsync();
+
+                if (turno == null || _context.Entry(turno).State == EntityState.Detached)
                 {
                     return ServiceResult<OrdenTrabajo>.Error(
                         "Turno no encontrado.");
