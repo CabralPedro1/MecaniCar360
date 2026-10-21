@@ -4,14 +4,21 @@ namespace MecaniCar360.Services;
 
 public static class ArranqueIntegridad
 {
-    public static async Task EjecutarAsync(IntegridadService verificador, EstadoIntegridad estado, Action inicializar)
+    public static Task EjecutarAsync(IntegridadService verificador, EstadoIntegridad estado, Action inicializar,
+        bool omitirInicializacion = false) =>
+        EjecutarAsync(() => verificador.VerificarAsync(), estado, inicializar, omitirInicializacion);
+
+    // Permite probar la secuencia de arranque sin abrir una conexión SQL.
+    public static async Task EjecutarAsync(Func<Task<ResultadoIntegridad>> verificar, EstadoIntegridad estado,
+        Action inicializar, bool omitirInicializacion = false)
     {
-        var previo = await verificador.VerificarAsync();
+        var previo = await verificar();
         if (!previo.EsValida) { estado.Comprometer(previo.Errores); return; }
         try
         {
-            inicializar();
-            var posterior = await verificador.VerificarAsync();
+            // Sólo omite migraciones/seed/bootstrap; nunca la verificación de integridad.
+            if (!omitirInicializacion) inicializar();
+            var posterior = await verificar();
             if (posterior.EsValida) estado.ConfirmarValida(); else estado.Comprometer(posterior.Errores);
         }
         catch

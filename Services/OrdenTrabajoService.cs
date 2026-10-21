@@ -311,6 +311,10 @@ namespace MecaniCar360.Services
         // ORDEN_ASIGNAR_MECANICO; destinatario elegible como mec?nico.
         // =====================================================
 
+        private static IQueryable<Usuario> AdministradoresParaAsignacion(IQueryable<Usuario> usuarios) =>
+            usuarios.Where(u => u.Activo && u.Persona.Activo && u.Persona.Roles.Any(r =>
+                r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == RolesSistema.ADMIN));
+
         public async Task<ServiceResult>
             AsignarMecanicoAsync(
                 int ordenTrabajoId,
@@ -320,13 +324,18 @@ namespace MecaniCar360.Services
             var usuario = await ObtenerUsuarioAutorizadoAsync(
                 usuarioSolicitanteId, "ORDEN_ASIGNAR_MECANICO");
 
-            if (usuario == null)
+            if (usuario == null || !await AdministradoresParaAsignacion(_context.Usuarios.AsNoTracking())
+                .AnyAsync(u => u.Id == usuarioSolicitanteId))
                 return ServiceResult.Error(
                     "Usuario inactivo o sin permisos para esta operación.");
 
             await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
             {
+                if (!await AdministradoresParaAsignacion(_context.Usuarios.AsNoTracking())
+                    .AnyAsync(u => u.Id == usuarioSolicitanteId))
+                    return ServiceResult.Error("Usuario inactivo o sin permisos para esta operación.");
+
                 var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
                     $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}").FirstOrDefaultAsync();
                 if (orden != null) await _context.Entry(orden).ReloadAsync();

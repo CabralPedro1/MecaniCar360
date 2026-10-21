@@ -16,7 +16,7 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | AccountController | Login (conv.) | Excepción: público / autenticación | Credenciales; anónimo | Excepción documentada |
 | AccountController | Login (POST) | Excepción: público / autenticación | Credenciales; anónimo | Excepción documentada |
 | AccountController | Logout (POST) | Excepción: cuenta propia | Cuenta autenticada; identidad por NameIdentifier | Excepción documentada |
-| DashboardController | Index (GET) | (CLIENTE_TURNO_VER OR CLIENTE_PRESUPUESTO_VER OR ORDEN_VER OR TURNO_VER OR FACTURA_VER OR STOCK_ALERTAS OR PAGO_VER) | Patentes por bloque; cliente propio / mecánico asignado | OK (código) |
+| DashboardController | Index (GET) | DASHBOARD_VER | Destino administrativo; otros perfiles usan Account/Inicio y sus entradas autorizadas | Revisado estáticamente 15/10/2026 |
 | DiagnosticoController | Guardar (POST) | (DIAGNOSTICO_CREAR OR DIAGNOSTICO_MODIFICAR) | Mecánico asignado o ADMIN; patente específica en service | OK (código) |
 | DiagnosticoController | Historial (GET) | (DIAGNOSTICO_HISTORIAL) | Mecánico asignado o ADMIN; patente específica en service | OK (código) |
 | DiagnosticoController | Iniciar (POST) | (DIAGNOSTICO_CREAR) | Mecánico asignado o ADMIN; patente específica en service | OK (código) |
@@ -42,7 +42,6 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | GarantiaController | Propia (GET) | (GARANTIA_VER_PROPIA) | Cliente de la OT | OK (código) |
 | HomeController | Error (conv.) | Excepción: público / autenticación | Sin datos funcionales; público | Excepción documentada |
 | HomeController | Index (conv.) | Excepción: público / autenticación | Sin datos funcionales; público | Excepción documentada |
-| HomeController | Privacy (conv.) | Excepción: público / autenticación | Sin datos funcionales; público | Excepción documentada |
 | IngresoVehiculoController | Detalle (GET) | (INGRESO_VER) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
 | IngresoVehiculoController | EnTaller (GET) | (INGRESO_VER) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
 | IngresoVehiculoController | PorTurno (GET) | (INGRESO_VER) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
@@ -64,7 +63,7 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | ModeloController | Index (conv.) | (VEHICULO_VER) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
 | OrdenTrabajoController | ActualizarCostoDiagnostico (POST) | (ORDEN_MODIFICAR) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
 | OrdenTrabajoController | ActualizarObservaciones (POST) | (ORDEN_MODIFICAR) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
-| OrdenTrabajoController | AsignarMecanico (POST) | (ORDEN_ASIGNAR_MECANICO) | Patente específica; reglas de asignación / entrega | OK (código) |
+| OrdenTrabajoController | AsignarMecanico (POST) | (ORDEN_ASIGNAR_MECANICO) | Solo ADMIN efectivo, revalidado en servicio bajo transaccion; CAJA no asigna aunque posea la patente | Implementado; prueba SQL/HTTP pendiente |
 | OrdenTrabajoController | CambiarUrgencia (POST) | (ORDEN_MODIFICAR) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
 | OrdenTrabajoController | DeMecanico (conv.) | (ORDEN_VER) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
 | OrdenTrabajoController | Detalle (conv.) | (ORDEN_VER_DETALLE) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
@@ -72,11 +71,11 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | OrdenTrabajoController | Finalizar (POST) | (ORDEN_FINALIZAR) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
 | OrdenTrabajoController | Index (conv.) | (ORDEN_VER) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
 | OrdenTrabajoController | IniciarReparacion (POST) | (ORDEN_CAMBIAR_ESTADO) | Consulta según alcance; operación técnica exige mecánico asignado o ADMIN | OK (código) |
-| OrdenTrabajoController | MecanicosDisponibles (conv.) | (ORDEN_ASIGNAR_MECANICO) | Patente específica; reglas de asignación / entrega | OK (código) |
+| OrdenTrabajoController | MecanicosDisponibles (conv.) | (ORDEN_ASIGNAR_MECANICO) | Consulta auxiliar de asignación directa por ADMIN; control implementado por patente | Misma salvedad de AsignarMecanico |
 | OrdenTrabajoController | MisOrdenes (GET) | (CLIENTE_ORDEN_VER) | Cliente de la OT | OK (código) |
 | OrdenTrabajoController | Pendientes (conv.) | (ORDEN_VER) | Reglas de toma / órdenes disponibles | OK (código) |
 | OrdenTrabajoController | Propia (GET) | (CLIENTE_ORDEN_VER) | Cliente de la OT | OK (código) |
-| OrdenTrabajoController | TomarOrden (POST) | (ORDEN_MODIFICAR) | Reglas de toma / órdenes disponibles | OK (código) |
+| OrdenTrabajoController | TomarOrden (POST) | (ORDEN_MODIFICAR) | MECANICO activo toma voluntariamente OT pendiente sin asignar; reintento del mismo mecánico es idempotente; no sobrescribe a otro | OK por inspección; no nueva prueba ejecutada |
 | PersonaController | Activar (POST) | (PERSONA_DESACTIVAR) | Por patente; personas ADMIN y asignación ADMIN restringidas | OK (código) |
 | PersonaController | AdministrarRoles (conv.) | (PERSONA_VER) AND (ROL_VER) | Por patente; personas ADMIN y asignación ADMIN restringidas | OK (código) |
 | PersonaController | AsignarRol (POST) | (ROL_MODIFICAR) | Por patente; personas ADMIN y asignación ADMIN restringidas | OK (código) |
@@ -89,7 +88,7 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | PersonaController | Index (conv.) | (PERSONA_VER) | Por patente; personas ADMIN y asignación ADMIN restringidas | OK (código) |
 | PersonaController | QuitarRol (POST) | (ROL_MODIFICAR) | Por patente; personas ADMIN y asignación ADMIN restringidas | OK (código) |
 | PresupuestoController | AgregarItem (POST) | (PRESUPUESTO_MODIFICAR) | Mecánico asignado o ADMIN | OK (código) |
-| PresupuestoController | Aprobar (POST) | (CLIENTE_PRESUPUESTO_APROBAR) | Cliente de la OT o ADMIN; versión vigente al decidir | OK (código) |
+| PresupuestoController | Aprobar (POST) | (CLIENTE_PRESUPUESTO_APROBAR) | Solo CLIENTE habilitado propietario, sin perfil interno activo; version vigente al decidir | Implementado; prueba SQL/HTTP pendiente |
 | PresupuestoController | Crear (POST) | (PRESUPUESTO_CREAR) | Mecánico asignado o ADMIN | OK (código) |
 | PresupuestoController | Detalle (GET) | (PRESUPUESTO_VER) | Mecánico asignado o ADMIN | OK (código) |
 | PresupuestoController | EliminarItem (POST) | (PRESUPUESTO_MODIFICAR) | Mecánico asignado o ADMIN | OK (código) |
@@ -97,7 +96,7 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 | PresupuestoController | Obtener (GET) | (PRESUPUESTO_VER) | Mecánico asignado o ADMIN | OK (código) |
 | PresupuestoController | ObtenerPropio (GET) | (CLIENTE_PRESUPUESTO_VER) | Cliente de la OT o ADMIN; versión vigente al decidir | OK (código) |
 | PresupuestoController | Propio (GET) | (CLIENTE_PRESUPUESTO_VER) | Cliente de la OT o ADMIN; versión vigente al decidir | OK (código) |
-| PresupuestoController | Rechazar (POST) | (CLIENTE_PRESUPUESTO_RECHAZAR) | Cliente de la OT o ADMIN; versión vigente al decidir | OK (código) |
+| PresupuestoController | Rechazar (POST) | (CLIENTE_PRESUPUESTO_RECHAZAR) | Solo CLIENTE habilitado propietario, sin perfil interno activo; version vigente al decidir | Implementado; prueba SQL/HTTP pendiente |
 | ProveedorController | CambiarEstado (POST) | (PROVEEDOR_DESACTIVAR) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
 | ProveedorController | Crear (conv.) | (PROVEEDOR_CREAR) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
 | ProveedorController | Crear (POST) | (PROVEEDOR_CREAR) | Operación por patente; sin autoridad desde IDs del formulario | OK (código) |
@@ -164,7 +163,7 @@ Revisión de código y pruebas en memoria. Las familias actuales de CAJA se cons
 
 - Account: Login valida credenciales; CompletarDatos y CambiarContraseña sólo reciben como autoridad el UsuarioId resuelto de Claims, verifican Usuario/Persona activos y conservan las validaciones existentes. Logout sólo cierra la cuenta actual. No hay patente funcional equivalente necesaria para operar la cuenta propia.
 - Home: páginas públicas sin consultas de recursos funcionales.
-- Dashboard: no se creó una patente nueva; cada bloque exige su patente. La vista utiliza las decisiones del controller y no claims de rol como autorización.
+- Dashboard: Index exige DASHBOARD_VER. Account/Inicio resuelve el destino según patentes efectivas; no se amplían permisos para permitir el Dashboard a otros perfiles. Esta actualización documental no certifica recorridos autenticados.
 - Marca/Modelo: catálogos vehiculares. Consultas con VEHICULO_VER; selectores también admiten VEHICULO_CREAR/MODIFICAR; mantenimiento con VEHICULO_MODIFICAR.
 - Calificación: no existe controller. ObtenerPorOrdenTrabajoAsync usa CLIENTE_ORDEN_VER y ownership; ObtenerTodasAsync usa ORDEN_VER y limita al mecánico; CrearAsync usa la nueva CLIENTE_CALIFICACION_CREAR, porque una consulta de orden no equivale a escribir una calificación. Conserva la regla de orden entregada, una calificación y titularidad vigente; agrega cliente de la OT e identidad desde Usuario. La nueva patente se asocia a MIS_ORDENES en el seed.
 - Garantía: GARANTIA_VER_PROPIA ya existía; se agrega su asociación a MIS_ORDENES. No se concede la familia administrativa GARANTIAS al cliente.

@@ -310,7 +310,8 @@ namespace MecaniCar360
                 ArranqueIntegridad.EjecutarAsync(
                     scope.ServiceProvider.GetRequiredService<IntegridadService>(),
                     scope.ServiceProvider.GetRequiredService<EstadoIntegridad>(),
-                    () => InicializadorBD.Inicializar(context, builder.Configuration)).GetAwaiter().GetResult();
+                    () => InicializadorBD.Inicializar(context, builder.Configuration),
+                    omitirInicializacion: builder.Configuration.GetValue<bool>("Arranque:ModoAceptacion")).GetAwaiter().GetResult();
             }
 
 

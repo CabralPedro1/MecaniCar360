@@ -237,9 +237,7 @@ namespace MecaniCar360.Services
             var solicitante = await UsuarioAutorizadoAsync(usuarioId,
                 aprobar ? "CLIENTE_PRESUPUESTO_APROBAR" : "CLIENTE_PRESUPUESTO_RECHAZAR");
             if (solicitante == null) return ErrorAcceso();
-            if (!await _permisos.EsAdministradorAsync(usuarioId) &&
-                !await _context.PresupuestoVersiones.AnyAsync(v => v.Id == versionId &&
-                    v.Presupuesto.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId == solicitante.PersonaId))
+            if (!await ClienteDecisorAsync(solicitante, versionId))
                 return ErrorAcceso();
             if (!aprobar && (string.IsNullOrWhiteSpace(motivo) || motivo.Trim().Length > 1000))
                 return ServiceResult<PresupuestoOperacion>.Error("Indique un motivo de rechazo de hasta 1000 caracteres.");
@@ -249,7 +247,7 @@ namespace MecaniCar360.Services
             {
                 var usuario = await UsuarioAutorizadoAsync(usuarioId,
                     aprobar ? "CLIENTE_PRESUPUESTO_APROBAR" : "CLIENTE_PRESUPUESTO_RECHAZAR");
-                if (usuario == null || !await PropietarioAsync(orden, usuario)) return ErrorAcceso();
+                if (usuario == null || !await ClienteDecisorAsync(usuario, versionId)) return ErrorAcceso();
                 var version = await _context.PresupuestoVersiones
                     .Include(v => v.Items).Include(v => v.Presupuesto).FirstOrDefaultAsync(v => v.Id == versionId);
                 if (version == null || !Editable(orden) || orden.EstadoActual != EstadoOrden.EsperandoAprobacion ||
@@ -368,6 +366,21 @@ namespace MecaniCar360.Services
             orden.MecanicoId == usuario.PersonaId && await _context.PersonaRoles.AnyAsync(pr =>
                 pr.PersonaId == usuario.PersonaId && pr.Persona.Activo && pr.FechaBaja == null &&
                 pr.Rol.Activo && pr.Rol.Nombre == RolesSistema.MECANICO);
+
+        // Exclusivo de decisiones; las consultas conservan su autorización administrativa.
+        private static IQueryable<Usuario> ClientesParaDecision(IQueryable<Usuario> usuarios, int clienteId) =>
+            usuarios.Where(u => u.PersonaId == clienteId && u.Activo && u.Persona.Activo &&
+                u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == RolesSistema.CLIENTE) &&
+                !u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre != RolesSistema.CLIENTE));
+
+        private async Task<bool> ClienteDecisorAsync(Usuario usuario, int versionId)
+        {
+            var clienteId = await _context.PresupuestoVersiones.AsNoTracking().Where(v => v.Id == versionId)
+                .Select(v => (int?)v.Presupuesto.OrdenTrabajo.IngresoVehiculo.Turno.ClienteId).FirstOrDefaultAsync();
+            return clienteId.HasValue &&
+                await ClientesParaDecision(_context.Usuarios.AsNoTracking(), clienteId.Value).AnyAsync(u => u.Id == usuario.Id) &&
+                await new ClienteHabilitadoService(_context).EstaHabilitadoAsync(usuario.PersonaId);
+        }
 
         private async Task<bool> PropietarioAsync(OrdenTrabajo orden, Usuario usuario) =>
             await _permisos.EsAdministradorAsync(usuario.Id) ||

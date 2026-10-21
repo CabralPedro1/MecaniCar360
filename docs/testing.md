@@ -1,5 +1,7 @@
 # BLOQUE 12 — Tests académicos
 
+> Referencia histórica del bloque original. Estado vigente al 15/10/2026: 221 pruebas no SQL aprobadas, 0 fallos; build 0 errores y 26 CS8618. Los recuentos originales siguientes no describen la suite completa actual. Ver [operación local](OPERACION-LOCAL-1.0.md), [advertencias](ADVERTENCIAS-1.0.md) y [aceptación pendiente](ACEPTACION-1.0.md). Ejecutar la suite actual con `--filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests'`; no ejecutar integración SQL implícitamente.
+
 ## 1. Objetivo y estrategia
 
 Dejar una batería permanente, reproducible y trazable que demuestre pruebas unitarias, caja negra con partición de equivalencia y valores límite, y caja blanca mediante camino básico. Se seleccionaron reglas existentes; no se cambiaron reglas para facilitar los tests. Esta suite no reemplaza las aceptaciones funcionales de los bloques anteriores ni afirma cobertura total.
