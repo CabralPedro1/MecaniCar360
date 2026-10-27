@@ -1,6 +1,18 @@
 # BLOQUE 12 — Tests académicos
 
-> Referencia histórica del bloque original. Estado vigente al 15/10/2026: 221 pruebas no SQL aprobadas, 0 fallos; build 0 errores y 26 CS8618. Los recuentos originales siguientes no describen la suite completa actual. Ver [operación local](OPERACION-LOCAL-1.0.md), [advertencias](ADVERTENCIAS-1.0.md) y [aceptación pendiente](ACEPTACION-1.0.md). Ejecutar la suite actual con `--filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests'`; no ejecutar integración SQL implícitamente.
+## Referencia vigente — 27/10/2026
+
+Código inspeccionado: `master`, `8e17456`. Último resultado ejecutado registrado: **248 pruebas no SQL aprobadas, 0 fallos**, build sin errores y 26 CS8618 existentes; incluye 27 casos de `AutorizacionOperacionesP1Tests`. No se ejecutó de nuevo en esta actualización documental. La comparación modelo/snapshot forma parte de la suite; no prueba las migraciones aplicadas ni la integridad de una base.
+
+La suite actual combina comportamiento de componentes, filtros en memoria, metadatos/traducción EF sin conexión y comprobaciones estructurales. Los tests que leen fuentes no equivalen a operaciones HTTP/SQL completas. La aceptación está en [ACEPTACION-1.0.md](ACEPTACION-1.0.md).
+
+Ejecutar sólo el proyecto principal con `--filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests'` para la suite no SQL. Onboarding SQL es opt-in y escribe fixtures en la base habitual autorizada: no comparte el aislamiento del [harness de concurrencia](../tests/MecaniCar360.ConcurrencyTests/README.md). Sus 28 escenarios siguen sin ejecutar; preparación y ejecución necesitan autorización separada. B1 no acredita espera observada en SQL.
+
+## Antecedente histórico: bloque académico original
+
+Los checkpoints, herramientas de ejecución y resultados de las secciones numeradas siguientes corresponden al bloque original y a sus actualizaciones fechadas; no son el inventario ni el resultado completo vigente.
+
+> Referencia histórica del bloque original. Resultado historico del 15/10/2026: 221 pruebas no SQL aprobadas, 0 fallos; build 0 errores y 26 CS8618. Los recuentos originales siguientes no describen la suite completa actual. Ver [operación local](OPERACION-LOCAL-1.0.md), [advertencias](ADVERTENCIAS-1.0.md) y [aceptación pendiente](ACEPTACION-1.0.md). Ejecutar la suite actual con `--filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests'`; no ejecutar integración SQL implícitamente.
 
 ## 1. Objetivo y estrategia
 

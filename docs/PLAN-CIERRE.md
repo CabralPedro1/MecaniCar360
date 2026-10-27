@@ -1,11 +1,25 @@
 # MecaniCar360 1.0 — Plan de cierre
 
-> Actualizacion P1: la auditoria posterior identifico dos discrepancias de autorizacion (asignacion directa de OT y decision de presupuesto). Ambas estan corregidas localmente en los servicios, sin cambios en permisos ni datos. Build: 0 errores, 26 CS8618 existentes; suite no SQL: 248 aprobadas, incluidas 27 regresiones nuevas. Pendiente validacion SQL/HTTP autorizada de operaciones completas y ausencia de efectos ante rechazo. Esta actualizacion prevalece sobre las conclusiones historicas de ausencia de P1 de las secciones anteriores.
+## Estado vigente
+
+Actualización documental: **27/10/2026**, código de referencia `master`, **`8e17456`**. El repositorio estaba limpio al comenzar esta tarea. Las correcciones de autorización P1 y el modo de aceptación ya están versionados; no son archivos locales pendientes. No se consultó el remoto ni se certifica su sincronización.
+
+- Última ejecución registrada: build CierreB sin errores, 26 CS8618 existentes; **248 pruebas no SQL aprobadas**, 0 fallos, incluyendo 27 regresiones P1. Es evidencia de la sesión de corrección, no una ejecución del 27/10 ni una certificación E2E del commit actual.
+- ADMIN efectivo asigna directamente; MECANICO toma OT disponibles; CAJA recibe y genera OT. Sólo CLIENTE habilitado propietario decide presupuestos; ADMIN conserva consulta autorizada.
+- Pendiente: aceptación funcional y visual por perfiles, POST y persistencia real de los negativos P1, servicios externos y reproducibilidad de la guía local. Usar los IDs existentes de ACEPTACION, sin repetir auditorías generales.
+- Los 28 escenarios SQL están escritos, **no ejecutados**; B1 permanece documentado. Su ejecución requiere autorización independiente. No se consultó la base ni se verificó su integridad actual en esta tarea.
+- Esta actualización sólo revisó documentación y código fuente. No ejecutó build, tests, host, migraciones, seeds ni SQL.
+
+Las secciones siguientes conservan inventario, tareas y antecedentes. Los resultados de 212/221 pruebas, referencias a `4ebf977`, commits locales y conclusiones de ausencia de P1 corresponden a sesiones anteriores; **no sustituyen este estado vigente**. Las matrices de aceptación siguen pendientes salvo evidencia individual registrada.
+
+### Antecedentes históricos de preparación y corrección
+
+> Actualizacion P1: la auditoria posterior identifico dos discrepancias de autorizacion (asignacion directa de OT y decision de presupuesto). En aquella sesion ambas quedaron corregidas localmente en los servicios, sin cambios en permisos ni datos. Build: 0 errores, 26 CS8618 existentes; suite no SQL: 248 aprobadas, incluidas 27 regresiones nuevas. Pendiente validacion SQL/HTTP autorizada de operaciones completas y ausencia de efectos ante rechazo. Esta actualizacion prevalece sobre las conclusiones historicas de ausencia de P1 de las secciones anteriores.
 
 Fecha de actualización: 15/10/2026. Base inspeccionada: `master`, commit `4ebf977`, más cambios locales de arranque de aceptación.
 Documento principal de entrega. Reemplaza como referencia de estado actual los recuentos y pendientes históricos de bloques; no reemplaza los procedimientos técnicos de backup e integridad. La matriz ejecutable está en [ACEPTACION-1.0.md](ACEPTACION-1.0.md); no duplicar sus casos.
 
-### Actualización comprobada en esta revisión
+### Evidencia historica de la revision del 15/10
 
 **Avance autónomo completado el 15/10:** D4 documental preparado en [OPERACION-LOCAL-1.0.md](OPERACION-LOCAL-1.0.md); H02 corregido en seguridad-autorizacion/testing; matriz manual conservada y enlazada en ACEPTACION; 26 warnings clasificados en [ADVERTENCIAS-1.0.md](ADVERTENCIAS-1.0.md). No se justificó una corrección productiva adicional. Build nuevo CierreDoc: 0 errores/26 CS8618; suite no SQL: 221 PASS/0 FAIL/0 SKIP seleccionados; modelo/snapshot PASS. No se ejecutó SQL ni navegador. D4 sólo requiere incorporar resultados reales futuros y confirmación de reproducibilidad por otro operador.
 
@@ -26,13 +40,13 @@ El sistema tiene implementado el recorrido del taller y sus módulos administrat
 
 El trabajo obligatorio restante estimado es **13–24 horas-persona**, más una reserva condicionada de 2–4 horas sólo si aparecen defectos reproducibles. Supone disponibilidad de cuentas ficticias autorizadas, navegador y responsables del entorno SQL/correo. Las esperas de permisos o consentimiento no están incluidas. Si aparece un P0/P1, se estima y corrige ese defecto; no se abre una refactorización general.
 
-Los cinco commits locales anteriores se conservan: `466755c`, `031c1df`, `2103734`, `0227695`, `229c67d`. No se publicaron durante este relevamiento.
+Antecedente historico: se conservaron entonces los cinco commits locales: `466755c`, `031c1df`, `2103734`, `0227695`, `229c67d`. No se publicaron durante este relevamiento.
 
 ## 2. Alcance, evidencia y límites
 
 Se inventariaron 32 controllers, 132 archivos Razor (incluidos layouts y partials), servicios, rutas/atributos, DI, navegación, CSS/JavaScript locales, pruebas, scripts y documentación. Se revisaron especialmente los puntos de conexión del CORE, permisos, facturación/entrega y el harness. Es una revisión estática orientada al cierre, no una prueba exhaustiva de cada rama ni una auditoría de penetración.
 
-Evidencia obtenida en esta sesión:
+Evidencia historica obtenida en la sesion del 15/10:
 
 | Comprobación | Resultado | Qué demuestra / qué no demuestra |
 |---|---|---|
@@ -203,7 +217,7 @@ La guía D4 cubre los puntos siguientes; falta su ensayo por otro operador y ane
 - Backup/restauración: preservar también archivos de evidencias, secretos/configuración y versión de código por vías seguras; responsables y ubicación de incidentes. Mantener scripts existentes; no construir una consola nueva.
 - Evidencia de pruebas asociada al commit final, 26 warnings conocidos, límites de integridad y de B1; soporte básico para SMTP, OAuth y permisos.
 
-### Comandos no destructivos reproducidos en esta revisión
+### Comandos de la ejecucion historica (no repetidos el 27/10)
 
 Desde la raíz; no inician la aplicación ni cargan la base real:
 

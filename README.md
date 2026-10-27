@@ -1,5 +1,7 @@
 # MecaniCar360
 
+> Estado documental al 27/10/2026: referencia de código `master`, `8e17456`. Última ejecución registrada: build sin errores, 26 CS8618 existentes y 248 pruebas no SQL aprobadas. No se repitieron esas ejecuciones en esta actualización documental. La aceptación funcional y visual completa permanece pendiente; ver el [estado vigente](docs/PLAN-CIERRE.md#estado-vigente).
+
 Proyecto académico de Ingeniería en Sistemas para la gestión de un taller mecánico. MecaniCar360 integra la atención al cliente, el trabajo técnico, los repuestos y el circuito administrativo en una aplicación web local.
 
 Su objetivo es centralizar información que suele quedar dispersa entre reservas, registros de vehículos, presupuestos y cobros, conservando trazabilidad y acceso según las responsabilidades de cada usuario. La versión 1.0 está orientada a una entrega académica funcional y demostrable; no se presenta como un producto comercial ni como una instalación preparada para producción.
@@ -26,7 +28,7 @@ Circuito principal: **cliente → vehículo → turno → recepción → OT → 
 | STOCK | Administra repuestos, proveedores, existencias y movimientos |
 | CLIENTE | Consulta y opera sobre sus recursos propios, decide presupuestos y gestiona su acceso |
 
-La autorización se valida en servidor mediante patentes efectivas, estado de cuenta, titularidad y asignación. La regla de asignación anterior es la acordada; la salvedad actual del control por patente está documentada en [seguridad y autorización](docs/seguridad-autorizacion.md).
+La autorizacion se valida en servidor mediante patentes efectivas, estado de cuenta, titularidad y asignacion. ADMIN efectivo es obligatorio para asignar directamente; solo CLIENTE habilitado propietario puede decidir presupuestos. Ver [seguridad y autorizacion](docs/seguridad-autorizacion.md).
 
 ## Tecnologías y arquitectura
 
@@ -97,7 +99,7 @@ El flujo principal y los módulos tienen implementación identificada. El catál
 
 Los **28 escenarios de concurrencia SQL están escritos, pero no ejecutados**. B1 permanece como limitación: las barreras coordinan llamadas, pero no acreditan observación de espera efectiva en SQL Server. Las advertencias de nulabilidad aceptadas y sus límites se explican en [ADVERTENCIAS-1.0.md](docs/ADVERTENCIAS-1.0.md).
 
-La asignación directa se controla actualmente por patente; no hay una comprobación adicional de ADMIN efectivo en el servicio. El seed no concede esa patente a CAJA, pero una concesión posterior a otro perfil permitiría asignar. Esta salvedad no se considera corregida por la descripción de responsabilidades.
+Las dos discrepancias P1 de asignacion y decision de presupuestos estan corregidas y versionadas. Las pruebas no SQL no sustituyen la aceptacion SQL/HTTP de operaciones completas y rechazos sin efectos.
 
 ## Documentación principal
 

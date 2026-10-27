@@ -2,6 +2,20 @@
 
 ## Alcance y límites
 
+### Contrato transaccional del circuito de presupuesto
+
+Referencia estática: `master`, `8e17456`, revisada el 27/10/2026. Este apartado explica el código; no acredita una prueba SQL de rollback o concurrencia.
+
+- **Propietario de la transacción:** `Services/PresupuestoService.cs`, `DecidirAsync`, delega en `EjecutarAsync`. Este último inicia `Serializable`, bloquea la OT con `UPDLOCK, HOLDLOCK`, la refresca y ejecuta la operación. Ante resultado fallido hace rollback y limpia el tracking; ante excepción hace rollback, limpia y devuelve el conflicto reconocido o relanza. Guarda y confirma sólo si la operación termina correctamente.
+- **Autorización y versión:** `DecidirAsync` comprueba CLIENTE habilitado propietario antes y dentro de la operación protegida mediante `ClienteDecisorAsync`. Valida OT en `EsperandoAprobacion`, presupuesto/versiones pendientes, última versión y posibilidad de edición. El helper de consulta `PropietarioAsync` conserva su excepción administrativa; no habilita decisiones.
+- **Participación de stock:** `Services/StockService.Lotes.cs`, `ProcesarAprobacionIncrementalAsync`, exige una transacción `Serializable` existente y participa con el contexto compartido. No debe invocarse como una operación autónoma ni confirmar por su cuenta. Revalida versión/estado, bloquea inventario por repuesto en orden de ID y calcula consumo adicional descontando los egresos ya registrados para esa OT/repuesto. Puede consumir sólo lo disponible y devolver éxito con aviso de faltantes: no confundirlo con rechazo por falta de stock. Las operaciones manuales de stock usan `EjecutarStockAsync`, que sí es dueño de su transacción y rechaza una transacción previa.
+- **Integridad:** `Data/MecaniCarContext.cs` deriva el guardado a `CoordinadorIntegridad.GuardarAsync`. `IntegridadTransactionInterceptor` adquiere el bloqueo global mediante `sp_getapplock` al iniciar la transacción, antes de devolver el control al servicio y de los bloqueos de negocio. El coordinador verifica las tablas protegidas afectadas, comprueba DVH originales, guarda y mantiene DVH/DVV en la misma transacción. La cobertura sigue limitada a las doce tablas listadas abajo; OT y presupuesto no adquieren DVH por participar en este circuito.
+- **Unidad de reversión:** decisión/fecha/actor/motivo de la versión, estado del presupuesto y OT, historial, movimientos y detalles de lote, existencias, auditoría, notificaciones persistidas dentro de la operación y verificadores afectados. Un fallo antes del commit no debe dejar una combinación parcial. Este resultado debe comprobarse con otro contexto en una prueba SQL autorizada; no queda demostrado sólo por leer los bloques try/catch.
+- **Después del commit:** `EjecutarAsync` llama a `OrdenSubject.NotificarAsync` fuera de la transacción. Si falla, registra advertencia y comunica que el cambio ya fue guardado. Ese fallo no revierte el negocio confirmado. No extender la garantía de rollback a efectos externos o posteriores al commit.
+- **Estados y validaciones:** `Patterns/State/OrdenStateService.CambiarEstado` impide cambiar una OT entregada y delega en el handler. No concentra todas las reglas: permisos, asignación, versión aprobada, horas, factura y pagos se comprueban en los servicios de negocio. Cambiar un handler no sustituye revisar `OrdenTrabajoService.IniciarReparacionAsync`, `FinalizarAsync`, `EntregarAsync` y `PresupuestoService.DecidirAsync`.
+
+Para verificar resultados y rechazos usar los criterios complementarios del circuito en [ACEPTACION-1.0.md](ACEPTACION-1.0.md). No cambiar el orden de bloqueos, introducir transacciones anidadas ni reutilizar un contexto fallido al mantener estos métodos.
+
 La integridad detecta alteraciones de los datos y del conjunto de filas de las siguientes doce tablas. No sustituye las restricciones, permisos SQL, auditoría ni backups. SHA-256 no es una firma autenticada: un atacante con control completo de la base que recalcule también los verificadores puede eludir este control.
 
 El registro de `Data/Integridad/RegistroEntidadesProtegidas.cs` define explícitamente este orden de campos:
