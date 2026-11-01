@@ -6,8 +6,9 @@
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
     var consultar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_VER");
 }
-<h2>Editar marca</h2>
-<form asp-action="Editar" method="post">
+<div class="mc-components">
+<header class="mc-page-header"><h2>Editar marca</h2></header>
+<form asp-action="Editar" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
     <input asp-for="Id" type="hidden" />
@@ -19,6 +20,8 @@
     <button type="submit" class="btn btn-primary">Guardar</button>
     @if (consultar) { <a asp-action="Index" class="btn btn-secondary">Volver</a> }
 </form>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

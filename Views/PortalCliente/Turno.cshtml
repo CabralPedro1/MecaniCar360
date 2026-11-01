@@ -3,7 +3,8 @@
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{ ViewData["Title"] = "Mi turno"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
-<h1>Turno #@Model.Id</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Turno #@Model.Id</h1></header>
 <partial name="_Mensajes" />
 <p><strong>Fecha:</strong> @Model.FechaInicio.ToString("dd/MM/yyyy HH:mm")</p>
 <p><strong>Estado:</strong> @(Model.Estado == EstadoTurno.ClienteAusente ? "Cliente ausente" : Model.Estado.ToString())</p>
@@ -15,11 +16,12 @@
     <a asp-action="Orden" asp-route-id="@orden.Id" class="btn btn-outline-primary mb-3">Ver orden de trabajo</a>
 }
 @if (Model.IngresoVehiculo == null && Model.Estado is EstadoTurno.Pendiente or EstadoTurno.Confirmado && await Permisos.TienePermisoAsync(actor, "CLIENTE_TURNO_CANCELAR")) {
-    <form asp-action="CancelarTurno" method="post">
+    <form asp-action="CancelarTurno" method="post" class="mc-form-panel">
         @Html.AntiForgeryToken()
         <input type="hidden" name="id" value="@Model.Id" />
-        <label for="motivo">Motivo de cancelación (opcional)</label>
+        <label for="motivo" class="form-label">Motivo de cancelación (opcional)</label>
         <textarea id="motivo" name="motivo" class="form-control mb-2"></textarea>
         <button type="submit" class="btn btn-warning">Cancelar turno</button>
     </form>
 }
+</div>

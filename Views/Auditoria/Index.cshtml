@@ -1,12 +1,14 @@
 @model List<MecaniCar360.Models.ViewModels.AuditoriaConsultaViewModel>
 @{ ViewData["Title"] = "Auditoría"; }
-<h1>Auditoría</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Auditoría</h1></header>
 @if (Model.Count == 0) { <p>No hay registros.</p> }
 else {
-<div class="table-responsive"><table class="table">
-<thead><tr><th>Fecha/hora</th><th>Actor</th><th>Acción</th><th>Entidad</th><th>ID</th><th>Descripción</th></tr></thead>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table">
+<thead class="mc-table-heading"><tr><th scope="col">Fecha/hora</th><th scope="col">Actor</th><th scope="col">Acción</th><th scope="col">Entidad</th><th scope="col">ID</th><th scope="col">Descripción</th></tr></thead>
 <tbody>@foreach (var r in Model) {
 <tr><td>@r.Fecha.ToString("dd/MM/yyyy HH:mm:ss")</td><td>@(r.Actor ?? "Sin actor registrado")</td><td>@r.Accion</td><td>@r.Entidad</td><td>@r.EntidadId</td><td class="text-break">@r.Descripcion</td></tr>
 }</tbody></table></div>
 }
 <a asp-controller="Account" asp-action="Inicio">Volver al inicio</a>
+</div>

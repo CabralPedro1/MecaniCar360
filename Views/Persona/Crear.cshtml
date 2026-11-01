@@ -3,11 +3,12 @@
     ViewData["Title"] = "Nueva Persona";
 }
 
-<h2>Nueva Persona</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Nueva Persona</h2></header>
 
 <hr />
 
-<form asp-action="Crear" method="post">
+<form asp-action="Crear" method="post" class="mc-form-panel">
 
     @Html.AntiForgeryToken()
 
@@ -107,6 +108,8 @@
     </a>
 
 </form>
+
+</div>
 
 @section Scripts {
 

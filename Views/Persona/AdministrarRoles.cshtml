@@ -2,7 +2,8 @@
 @{
     ViewData["Title"] = "Administrar roles internos";
 }
-<h1>Administrar roles internos</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Administrar roles internos</h1></header>
 <p>@Model.Apellido, @Model.Nombre — DNI: @(Model.Dni ?? "Sin informar")</p>
 <p>@(Model.TieneCuenta ? "Con cuenta de acceso" : "Sin cuenta")</p>
 @if (TempData["Ok"] is string ok) { <div class="alert alert-success" role="status">@ok</div> }
@@ -14,8 +15,8 @@
 }
 else
 {
-    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table">
-        <thead><tr><th>Rol</th><th>Estado del rol</th><th>Operación</th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table">
+        <thead class="mc-table-heading"><tr><th scope="col">Rol</th><th scope="col">Estado del rol</th><th scope="col">Operación</th></tr></thead>
         <tbody>
         @foreach (var rol in Model.RolesActuales)
         {
@@ -41,7 +42,7 @@ else
 @if (Model.PuedeAsignar)
 {
     <h2>Asignar rol interno</h2>
-    <form asp-action="AsignarRol" method="post" class="mb-3">
+    <form asp-action="AsignarRol" method="post" class="mc-form-panel mb-3">
         @Html.AntiForgeryToken()
         <input type="hidden" name="personaId" value="@Model.PersonaId" />
         <label for="rolId" class="form-label">Rol</label>
@@ -55,3 +56,4 @@ else
     </form>
 }
 <a asp-controller="Usuario" asp-action="PersonaCuenta" asp-route-id="@Model.PersonaId" class="btn btn-secondary">Volver a persona y cuenta</a>
+</div>

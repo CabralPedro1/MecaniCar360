@@ -1,7 +1,8 @@
 ﻿@model MecaniCar360.Models.ViewModels.ReportesViewModel
 @using System.Globalization
 @{ ViewData["Title"] = "Reportes"; var es = CultureInfo.GetCultureInfo("es-AR"); var max = Math.Max(1, Model.Estados.Max(e => e.Cantidad)); }
-<h1>Reportes MecaniCar360</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Reportes MecaniCar360</h1></header>
 <p>Desde @Model.Filtro.Desde?.ToString("dd/MM/yyyy") hasta @Model.Filtro.Hasta?.ToString("dd/MM/yyyy") inclusive.</p>
 <a asp-action="Index">Cambiar período</a>
 <a asp-action="Pdf" asp-route-desde="@Model.Filtro.Desde?.ToString("yyyy-MM-dd")" asp-route-hasta="@Model.Filtro.Hasta?.ToString("yyyy-MM-dd")" class="btn btn-outline-primary">Descargar rendimiento PDF</a>
@@ -22,18 +23,19 @@
     <g><text x="5" y="@y">@e.Estado</text><rect x="210" y="@(y - 14)" width="@ancho" height="20" fill="#0d6efd" /><text x="640" y="@y">@e.Cantidad</text></g>
 }
 </svg>
-<table class="table table-sm"><caption>Datos del gráfico</caption><thead><tr><th>Estado</th><th>Órdenes</th></tr></thead><tbody>
+<div class="table-responsive" role="region" aria-label="Datos del gr?fico" tabindex="0"><table class="table table-sm mc-table"><caption>Datos del gráfico</caption><thead class="mc-table-heading"><tr><th scope="col">Estado</th><th scope="col">Órdenes</th></tr></thead><tbody>
 @foreach(var e in Model.Estados) { <tr><td>@e.Estado</td><td>@e.Cantidad</td></tr> }
-</tbody></table></section>
+</tbody></table></div></section>
 <section class="my-4"><h2>Facturación y cobranzas</h2>
 <p>Facturado: facturas emitidas en el período, excluyendo anuladas. Cobrado: pagos confirmados en el período de facturas no anuladas, aunque se emitieran antes. Saldo: pendiente actual de las facturas emitidas en el período, descontando todos sus pagos confirmados.</p>
-<table class="table"><thead><tr><th>Facturas</th><th>Facturado</th><th>Cobrado</th><th>Saldo actual de esas facturas</th></tr></thead><tbody><tr>
+<div class="table-responsive" role="region" aria-label="Facturaci?n y cobranzas" tabindex="0"><table class="table mc-table"><thead class="mc-table-heading"><tr><th scope="col">Facturas</th><th scope="col">Facturado</th><th scope="col">Cobrado</th><th scope="col">Saldo actual de esas facturas</th></tr></thead><tbody><tr>
 <td>@Model.Facturas</td><td>@Model.Facturado.ToString("C2", es)</td><td>@Model.Cobrado.ToString("C2", es)</td><td>@Model.Saldo.ToString("C2", es)</td>
-</tr></tbody></table></section>
+</tr></tbody></table></div></section>
 <section class="my-4"><h2>Conceptos sin repuesto de trabajos finalizados</h2>
 <p>Última versión aprobada de OTs finalizadas en el período y actualmente finalizadas o entregadas. Agrupación por descripción libre: no representa un catálogo normalizado de servicios. Importes presupuestados, no cobros.</p>
 @if(Model.Conceptos.Count == 0) { <p>No hay conceptos para este período.</p> }
-else { <div class="table-responsive"><table class="table"><thead><tr><th>Concepto</th><th>Unidades</th><th>Importe aprobado</th><th>% de unidades</th></tr></thead><tbody>
+else { <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table"><thead class="mc-table-heading"><tr><th scope="col">Concepto</th><th scope="col">Unidades</th><th scope="col">Importe aprobado</th><th scope="col">% de unidades</th></tr></thead><tbody>
 @foreach(var c in Model.Conceptos) { <tr><td class="text-break">@c.Descripcion</td><td>@c.Cantidad</td><td>@c.Importe.ToString("C2", es)</td><td>@c.Porcentaje.ToString("N1")%</td></tr> }
 </tbody></table></div> }
 </section>
+</div>

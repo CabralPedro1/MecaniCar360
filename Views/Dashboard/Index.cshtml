@@ -11,7 +11,8 @@
         ("Facturado este mes", Model.FacturadoMes.ToString("C2", es)), ("Saldo pendiente de cobro", Model.SaldoPendiente.ToString("C2", es))
     };
 }
-<h1 class="mb-4">Dashboard MecaniCar360</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1 class="mb-4">Dashboard MecaniCar360</h1></header>
 <div class="row g-3 mb-4">
 @foreach (var tarjeta in tarjetas) {
     <div class="col-12 col-sm-6 col-xl-3"><div class="card h-100"><div class="card-body">
@@ -39,9 +40,9 @@
         </g>
     }
 </svg>
-<div class="table-responsive"><table class="table table-sm">
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-sm mc-table">
 <caption>Valores del gráfico</caption>
-<thead><tr>@foreach (var m in Model.Meses) { <th scope="col">@m.Mes.ToString("MMMM yyyy", es)</th> }</tr></thead>
+<thead class="mc-table-heading"><tr>@foreach (var m in Model.Meses) { <th scope="col">@m.Mes.ToString("MMMM yyyy", es)</th> }</tr></thead>
 <tbody><tr>@foreach (var m in Model.Meses) { <td>@m.Cantidad</td> }</tr></tbody>
 </table></div>
 </div></section>
@@ -49,13 +50,14 @@
 <h2 class="h4">Actividad reciente</h2>
 @if (Model.Actividad.Count == 0) { <p>No hay actividad disponible para mostrar.</p> }
 else {
-<div class="table-responsive"><table class="table"><thead><tr><th>Fecha</th><th>Actor</th><th>Acción</th><th>Recurso</th></tr></thead><tbody>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table"><thead class="mc-table-heading"><tr><th scope="col">Fecha</th><th scope="col">Actor</th><th scope="col">Acción</th><th scope="col">Recurso</th></tr></thead><tbody>
 @foreach (var a in Model.Actividad) {
 <tr><td>@a.Fecha.ToString("dd/MM/yyyy HH:mm")</td><td>@(a.Actor ?? "Sin actor registrado")</td><td>@a.Accion</td><td>@a.Entidad #@a.EntidadId</td></tr>
 }
 </tbody></table></div>
 }
 </section>
-<section><h2 class="h4">Accesos rápidos</h2><div class="d-flex flex-wrap gap-2">
+<section><h2 class="h4">Accesos rápidos</h2><div class="mc-actions">
 @foreach (var a in Model.Accesos) { <a class="btn btn-outline-primary" asp-controller="@a.Controller" asp-action="@a.Action">@a.Nombre</a> }
 </div></section>
+</div>

@@ -4,10 +4,11 @@
     ViewData["Title"] = "Editar usuario";
 }
 
-<h2>Editar usuario</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Editar usuario</h2></header>
 
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-<form asp-action="Editar" method="post">
+<form asp-action="Editar" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <input asp-for="Id" type="hidden" />
     <div class="mb-3">
@@ -23,3 +24,4 @@
     <button type="submit" class="btn btn-primary">Guardar</button>
     <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
 </form>
+</div>

@@ -6,7 +6,8 @@
     var modificar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
 }
 @{ ViewData["Title"] = "Marcas"; }
-<h2>@ViewData["Title"]</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>@ViewData["Title"]</h2></header>
 @if (TempData["Ok"] != null) { <div class="alert alert-success" role="status">@TempData["Ok"]</div> }
 @if (TempData["Error"] != null) { <div class="alert alert-danger" role="alert">@TempData["Error"]</div> }
 <p>
@@ -16,8 +17,8 @@
 @if (!Model.Any()) { <p>No hay marcas registrados.</p> }
 else
 {
-    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
-        <thead><tr><th>Nombre</th><th>Modelos</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
+        <thead class="mc-table-heading"><tr><th scope="col">Nombre</th><th scope="col">Modelos</th><th scope="col">Estado</th><th scope="col">Acciones</th></tr></thead>
         <tbody>
         @foreach (var item in Model)
         {
@@ -41,3 +42,4 @@ else
         </tbody>
     </table></div>
 }
+</div>

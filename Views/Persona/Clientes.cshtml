@@ -4,13 +4,14 @@
 @{
     ViewData["Title"] = "Clientes";
 }
-<h1>Clientes</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Clientes</h1></header>
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorId) &&
     await Permisos.TienePermisoAsync(actorId, "PERSONA_CREAR"))
 {
     <a asp-action="NuevoCliente" class="btn btn-primary mb-3">Nuevo cliente</a>
 }
-<form asp-controller="Persona" asp-action="Clientes" method="get" class="mb-3">
+<form asp-controller="Persona" asp-action="Clientes" method="get" class="mc-toolbar mb-3">
     <label for="busqueda" class="form-label">Buscar por nombre, apellido, DNI, email o teléfono</label>
     <div class="input-group">
         <input id="busqueda" name="busqueda" value="@Model.Busqueda" class="form-control" type="search" />
@@ -24,9 +25,9 @@
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead><tr><th>Nombre</th><th>Apellido</th><th>DNI</th><th>Teléfono</th><th>Email</th><th>Estado</th><th>Ficha</th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0">
+        <table class="table table-striped mc-table">
+            <thead class="mc-table-heading"><tr><th scope="col">Nombre</th><th scope="col">Apellido</th><th scope="col">DNI</th><th scope="col">Teléfono</th><th scope="col">Email</th><th scope="col">Estado</th><th scope="col">Ficha</th></tr></thead>
             <tbody>
             @foreach (var cliente in Model.Clientes)
             {
@@ -41,3 +42,4 @@ else
         </table>
     </div>
 }
+</div>

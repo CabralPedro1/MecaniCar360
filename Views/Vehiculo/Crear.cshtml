@@ -1,9 +1,10 @@
 ﻿@model VehiculoViewModel
 @{ ViewData["Title"] = "Agregar vehículo"; }
 @if (ViewData["ReturnUrl"] is string volver) { <a href="@volver" class="btn btn-secondary">Volver a recepcion</a> }
-<h2>Agregar vehículo</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Agregar vehículo</h2></header>
 <p>Persona destinataria: #@Model.PersonaId. La titularidad inicial se valida al guardar.</p>
-<form asp-action="Crear" method="post">
+<form asp-action="Crear" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
@@ -23,6 +24,8 @@
     <button class="btn btn-primary" type="submit">Guardar</button>
     <a asp-action="Index" asp-route-personaId="@Model.PersonaId" class="btn btn-secondary">Cancelar</a>
 </form>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>

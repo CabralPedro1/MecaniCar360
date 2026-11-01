@@ -4,12 +4,13 @@
     ViewData["Title"] = "Crear usuario";
 }
 
-<h2>Crear usuario</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Crear usuario</h2></header>
 
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 <p>Alta de cuentas internas. La persona debe tener un rol interno vigente y no tener rol CLIENTE. Los nuevos clientes se registraran mediante el flujo especifico de clientes.</p>
 
-<form asp-action="Crear" method="post">
+<form asp-action="Crear" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <div class="mb-3">
         <label asp-for="PersonaId" class="form-label"></label>
@@ -31,3 +32,4 @@
     <button type="submit" class="btn btn-primary">Crear</button>
     <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
 </form>
+</div>

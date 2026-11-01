@@ -2,7 +2,8 @@
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{ ViewData["Title"] = "Mi vehículo"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
-<h1>Vehículo @Model.Patente</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Vehículo @Model.Patente</h1></header>
 <dl class="row">
     <dt class="col-sm-3">Marca / Modelo</dt><dd class="col-sm-9">@Model.Marca.Nombre @Model.Modelo.Nombre</dd>
     <dt class="col-sm-3">Año</dt><dd class="col-sm-9">@Model.Anio</dd>
@@ -15,3 +16,4 @@
 @if (await Permisos.TienePermisoAsync(actor, "CLIENTE_TURNO_CREAR")) {
     <a asp-action="NuevoTurno" asp-route-vehiculoId="@Model.Id" class="btn btn-primary">Solicitar turno</a>
 }
+</div>

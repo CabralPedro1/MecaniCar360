@@ -2,8 +2,9 @@
 @{
     ViewData["Title"] = "Nuevo cliente";
 }
-<h1>Nuevo cliente</h1>
-<form asp-action="NuevoCliente" method="post">
+<div class="mc-components">
+<header class="mc-page-header"><h1>Nuevo cliente</h1></header>
+<form asp-action="NuevoCliente" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="mb-3">
@@ -34,6 +35,8 @@
     <button type="submit" class="btn btn-primary">Crear cliente</button>
     <a asp-action="Clientes" class="btn btn-secondary">Cancelar</a>
 </form>
+</div>
+
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

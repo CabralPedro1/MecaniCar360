@@ -6,7 +6,8 @@
 
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
-<h2>Detalle del Rol</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Detalle del Rol</h2></header>
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) &&
     await Permisos.TienePermisoAsync(actor, "SEGURIDAD_ADMINISTRAR"))
 {
@@ -92,4 +93,5 @@
 
     </a>
 
+</div>
 </div>

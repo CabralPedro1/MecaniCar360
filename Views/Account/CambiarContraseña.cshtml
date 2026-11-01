@@ -4,9 +4,10 @@
     ViewData["Title"] = "Cambiar contraseña";
 }
 
-<h2>Cambiar contraseña</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Cambiar contraseña</h2></header>
 <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-<form asp-action="CambiarContraseña" method="post">
+<form asp-action="CambiarContraseña" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <div class="mb-3">
         <label asp-for="ContraseñaActual" class="form-label"></label>
@@ -25,3 +26,4 @@
     </div>
     <button type="submit" class="btn btn-primary">Guardar</button>
 </form>
+</div>

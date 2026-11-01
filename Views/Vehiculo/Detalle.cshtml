@@ -7,7 +7,8 @@
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
     var editar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
 }
-<h2>Vehículo @Model.Patente</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Vehículo @Model.Patente</h2></header>
 @if (TempData["Ok"] is string ok)
 {
     <div class="alert alert-success" role="status">@ok</div>
@@ -60,3 +61,4 @@
         <a asp-controller="Turno" asp-action="Crear" asp-route-clienteId="@dominio.PersonaId" asp-route-vehiculoId="@Model.Id" class="btn btn-primary">Crear turno para @dominio.Persona.Nombre @dominio.Persona.Apellido</a>
     }
 }
+</div>

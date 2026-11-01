@@ -6,7 +6,8 @@
     ViewData["Title"] = "Detalle de usuario";
 }
 
-<h2>Detalle de usuario</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Detalle de usuario</h2></header>
 <dl class="row">
     <dt class="col-sm-3">Usuario</dt>
     <dd class="col-sm-9">@Model.Username</dd>
@@ -24,3 +25,4 @@
 <a asp-action="Editar" asp-route-id="@Model.Id" class="btn btn-warning">Editar</a>
 }
 <a asp-action="Index" class="btn btn-secondary">Volver</a>
+</div>

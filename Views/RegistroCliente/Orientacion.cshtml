@@ -1,6 +1,7 @@
 @model MecaniCar360.Models.ViewModels.VerificarCorreoClienteViewModel
 @{ ViewData["Title"] = "Verificar mi correo"; }
-<h1>Verificar mi correo</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Verificar mi correo</h1></header>
 @if (ViewBag.Orientacion is string mensaje)
 {
     <p class="alert alert-info">@mensaje</p>
@@ -9,12 +10,13 @@
 else
 {
     <p>Si recibió un código, cópielo aquí para consultar las instrucciones de acceso. No cambia su contraseña.</p>
-    <form asp-action="Orientacion" method="post">
+    <form asp-action="Orientacion" method="post" class="mc-form-panel">
         @Html.AntiForgeryToken()
         @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-danger"></div> }
-        <label asp-for="Codigo">Código recibido por correo</label>
+        <label asp-for="Codigo" class="form-label">Código recibido por correo</label>
         <input asp-for="Codigo" autocomplete="off" class="form-control" required />
         <span asp-validation-for="Codigo"></span>
         <button type="submit" class="btn btn-primary">Verificar</button>
     </form>
 }
+</div>

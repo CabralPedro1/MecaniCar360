@@ -9,7 +9,8 @@
     var editar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
     var verPersona = await Permisos.TienePermisoAsync(usuarioId, "PERSONA_VER");
 }
-<h2>Vehículos</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Vehículos</h2></header>
 @if (ViewData["Error"] is string error)
 {
     <div class="alert alert-danger" role="alert">@error</div>
@@ -37,9 +38,9 @@ else if (crear && verPersona)
 }
 else if (Model.Any())
 {
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead><tr><th>Patente</th><th>Marca</th><th>Modelo</th><th>Año</th><th>Estado</th><th>Titular actual</th><th>Acciones</th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0">
+        <table class="table table-striped mc-table">
+            <thead class="mc-table-heading"><tr><th scope="col">Patente</th><th scope="col">Marca</th><th scope="col">Modelo</th><th scope="col">Año</th><th scope="col">Estado</th><th scope="col">Titular actual</th><th scope="col">Acciones</th></tr></thead>
             <tbody>
             @foreach (var v in Model)
             {
@@ -65,3 +66,4 @@ else if (Model.Any())
         </table>
     </div>
 }
+</div>

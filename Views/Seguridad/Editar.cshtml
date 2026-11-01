@@ -1,7 +1,8 @@
 @model MecaniCar360.Models.ViewModels.FamiliaEdicionViewModel
 @{ ViewData["Title"] = Model.Id == 0 ? "Nueva familia" : "Editar familia"; }
-<h1>@ViewData["Title"]</h1>
-<form method="post" asp-action="Editar">
+<div class="mc-components">
+<header class="mc-page-header"><h1>@ViewData["Title"]</h1></header>
+<form method="post" asp-action="Editar" class="mc-form-panel">
 @Html.AntiForgeryToken()
 @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="alert alert-danger"></div> }
 <input asp-for="Id" type="hidden" />
@@ -10,3 +11,4 @@
 <div class="form-check mb-3"><input asp-for="Activo" class="form-check-input" /><label asp-for="Activo" class="form-check-label">Activa</label></div>
 <button class="btn btn-primary" type="submit">Guardar</button> <a asp-action="Index" class="btn btn-secondary">Volver</a>
 </form>
+</div>

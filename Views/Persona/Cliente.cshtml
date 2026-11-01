@@ -2,7 +2,8 @@
 @{
     ViewData["Title"] = "Ficha de cliente";
 }
-<h1>Ficha de cliente</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Ficha de cliente</h1></header>
 @if (TempData["Ok"] is string mensaje)
 {
     <div class="alert alert-success" role="status">@mensaje</div>
@@ -30,9 +31,9 @@
     }
     else
     {
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead><tr><th>Dominio</th><th>Marca</th><th>Modelo</th><th>Año</th><th>Color</th><th>Estado</th></tr></thead>
+        <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0">
+            <table class="table table-striped mc-table">
+                <thead class="mc-table-heading"><tr><th scope="col">Dominio</th><th scope="col">Marca</th><th scope="col">Modelo</th><th scope="col">Año</th><th scope="col">Color</th><th scope="col">Estado</th></tr></thead>
                 <tbody>
                 @foreach (var vehiculo in Model.Vehiculos)
                 {
@@ -45,3 +46,4 @@
     }
 }
 <a asp-action="Clientes" class="btn btn-secondary">Volver a clientes</a>
+</div>

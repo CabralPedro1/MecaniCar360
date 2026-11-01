@@ -1,24 +1,25 @@
 ﻿@model MecaniCar360.Models.ViewModels.CompletarDatosViewModel
 
-<h2 class="text-center mb-4">Completar datos personales</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2 class="text-center mb-4">Completar datos personales</h2></header>
 
-<form method="post" class="container" style="max-width:600px;">
+<form method="post" class="mc-form-panel container" style="max-width:600px;">
     @Html.AntiForgeryToken()
 
     <div asp-validation-summary="All" class="text-danger"></div>
 
     <div class="mb-3">
-        <label>Usuario</label>
-        <input class="form-control" value="@Model.Username" readonly />
+        <label class="form-label" for="primer-ingreso-usuario">Usuario</label>
+        <input id="primer-ingreso-usuario" class="form-control" value="@Model.Username" readonly />
     </div>
 
     <div class="mb-3">
-        <label>Email</label>
-        <input class="form-control" value="@Model.Email" readonly />
+        <label class="form-label" for="primer-ingreso-email">Email</label>
+        <input id="primer-ingreso-email" class="form-control" value="@Model.Email" readonly />
     </div>
 
     <div class="mb-3">
-        <label asp-for="Telefono"></label>
+        <label asp-for="Telefono" class="form-label"></label>
         <input asp-for="Telefono" class="form-control" />
         <span asp-validation-for="Telefono" class="text-danger"></span>
     </div>
@@ -26,16 +27,17 @@
     <hr />
 
     <div class="mb-3">
-        <label asp-for="Password"></label>
+        <label asp-for="Password" class="form-label"></label>
         <input asp-for="Password" type="password" class="form-control" />
         <span asp-validation-for="Password" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="ConfirmarPassword"></label>
+        <label asp-for="ConfirmarPassword" class="form-label"></label>
         <input asp-for="ConfirmarPassword" type="password" class="form-control" />
         <span asp-validation-for="ConfirmarPassword" class="text-danger"></span>
     </div>
 
     <button class="btn btn-primary w-100">Guardar</button>
 </form>
+</div>

@@ -1,5 +1,6 @@
 @{ ViewData["Title"] = "Inicio"; }
-<h1>MecaniCar360</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>MecaniCar360</h1></header>
 @if (User.Identity?.IsAuthenticated == true)
 {
     <p>No hay una pantalla de inicio disponible para sus permisos actuales. Consulte al administrador.</p>
@@ -8,3 +9,4 @@ else
 {
     <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Iniciar sesión</a>
 }
+</div>

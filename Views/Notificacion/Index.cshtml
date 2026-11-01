@@ -1,6 +1,7 @@
 @model List<MecaniCar360.Models.Notificacion>
 @{ ViewData["Title"] = "Mis notificaciones"; }
-<h1>Mis notificaciones</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Mis notificaciones</h1></header>
 @if (Model.Any(n => !n.Leida))
 {
     <form asp-action="MarcarTodas" method="post" class="mb-3">
@@ -38,3 +39,4 @@ else
     }
     </ul>
 }
+</div>

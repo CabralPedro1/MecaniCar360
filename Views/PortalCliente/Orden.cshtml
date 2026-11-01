@@ -3,7 +3,8 @@
 @using System.Security.Claims
 <partial name="_Evidencias" model="Model.Orden.Id" />
 @{ ViewData["Title"] = "Mi orden"; var o = Model.Orden; var ingreso = o.IngresoVehiculo; var v = ingreso.Vehiculo; }
-<h1>Orden #@o.Id</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Orden #@o.Id</h1></header>
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actorCalificacion) && await PermisosCalificacion.TienePermisoAsync(actorCalificacion, "CLIENTE_ORDEN_VER")) {
     <a asp-controller="Calificacion" asp-action="Detalle" asp-route-ordenTrabajoId="@o.Id" class="btn btn-outline-primary mb-3">Calificación</a>
 }
@@ -26,3 +27,4 @@
     <a asp-controller="Factura" asp-action="DetallePropio" asp-route-facturaId="@Model.FacturaId" class="btn btn-outline-primary mb-3">Ver factura</a>
 }
 <a asp-action="MisOrdenes" class="btn btn-secondary mb-3">Volver a mis órdenes</a>
+</div>

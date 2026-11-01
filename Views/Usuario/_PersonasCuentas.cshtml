@@ -5,9 +5,9 @@
 }
 else
 {
-    <div class="table-responsive">
-    <table class="table table-striped">
-        <thead><tr><th>Persona</th><th>DNI</th><th>Roles vigentes</th><th>Contacto</th><th>Cuenta</th><th>Metodos de autenticacion</th><th>Estado persona</th><th>Estado cuenta</th><th></th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0">
+    <table class="table table-striped mc-table">
+        <thead class="mc-table-heading"><tr><th scope="col">Persona</th><th scope="col">DNI</th><th scope="col">Roles vigentes</th><th scope="col">Contacto</th><th scope="col">Cuenta</th><th scope="col">Metodos de autenticacion</th><th scope="col">Estado persona</th><th scope="col">Estado cuenta</th><th scope="col"></th></tr></thead>
         <tbody>
         @foreach (var persona in Model)
         {

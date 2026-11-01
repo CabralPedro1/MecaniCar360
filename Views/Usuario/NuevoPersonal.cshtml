@@ -1,8 +1,9 @@
 @model MecaniCar360.Models.ViewModels.NuevoPersonalViewModel
 @{ ViewData["Title"] = "Nuevo personal"; }
-<h2>Nuevo personal</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Nuevo personal</h2></header>
 <p>Se creará la persona y su cuenta interna. Las credenciales temporales se enviarán al email de acceso.</p>
-<form asp-action="NuevoPersonal" method="post">
+<form asp-action="NuevoPersonal" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <div asp-validation-summary="All" class="text-danger"></div>
     <div class="mb-3"><label asp-for="Nombre" class="form-label"></label><input asp-for="Nombre" class="form-control" /><span asp-validation-for="Nombre" class="text-danger"></span></div>
@@ -16,4 +17,6 @@
     <button type="submit" class="btn btn-primary">Crear personal</button>
     <a asp-action="Administracion" asp-route-seccion="personal" class="btn btn-secondary">Cancelar</a>
 </form>
+</div>
+
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }

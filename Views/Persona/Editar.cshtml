@@ -3,11 +3,12 @@
     ViewData["Title"] = "Editar Persona";
 }
 
-<h2>Editar Persona</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Editar Persona</h2></header>
 
 <hr />
 
-<form asp-action="Editar" method="post">
+<form asp-action="Editar" method="post" class="mc-form-panel">
 
     @Html.AntiForgeryToken()
 
@@ -109,6 +110,8 @@
     </a>
 
 </form>
+
+</div>
 
 @section Scripts {
 

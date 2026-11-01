@@ -7,18 +7,19 @@
     var modificar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
 }
 
-<h2>Modelo: @Model.Nombre</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Modelo: @Model.Nombre</h2></header>
 @if (TempData["Ok"] != null) { <div class="alert alert-success" role="status">@TempData["Ok"]</div> }
 @if (TempData["Error"] != null) { <div class="alert alert-danger" role="alert">@TempData["Error"]</div> }
 
-<dl>
+<dl class="mc-facts">
     <dt>Marca</dt>
     <dd><a asp-controller="Marca" asp-action="Detalle" asp-route-id="@Model.MarcaId">@Model.Marca.Nombre</a></dd>
     <dt>Estado</dt><dd>@(Model.Activo ? "Activo" : "Inactivo")</dd>
     <dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd>
 </dl>
 
-<div class="d-flex flex-wrap gap-2">
+<div class="mc-actions">
     @if (modificar)
     {
         @if (Model.Activo)
@@ -32,4 +33,5 @@
         </form>
     }
     <a asp-action="Index" class="btn btn-secondary">Volver a modelos</a>
+</div>
 </div>

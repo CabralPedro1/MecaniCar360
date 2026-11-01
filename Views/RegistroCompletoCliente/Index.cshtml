@@ -1,17 +1,19 @@
 @model MecaniCar360.Models.ViewModels.RegistroCompletoClienteViewModel
 @{ ViewData["Title"] = "Completar mi registro"; }
-<h1>Completar mi registro</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Completar mi registro</h1></header>
 <p>Complete sus datos para habilitar su cuenta. Su correo de acceso verificado es: @Model.Email</p>
-<form asp-action="Index" method="post">
+<form asp-action="Index" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     @if (!ViewData.ModelState.IsValid)
     {
         <div asp-validation-summary="All" class="text-danger"></div>
     }
-    <div><label asp-for="Nombre"></label><input asp-for="Nombre" required /><span asp-validation-for="Nombre"></span></div>
-    <div><label asp-for="Apellido"></label><input asp-for="Apellido" required /><span asp-validation-for="Apellido"></span></div>
-    <div><label asp-for="Dni"></label><input asp-for="Dni" required /><span asp-validation-for="Dni"></span></div>
-    <div><label asp-for="Telefono"></label><input asp-for="Telefono" required /><span asp-validation-for="Telefono"></span></div>
+    <div class="mb-3"><label asp-for="Nombre" class="form-label"></label><input asp-for="Nombre" class="form-control" required /><span class="text-danger" asp-validation-for="Nombre"></span></div>
+    <div class="mb-3"><label asp-for="Apellido" class="form-label"></label><input asp-for="Apellido" class="form-control" required /><span class="text-danger" asp-validation-for="Apellido"></span></div>
+    <div class="mb-3"><label asp-for="Dni" class="form-label"></label><input asp-for="Dni" class="form-control" required /><span class="text-danger" asp-validation-for="Dni"></span></div>
+    <div class="mb-3"><label asp-for="Telefono" class="form-label"></label><input asp-for="Telefono" class="form-control" required /><span class="text-danger" asp-validation-for="Telefono"></span></div>
     <p>Podrá administrar una contraseña local desde el portal después de completar sus datos.</p>
     <button type="submit" class="btn btn-primary">Completar registro</button>
 </form>
+</div>

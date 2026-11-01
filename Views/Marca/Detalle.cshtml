@@ -6,10 +6,11 @@
     var modificar = await Permisos.TienePermisoAsync(usuarioId, "VEHICULO_MODIFICAR");
 }
 @{ ViewData["Title"] = "Marca"; }
-<h2>Marca: @Model.Nombre</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Marca: @Model.Nombre</h2></header>
 @if (TempData["Ok"] != null) { <div class="alert alert-success" role="status">@TempData["Ok"]</div> }
 @if (TempData["Error"] != null) { <div class="alert alert-danger" role="alert">@TempData["Error"]</div> }
-<dl>
+<dl class="mc-facts">
     <dt>Estado</dt><dd>@(Model.Activo ? "Activo" : "Inactivo")</dd>
     <dt>Fecha de creación</dt><dd>@Model.FechaCreacion.ToString("dd/MM/yyyy")</dd>
 </dl>
@@ -28,8 +29,8 @@
 @if (!Model.Modelos.Any()) { <p>Esta marca no tiene modelos registrados.</p> }
 else
 {
-    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table">
-        <thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table">
+        <thead class="mc-table-heading"><tr><th scope="col">Nombre</th><th scope="col">Estado</th><th scope="col"></th></tr></thead>
         <tbody>
         @foreach (var modelo in Model.Modelos.OrderBy(m => m.Nombre))
         {
@@ -39,3 +40,4 @@ else
         </tbody>
     </table></div>
 }
+</div>
