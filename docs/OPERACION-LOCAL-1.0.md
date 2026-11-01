@@ -42,6 +42,36 @@ Esperado: 200 y formulario Login. El middleware permite continuar sólo con inte
 
 ## Pruebas seguras y diagnóstico
 
+### Google OAuth local: URI de retorno
+
+`Program.cs` registra `AgregarGoogleCliente`; `Helpers/GoogleClienteConfiguracion.cs` conserva el callback del middleware `/signin-google`. El test `Google_ConfiguraSubjectVerificado_SinGuardarTokens` comprueba ese valor sin red ni SQL. `GoogleClienteController.Callback` es el destino interno posterior, no la URI que debe registrarse en Google.
+
+| Perfil / origen utilizado en el navegador | URI de redirección autorizada |
+|---|---|
+| `https`, HTTPS recomendado | `https://localhost:7175/signin-google` |
+| `http`, sólo si se usa ese origen local | `http://localhost:5190/signin-google` |
+| IIS Express, sólo si se utiliza | `https://localhost:44310/signin-google` |
+
+Para resolver `redirect_uri_mismatch`:
+
+1. Abrir Google Cloud Console → Google Auth Platform → Clients (o APIs y servicios → Credenciales), en el proyecto del cliente OAuth configurado.
+2. Seleccionar el cliente de tipo aplicación web cuyo ID coincide con `Authentication:Google:ClientId`, sin publicar su valor ni el secreto.
+3. En **URI de redirección autorizadas**, agregar exactamente `https://localhost:7175/signin-google`. Conservar las URI existentes que se utilicen. Agregar las alternativas de la tabla sólo si se necesitan; configurar únicamente un origen JavaScript no sustituye esta URI.
+4. Guardar y volver a iniciar el flujo desde `https://localhost:7175/Account/Login`. Esquema, host, puerto, ruta y barra final deben coincidir exactamente. Si persiste, comparar sólo el parámetro `redirect_uri` enviado con el registro; no compartir la URL completa de OAuth, códigos ni `state`.
+5. Si el cliente está en modo de prueba y exige usuarios de prueba, verificar el usuario permitido en Audience. Es un requisito separado del error de URI.
+
+El perfil `https` de `Properties/launchSettings.json` establece Development, que carga User Secrets. En una sesión de arranque autorizada: `dotnet run --project MecaniCar360.csproj --launch-profile https -- --Arranque:ModoAceptacion=true`. Este comando **abre SQL**; no ejecutarlo como comprobación sin autorización. El modo de aceptación no desactiva Google ni impide las escrituras del login.
+
+No es necesario cambiar credenciales, `CallbackPath` ni autorizaciones para corregir este desajuste externo. La configuración de Google Cloud no se ha inspeccionado ni modificado aquí; la validación OAuth real sigue pendiente. Google permanece exclusivo para cuentas CLIENTE elegibles sin perfiles internos vigentes; la vinculación conserva la reautenticación en el portal.
+
+Referencia: [documentación oficial de Google sobre OAuth para aplicaciones web](https://developers.google.com/identity/protocols/oauth2/web-server#authorization-errors-redirect-uri-mismatch).
+
+### Menú personal
+
+El encabezado mantiene nombre y notificaciones. **Mi cuenta** agrupa Mis datos para CLIENTE habilitado con sus permisos, seguridad y cierre de sesión. Agregar/cambiar contraseña del cliente envía el enlace mediante el POST existente; las cuentas locales que usan Account conservan su formulario con contraseña actual. Recuperar contraseña permanece en Login. Vincular Google permanece en el portal con contraseña local y comprobación reciente; no se duplica ni se omite ese paso. Cerrar sesión conserva POST y antiforgery.
+
+Comprobar con Tab, Enter, flechas y Escape el desplegable en escritorio y móvil. La revisión de marcado y los tests no sustituyen esta aceptación en navegador.
+
 ```powershell
 dotnet test tests/MecaniCar360.Tests/MecaniCar360.Tests.csproj --configuration Aceptacion -p:UseAppHost=false --filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests' -v:q
 git diff --check
