@@ -222,18 +222,30 @@ namespace MecaniCar360.Controllers
 
         private async Task<IActionResult> DestinoInicialAsync(int usuarioId)
         {
-            if (await _permisos.TienePermisoAsync(usuarioId, "DASHBOARD_VER"))
-                return RedirectToAction("Index", "Dashboard");
-            if (await _permisos.TieneAlgunoAsync(usuarioId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER",
-                "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
-                return RedirectToAction("Index", "PortalCliente");
-            if (await _permisos.TienePermisoAsync(usuarioId, "TURNO_VER"))
-                return RedirectToAction("Caja", "Inicio");
-            if (await _permisos.TienePermisoAsync(usuarioId, "ORDEN_MODIFICAR"))
-                return RedirectToAction("Mecanico", "Inicio");
-            if (await _permisos.TienePermisoAsync(usuarioId, "STOCK_VER"))
-                return RedirectToAction("Stock", "Inicio");
-            return RedirectToAction("Index", "Home");
+            var destino = await ResolverDestinoAsync(
+                await _permisos.EsAdministradorAsync(usuarioId),
+                patentes => _permisos.TieneAlgunoAsync(usuarioId, patentes));
+            return RedirectToAction(destino.Accion, destino.Controlador);
+        }
+
+        // Misma resolución para login, primer ingreso completado, logo y enlace Inicio.
+        private static async Task<(string Accion, string Controlador)> ResolverDestinoAsync(
+            bool administrador, Func<string[], Task<bool>> tiene)
+        {
+            if (administrador && await tiene(new[] { "TURNO_VER" }))
+                return ("Agenda", "Turno");
+            if (await tiene(new[] { "DASHBOARD_VER" }))
+                return ("Index", "Dashboard");
+            if (await tiene(new[] { "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER",
+                "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA" }))
+                return ("Index", "PortalCliente");
+            if (await tiene(new[] { "TURNO_VER" }))
+                return ("Agenda", "Turno");
+            if (await tiene(new[] { "ORDEN_MODIFICAR" }))
+                return ("Mecanico", "Inicio");
+            if (await tiene(new[] { "STOCK_VER" }))
+                return ("Stock", "Inicio");
+            return ("Index", "Home");
         }
 
         [Authorize]

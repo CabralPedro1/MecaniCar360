@@ -182,3 +182,24 @@ dotnet build MecaniCar360.sln --artifacts-path "$env:TEMP\MecaniCar360-Tests12" 
 ```
 
 Resultado: 30 casos, 30 PASS, 0 FAIL, 0 SKIP. EF-01 PASS confirma HasPendingModelChanges=false sin conexión SQL. La duración indicada es una observación de esta ejecución, no un umbral de rendimiento.
+
+
+## Calificación posterior a entrega e inicio en Agenda (cambio local sobre 2446b13)
+
+La notificación de entrega utiliza SolicitudCalificacion = 8 + RecursoId (OT), independiente del título visible, para ofrecer el acceso a calificar la OT entregada. No se emite otra notificación. Su respuesta se deriva de la existencia de Calificacion, independientemente de Leida. Compatibilidad histórica de sólo lectura: OrdenPropia = 1 más el título antiguo exacto «Vehículo entregado» conserva el acceso. Ese tipo también identifica «Vehículo listo para retirar», por lo que no se interpreta cualquier OrdenPropia como solicitud. Las nuevas entregas sólo emiten el tipo 8; no se modifican filas históricas ni se renumeran los valores 1–7. Cambiar el título de una nueva solicitud no afecta su reconocimiento; una fila histórica sin identificador explícito sigue necesitando el título original. Otros avisos mantienen su destino anterior. TipoRecurso es una columna int nullable existente; no se agrega esquema.
+
+CrearAsync exige CLIENTE activo y habilitado, sin perfil interno activo, propietario de la OT y titular actual del vehículo. Mantiene puntuación 1–5, comentario opcional de hasta 1000 caracteres y una calificación por OT. ADMIN conserva consulta, pero no creación. La UI utiliza radios con etiquetas y estrellas; el servidor revalida al guardar.
+
+La transacción Serializable comienza antes de las lecturas decisivas. IntegridadTransactionInterceptor adquiere el mutex global al comenzar; luego se consultan proyecciones sin tracking de cuenta/orden/titularidad/calificación. SaveChanges y commit permanecen dentro de esa transacción y se conserva el índice único de OrdenTrabajoId. No se cambia EntregarAsync ni su política transaccional.
+
+Pruebas no SQL: CalificacionEntregaTests ejecuta filtros y reglas reales en memoria, validaciones de entrada, proyección de solicitudes pendientes/respondidas y traducción SQL sin abrir conexión; complementa con inspección estructural de transacción, ownership y contrato MVC. InicioAgendaTests ejecuta el selector de destinos con permisos simulados. Estas pruebas **no ejecutan CrearAsync con persistencia exitosa**, la habilitación completa contra SQL, login HTTP ni carreras reales.
+
+Pendiente con autorización separada y base SQL aislada:
+1. Cliente habilitado propietario: entregar OT ficticia, comprobar un solo aviso, calificar desde él y consultar resultado. Marcar leído antes de responder no debe cambiar el estado de solicitud.
+2. Rechazos sin inserciones: OT no entregada, otro cliente, titularidad finalizada, CLIENTE pendiente/inactivo, perfiles internos (incluido mixto CLIENTE+ADMIN), puntuación/comentario inválidos y duplicado.
+3. Dos DbContext/conexiones independientes califican simultáneamente la misma OT: exactamente una fila; segundo intento rechazado, sin considerar timeout/deadlock como rechazo válido.
+4. Fallo inyectado después del INSERT y antes del commit: un tercer contexto debe comprobar ausencia de calificación parcial y conservación de notificación, estado de OT e integridad DVH/DVV aplicable. Descartar el contexto fallido.
+5. Cuenta/OT precargada antes de una modificación concurrente: comprobar que se rechaza con el estado vigente. Validar orden de bloqueo frente a entrega y otras escrituras.
+6. Login ADMIN y CAJA estándar con TURNO_VER abre Turno/Agenda; MECANICO/STOCK/CLIENTE conservan destino. Dashboard sigue accesible con DASHBOARD_VER. Probar logo, Inicio, primer ingreso, denegación y permisos personalizados.
+
+No usar MecaniCar360 ni TEST_CIERRE10_A123 para esta campaña. No se ejecutaron SQL, migraciones, seeds, navegador ni escenarios opt-in durante la implementación. En navegador quedan pendientes radios con flechas/Tab/Space, foco visible, lector de pantalla, anchos móviles y recorrido de notificación ajena. La campaña de 28 escenarios existente conserva su limitación B1.
