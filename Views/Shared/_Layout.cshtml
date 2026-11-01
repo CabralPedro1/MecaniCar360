@@ -1,7 +1,8 @@
-@inject MecaniCar360.Services.PresentacionCuentaService PresentacionCuenta
+﻿@inject MecaniCar360.Services.PresentacionCuentaService PresentacionCuenta
 @{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var cuentaActor); var cuentaVisible = await PresentacionCuenta.ObtenerAsync(cuentaActor); }
 @inject MecaniCar360.Services.PermisosVista Permisos
 @inject MecaniCar360.Services.NotificacionService Notificaciones
+@{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioFacturacionId); }
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -13,79 +14,164 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/MecaniCar360.styles.css" asp-append-version="true" />
 </head>
-<body>
+<body class="mc-app @(User.Identity?.IsAuthenticated == true ? "mc-has-navigation" : "")">
     <a href="#contenido-principal" class="visually-hidden-focusable">Saltar al contenido principal</a>
 
     <header>
         @using System.Security.Claims
 
-        <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3">
+        <nav class="navbar navbar-dark bg-dark mc-navbar" aria-label="Cuenta">
             <div class="container-fluid">
 
-                <a class="navbar-brand" asp-controller="Account" asp-action="Inicio">🚗 MEC360</a>
+                <a class="navbar-brand" asp-controller="Account" asp-action="Inicio">MecaniCar360</a>
 
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMain" aria-controls="navbarMain" aria-expanded="false" aria-label="Abrir o cerrar navegación">
+                @if (User.Identity?.IsAuthenticated == true) {
+                <button class="navbar-toggler mc-menu-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#navigationSidebar" aria-controls="navigationSidebar" aria-label="Abrir navegación">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
-                <div class="collapse navbar-collapse" id="navbarMain">
+                }
+                <div class="mc-header-actions">
 
-                    <ul class="navbar-nav me-auto flex-wrap">
-                        @if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var notificacionActor) && await Permisos.TienePermisoAsync(notificacionActor, "NOTIFICACION_VER"))
+<ul class="navbar-nav">
+@if (User.Identity?.IsAuthenticated == true && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var notificacionActor) && await Permisos.TienePermisoAsync(notificacionActor, "NOTIFICACION_VER"))
                         {
                             var contador = await Notificaciones.ContarNoLeidasAsync(notificacionActor);
                             <li class="nav-item"><a class="nav-link" asp-controller="Notificacion" asp-action="Index">🔔 Mis notificaciones @if (contador.Exitoso && contador.Data!.Cantidad > 0) { <span class="badge bg-primary">@contador.Data!.Cantidad</span> }</a></li>
                         }
+</ul>
 
-                        <!-- DASHBOARD -->
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var dashboardActor) && await Permisos.TienePermisoAsync(dashboardActor, "DASHBOARD_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li> }
+                    @if (User.Identity?.IsAuthenticated == true) {
+                    <!-- USER -->
+                    <ul class="navbar-nav mc-account-nav">
+                        <li class="nav-item">
+                            <span class="navbar-text text-white me-3">
+                                👤 @cuentaVisible.Nombre
+                            </span>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <button class="btn btn-outline-light dropdown-toggle" type="button" id="miCuentaMenu" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="miCuentaOpciones">Mi cuenta</button>
+                            <ul class="dropdown-menu dropdown-menu-end mc-account-menu" id="miCuentaOpciones" aria-labelledby="miCuentaMenu">
+                                @if (cuentaVisible.EsClienteHabilitado && cuentaActor > 0 && await Permisos.TieneAlgunoAsync(cuentaActor, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA")) {
+                                    <li><h2 class="dropdown-header">Configuración</h2></li>
+                                    <li><a class="dropdown-item" asp-controller="PortalCliente" asp-action="MisDatos">Mis datos</a></li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                }
+                                @if (cuentaVisible.PuedeGestionarPassword || cuentaVisible.PasswordLocal) {
+                                    <li><h2 class="dropdown-header">Seguridad</h2></li>
+                                    <li>
+                                        @if (cuentaVisible.PuedeGestionarPassword) {
+                                            <form asp-controller="SeguridadCliente" asp-action="SolicitarEnlace" method="post">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="dropdown-item">@(cuentaVisible.PasswordLocal ? "Cambiar contraseña" : "Agregar contraseña")</button>
+                                            </form>
+                                        } else if (cuentaVisible.PasswordLocal) {
+                                            <a class="dropdown-item" asp-controller="Account" asp-action="CambiarContraseña">Cambiar contraseña</a>
+                                        }
+                                    </li>
+                                    <li><hr class="dropdown-divider" /></li>
+                                }
+                                <li>
+                                    <form asp-controller="Account" asp-action="Logout" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <button class="dropdown-item" type="submit">Cerrar sesión</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                    }
 
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioCatalogoId) &&
-                            await Permisos.TienePermisoAsync(usuarioCatalogoId, "VEHICULO_VER"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Marca" asp-action="Index">Marcas y modelos</a>
-                            </li>
-                        }
+                </div>
+            </div>
+        </nav>
+    </header>
 
-                        <!-- TURNOS -->
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var turnoActor) && await Permisos.TienePermisoAsync(turnoActor, "TURNO_VER"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Turno" asp-action="Index">Turnos</a>
-                            </li>
-                        }
-
-                        <!-- CLIENTE -->
-                        @if (cuentaVisible.EsClienteHabilitado && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
+    @if (User.Identity?.IsAuthenticated == true) {
+    <aside class="offcanvas offcanvas-start mc-sidebar" tabindex="-1" id="navigationSidebar" aria-labelledby="navigationTitle">
+        <div class="offcanvas-header">
+            <h2 class="h5 mb-0" id="navigationTitle">Navegación</h2>
+            <button type="button" class="btn-close btn-close-white mc-sidebar-close" data-bs-dismiss="offcanvas" aria-label="Cerrar navegación"></button>
+        </div>
+        <nav class="offcanvas-body" aria-label="Navegación principal">
+            <details class="mc-nav-group" open>
+                <summary>Inicio</summary>
+                <ul class="nav flex-column">
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var dashboardActor) && await Permisos.TienePermisoAsync(dashboardActor, "DASHBOARD_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li> }
+@if (cuentaVisible.EsClienteHabilitado && int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioPortalId) &&
                             await Permisos.TieneAlgunoAsync(usuarioPortalId, "CLIENTE_VEHICULO_VER", "CLIENTE_TURNO_VER", "CLIENTE_ORDEN_VER", "CLIENTE_PRESUPUESTO_VER", "CLIENTE_FACTURA_VER", "GARANTIA_VER_PROPIA"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="PortalCliente" asp-action="Index">Portal cliente</a>
                             </li>
                         }
-
-                        <!-- MECANICO -->
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var ordenActor) && await Permisos.TienePermisoAsync(ordenActor, "ORDEN_VER"))
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "TURNO_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Caja">Mostrador</a></li> }
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "ORDEN_MODIFICAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Mecanico">Mi trabajo</a></li> }
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "STOCK_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Stock">Inventario</a></li> }
+                </ul>
+            </details>
+            <details class="mc-nav-group" open>
+                <summary>Operaciones</summary>
+                <ul class="nav flex-column">
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var turnoActor) && await Permisos.TienePermisoAsync(turnoActor, "TURNO_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Turno" asp-action="Index">Turnos</a>
+                            </li>
+                        }
+@if (usuarioFacturacionId > 0 &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Persona" asp-action="Clientes">Clientes</a>
+                            </li>
+                        }
+                </ul>
+            </details>
+            <details class="mc-nav-group" open>
+                <summary>Taller</summary>
+                <ul class="nav flex-column">
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var ordenActor) && await Permisos.TienePermisoAsync(ordenActor, "ORDEN_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="OrdenTrabajo" asp-action="Index">Ordenes</a>
                             </li>
                         }
-
-                        <!-- STOCK -->
-                        @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var stockActor) && await Permisos.TienePermisoAsync(stockActor, "STOCK_VER"))
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var stockActor) && await Permisos.TienePermisoAsync(stockActor, "STOCK_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Stock" asp-action="Index">Repuestos</a>
                             </li>
                         }
-
-                        <!-- FACTURACIÓN: permisos efectivos, identidad del usuario -->
-                        @{
-                            int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioFacturacionId);
+                </ul>
+            </details>
+            <details class="mc-nav-group" open>
+                <summary>Administración</summary>
+                <ul class="nav flex-column">
+@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioCatalogoId) &&
+                            await Permisos.TienePermisoAsync(usuarioCatalogoId, "VEHICULO_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Marca" asp-action="Index">Marcas y modelos</a>
+                            </li>
                         }
-                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "FACTURA_VER"))
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "ROL_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Rol" asp-action="Index">Roles</a></li> }
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "SEGURIDAD_ADMINISTRAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Seguridad" asp-action="Index">Seguridad</a></li> }
+@if (usuarioFacturacionId > 0 &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
+                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "USUARIO_VER"))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Usuario" asp-action="Administracion">Personas y cuentas</a>
+                            </li>
+
+                        }
+                </ul>
+            </details>
+            <details class="mc-nav-group" open>
+                <summary>Gestión</summary>
+                <ul class="nav flex-column">
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "FACTURA_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Factura" asp-action="Index">Facturas</a>
@@ -97,75 +183,22 @@
                                 <a class="nav-link" asp-controller="Factura" asp-action="MisFacturas">Mis facturas</a>
                             </li>
                         }
-                        @if (usuarioFacturacionId > 0 &&
+@if (usuarioFacturacionId > 0 &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "GARANTIA_VER"))
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-controller="Garantia" asp-action="Index">Garantías</a>
                             </li>
                         }
-                        @if (usuarioFacturacionId > 0 &&
-                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Persona" asp-action="Clientes">Clientes</a>
-                            </li>
-                        }
-                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "AUDITORIA_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Auditoria" asp-action="Index">Auditoría</a></li> }
-                        @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "REPORTES_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Reportes" asp-action="Index">Reportes</a></li> }
-                        @if (usuarioFacturacionId > 0) {
-                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "TURNO_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Caja">Mostrador</a></li> }
-                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "ORDEN_MODIFICAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Mecanico">Mi trabajo</a></li> }
-                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "STOCK_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Stock">Inventario</a></li> }
-                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "ROL_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Rol" asp-action="Index">Roles</a></li> }
-                            if (await Permisos.TienePermisoAsync(usuarioFacturacionId, "SEGURIDAD_ADMINISTRAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Seguridad" asp-action="Index">Seguridad</a></li> }
-                        }
-                        <!-- ADMIN -->
-                        @if (usuarioFacturacionId > 0 &&
-                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
-                            await Permisos.TienePermisoAsync(usuarioFacturacionId, "USUARIO_VER"))
-                        {
-                            <li class="nav-item">
-                                <a class="nav-link" asp-controller="Usuario" asp-action="Administracion">Personas y cuentas</a>
-                            </li>
-
-                        }
-
-                    </ul>
-
-                    @if (User.Identity?.IsAuthenticated == true) {
-                    <!-- USER -->
-                    <ul class="navbar-nav">
-                        <li class="nav-item">
-                            <span class="navbar-text text-white me-3">
-                                👤 @cuentaVisible.Nombre
-                            </span>
-                        </li>
-                        <li class="nav-item">
-                            @if (cuentaVisible.PuedeGestionarPassword) {
-                            <form asp-controller="SeguridadCliente" asp-action="SolicitarEnlace" method="post">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-outline-light me-2">@(cuentaVisible.PasswordLocal ? "Cambiar contraseña" : "Agregar contraseña")</button>
-                            </form>
-                            } else if (cuentaVisible.PasswordLocal) {
-                            <a class="btn btn-outline-light me-2" asp-controller="Account" asp-action="CambiarContraseña">Cambiar contraseña</a>
-                            }
-                        </li>
-                        <li class="nav-item">
-                            <form asp-controller="Account" asp-action="Logout" method="post">
-                                @Html.AntiForgeryToken()
-                                <button class="btn btn-outline-light" type="submit">Salir</button>
-                            </form>
-                        </li>
-                    </ul>
-                    }
-
-                </div>
-            </div>
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "AUDITORIA_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Auditoria" asp-action="Index">Auditoría</a></li> }
+@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "REPORTES_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Reportes" asp-action="Index">Reportes</a></li> }
+                </ul>
+            </details>
         </nav>
-    </header>
+    </aside>
+    }
 
-    <div class="container">
+    <div class="container mc-content">
         <main id="contenido-principal" tabindex="-1" class="pb-3">
             @RenderBody()
         </main>
@@ -179,6 +212,8 @@
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script src="~/js/navigation.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
 

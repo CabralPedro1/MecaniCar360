@@ -1,33 +1,39 @@
-﻿/* Please see documentation at https://learn.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
-
-a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+.mc-navbar { background: var(--mc-nav) !important; padding: .875rem 0; }
+.mc-navbar > .container-fluid { gap: .75rem; padding-inline: 1.25rem; }
+.navbar-brand { font-weight: 700; font-size: 1.25rem; letter-spacing: -.025em; white-space: normal; }
+.mc-header-actions, .mc-account-nav { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; }
+.mc-header-actions { margin-left: auto; }
+.mc-account-nav { flex-direction: row; }
+.navbar-text { overflow-wrap: anywhere; }
+.mc-navbar .nav-link { color: #e4eaf2; }
+.mc-navbar :is(a, button):focus-visible { outline: 3px solid white; outline-offset: 3px; }
+.mc-sidebar { width: min(18rem, 90vw); background: var(--mc-nav); color: white; }
+.mc-sidebar .offcanvas-body { overflow-y: auto; padding: .75rem 1rem 2rem; }
+.mc-sidebar .offcanvas-header { border-bottom: 1px solid #526176; }
+.mc-nav-group { margin-bottom: .75rem; }
+.mc-nav-group summary { padding: .625rem; cursor: pointer; font-weight: 700; border-radius: .375rem; }
+.mc-sidebar .nav-link { color: #e4eaf2; padding: .625rem .875rem; margin-block: .125rem; border-radius: .375rem; overflow-wrap: anywhere; }
+.mc-sidebar .nav-link:hover, .mc-nav-group summary:hover { background: #263e5b; color: white; }
+.mc-sidebar .nav-link.active { background: var(--mc-primary); color: white; font-weight: 700; border-left: .25rem solid white; }
+.mc-sidebar :is(a, button, summary):focus-visible { outline: 3px solid white; outline-offset: 2px; }
+.footer { position: static; flex-shrink: 0; padding: 1.25rem 0; line-height: 1.5; white-space: normal; background: var(--mc-surface); border-color: var(--mc-border) !important; color: var(--mc-muted) !important; font-size: .875rem; }
+@media (min-width: 992px) {
+    .mc-sidebar { position: sticky; top: 0; height: 100vh; width: 17rem; visibility: visible !important; transform: none !important; grid-column: 1; grid-row: 2 / 4; z-index: 1; }
+    .mc-sidebar-close, .mc-menu-toggle { display: none; }
+    .mc-content { width: 100%; max-width: 100%; padding-inline: 2rem; }
+}
+@media (max-width: 991.98px) {
+    .mc-header-actions { width: 100%; margin-left: 0; }
+    .mc-account-nav .btn { white-space: normal; }
 }
 
-a {
-  color: #0077cc;
-}
-
-.btn-primary {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
-}
-
-.border-top {
-  border-top: 1px solid #e5e5e5;
-}
-.border-bottom {
-  border-bottom: 1px solid #e5e5e5;
-}
-
-.footer {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  white-space: nowrap;
-  line-height: 60px;
+/* Keep dropdown text and focus readable on its light surface. */
+.mc-account-menu { max-width: calc(100vw - 2rem); border-color: var(--mc-border); border-radius: .625rem; box-shadow: 0 .5rem 1.5rem rgb(20 38 61 / 15%); }
+.mc-account-nav .mc-account-menu { position: absolute; }
+.mc-account-nav > .dropdown { margin-left: auto; }
+.mc-account-menu .dropdown-item { white-space: normal; padding: .625rem 1rem; color: var(--mc-text); }
+.mc-account-menu .dropdown-item:hover, .mc-account-menu .dropdown-item:focus { background: var(--mc-bg); color: var(--mc-text); }
+.mc-navbar .mc-account-menu :is(a, button):focus-visible { outline: 3px solid var(--mc-primary); outline-offset: -3px; }
+@media (max-width: 991.98px) {
+    .mc-account-nav { width: 100%; }
 }
