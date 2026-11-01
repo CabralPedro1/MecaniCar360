@@ -9,7 +9,8 @@
     var saldo = factura.Total - pagado;
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
 }
-<h2>Registrar pago</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Registrar pago</h2></header>
 <partial name="_Mensajes" />
 <div class="card mb-3"><div class="card-body">
     <p class="text-break"><strong>Factura:</strong> @factura.NumeroFactura</p>
@@ -18,7 +19,7 @@
     <div asp-validation-summary="All" class="text-danger" role="alert"></div>
     @if (factura.Estado == EstadoFactura.Emitida && saldo > 0)
     {
-        <form asp-action="RegistrarPago" method="post">
+        <form asp-action="RegistrarPago" method="post" class="mc-form-panel">
             @Html.AntiForgeryToken()
             <input asp-for="FacturaId" type="hidden" />
             <input asp-for="SaldoEsperado" type="hidden" />
@@ -46,7 +47,7 @@
         <div class="alert alert-info">Esta factura no admite nuevos pagos.</div>
     }
 </div></div>
-<div class="d-flex gap-2">
+<div class="mc-actions">
     @if (await Permisos.TienePermisoAsync(usuarioId, "FACTURA_VER"))
     {
         <a asp-action="PorId" asp-route-facturaId="@factura.Id" class="btn btn-secondary">Volver a factura</a>
@@ -60,4 +61,6 @@
     {
         <a asp-action="Pagos" asp-route-facturaId="@factura.Id" class="btn btn-outline-secondary">Historial de pagos</a>
     }
+</div>
+
 </div>

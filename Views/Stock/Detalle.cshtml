@@ -6,7 +6,8 @@
     var lotes = ViewData["LotesRestitucion"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
 }
 
-<h2>Detalle del Repuesto</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Detalle del Repuesto</h2></header>
 
 @if (TempData["Ok"] != null)
 {
@@ -30,7 +31,7 @@
 
     <div class="card-body">
 
-        <div class="row">
+        <div class="row g-3">
 
             <div class="col-md-6">
 
@@ -90,19 +91,19 @@
 
         @if (Model.Proveedores.Any())
         {
-            <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-bordered">
+            <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-bordered mc-table">
 
-                <thead>
+                <thead class="mc-table-heading">
 
                     <tr>
 
-                        <th>Proveedor</th>
+                        <th scope="col">Proveedor</th>
 
-                        <th>Precio Compra</th>
+                        <th scope="col">Precio Compra</th>
 
-                        <th>Código</th>
+                        <th scope="col">Código</th>
 
-                        <th>Principal</th>
+                        <th scope="col">Principal</th>
 
                     </tr>
 
@@ -144,7 +145,7 @@
 
 @if (ViewData["PuedeMover"] is true)
 {
-<div class="row">
+<div class="row g-3">
 
     <div class="col-md-4">
 
@@ -166,7 +167,7 @@
 
                     <div class="mb-3">
 
-                        <label for="ingreso-proveedorRepuestoId">Proveedor</label>
+                        <label for="ingreso-proveedorRepuestoId" class="form-label">Proveedor</label>
 
                         <select id="ingreso-proveedorRepuestoId" name="proveedorRepuestoId" required
                                 class="form-select">
@@ -187,7 +188,7 @@
 
                     <div class="mb-3">
 
-                        <label for="ingreso-cantidad">Cantidad</label>
+                        <label for="ingreso-cantidad" class="form-label">Cantidad</label>
 
                         <input id="ingreso-cantidad" type="number"
                                name="cantidad"
@@ -198,7 +199,7 @@
 
                     <div class="mb-3">
 
-                        <label for="ingreso-observaciones">Observaciones</label>
+                        <label for="ingreso-observaciones" class="form-label">Observaciones</label>
 
                         <textarea id="ingreso-observaciones" name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
@@ -206,9 +207,9 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="precioCompra">Precio unitario real de compra</label>
+                        <label for="precioCompra" class="form-label">Precio unitario real de compra</label>
                         <input id="precioCompra" name="precioCompra" type="number" min="0.01" step="0.01" required class="form-control" />
-                        <small>Confirme el precio de este ingreso. El precio del proveedor se muestra sólo como referencia.</small>
+                        <small class="form-text">Confirme el precio de este ingreso. El precio del proveedor se muestra sólo como referencia.</small>
                     </div>
 
                     <button class="btn btn-success w-100">
@@ -243,7 +244,7 @@
 
                     <div class="mb-3">
 
-                        <label for="salida-cantidad">Cantidad</label>
+                        <label for="salida-cantidad" class="form-label">Cantidad</label>
 
                         <input id="salida-cantidad" type="number"
                                name="cantidad"
@@ -254,7 +255,7 @@
 
                     <div class="mb-3">
 
-                        <label for="salida-observaciones">Observaciones</label>
+                        <label for="salida-observaciones" class="form-label">Observaciones</label>
 
                         <textarea id="salida-observaciones" name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
@@ -262,7 +263,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="ordenTrabajoId">Orden de trabajo</label>
+                        <label for="ordenTrabajoId" class="form-label">Orden de trabajo</label>
                         <select id="ordenTrabajoId" name="ordenTrabajoId" asp-items="ordenes" required class="form-select">
                             <option value="">Seleccione una OT aprobada o en reparación</option>
                         </select>
@@ -301,7 +302,7 @@
 
                     <div class="mb-3">
 
-                        <label for="diferencia">Diferencia (+/-)</label>
+                        <label for="diferencia" class="form-label">Diferencia (+/-)</label>
 
                         <input type="number"
                                id="diferencia" name="diferencia" step="1" min="-2147483647" max="2147483647" required
@@ -311,7 +312,7 @@
 
                     <div class="mb-3">
 
-                        <label for="ajuste-observaciones">Motivo</label>
+                        <label for="ajuste-observaciones" class="form-label">Motivo</label>
 
                         <textarea id="ajuste-observaciones" required name="observaciones" maxlength="500"
                                   class="form-control"></textarea>
@@ -319,7 +320,7 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="loteRepuestoId">Lote de origen para restitución</label>
+                        <label for="loteRepuestoId" class="form-label">Lote de origen para restitución</label>
                         <select id="loteRepuestoId" name="loteRepuestoId" asp-items="lotes" class="form-select">
                             <option value="">Seleccione el lote si la diferencia es positiva</option>
                         </select>
@@ -349,19 +350,19 @@
 
 @if (Model.Movimientos.Any())
 {
-    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
 
-        <thead class="table-dark">
+        <thead class="mc-table-heading">
 
             <tr>
 
-                <th>Fecha</th>
+                <th scope="col">Fecha</th>
 
-                <th>Tipo</th>
+                <th scope="col">Tipo</th>
 
-                <th>Cantidad</th>
+                <th scope="col">Cantidad</th>
 
-                <th>Observaciones</th>
+                <th scope="col">Observaciones</th>
 
             </tr>
 
@@ -397,7 +398,7 @@ else
     </div>
 }
 
-<div class="mt-4">
+<div class="mt-4 mc-actions">
 
     @if (ViewData["PuedeModificar"] is true)
     {
@@ -421,6 +422,8 @@ else
     </a>
 
 </div>
+</div>
+
 @section Scripts {
     <script>
         (() => {

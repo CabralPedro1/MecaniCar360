@@ -7,7 +7,8 @@
     var g = Model.Garantia; var ingreso = g.OrdenTrabajo.IngresoVehiculo; var v = ingreso.Vehiculo;
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
 }
-<h1>Garantía #@g.Id</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Garantía #@g.Id</h1></header>
 <partial name="_Mensajes" />
 <p><strong>Orden:</strong> #@g.OrdenTrabajoId</p>
 <p><strong>Vehículo:</strong> @v.Patente — @v.Marca.Nombre @v.Modelo.Nombre</p>
@@ -16,8 +17,8 @@
 <p class="alert alert-info">@Model.Estado</p>
 <h2 class="h5">Ítems cubiertos</h2>
 <p>La duración se cuenta desde la entrega; cada ítem conserva los meses de cobertura indicados.</p>
-<div class="table-responsive"><table class="table table-striped">
-<thead><tr><th>Ítem facturado</th><th>Cantidad</th><th>Meses de cobertura</th><th>Observaciones</th></tr></thead>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
+<thead class="mc-table-heading"><tr><th scope="col">Ítem facturado</th><th scope="col">Cantidad</th><th scope="col">Meses de cobertura</th><th scope="col">Observaciones</th></tr></thead>
 <tbody>@foreach (var item in g.Items) {
     <tr><td>@item.FacturaItem.Descripcion</td><td>@item.FacturaItem.Cantidad</td><td>@item.MesesGarantia</td><td>@(item.Observaciones ?? "—")</td></tr>
 }</tbody></table></div>
@@ -35,3 +36,5 @@
         <button type="submit" class="btn btn-danger">Anular garantía</button>
     </form>
 }
+
+</div>

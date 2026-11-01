@@ -6,15 +6,16 @@
     var verOrdenes = await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER");
     var ordenId = ViewData["OrdenTrabajoId"] as int?;
 }
-<h2>Mecanicos disponibles</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Mecanicos disponibles</h2></header>
 <p>Mecanicos activos. Este listado no representa disponibilidad horaria.</p>
 @if (ordenId.HasValue) { <p>Asignar a la orden #@ordenId</p> }
 else { <p>Seleccione una orden desde el listado para iniciar su asignacion.</p> }
-@if (!Model.Any()) { <p>No hay mecanicos activos disponibles.</p> }
+@if (!Model.Any()) { <p class="mc-empty">No hay mecanicos activos disponibles.</p> }
 else {
-<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table"><thead><tr><th>Mecanico</th><th>Acciones</th></tr></thead><tbody>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table mc-table"><thead class="mc-table-heading"><tr><th scope="col">Mecanico</th><th scope="col">Acciones</th></tr></thead><tbody>
 @foreach (var mecanico in Model) {
-<tr><td>@mecanico.Apellido, @mecanico.Nombre</td><td>
+<tr><td>@mecanico.Apellido, @mecanico.Nombre</td><td><div class="mc-actions">
 @if (ordenId.HasValue) {
 <form asp-action="AsignarMecanico" method="post">
 @Html.AntiForgeryToken()
@@ -23,12 +24,14 @@ else {
 <button type="submit" class="btn btn-primary">Asignar</button>
 </form>
 }
-@if (verOrdenes) { <a asp-action="DeMecanico" asp-route-mecanicoId="@mecanico.Id">Ver ordenes activas</a> }
-</td></tr>
+@if (verOrdenes) { <a class="btn btn-outline-primary" asp-action="DeMecanico" asp-route-mecanicoId="@mecanico.Id">Ver ordenes activas</a> }
+</div></td></tr>
 }
 </tbody></table></div>
 }
 @if (ordenId.HasValue && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE")) {
-<a asp-action="Detalle" asp-route-id="@ordenId">Volver a la orden</a>
+<a class="btn btn-outline-secondary" asp-action="Detalle" asp-route-id="@ordenId">Volver a la orden</a>
 }
 @if (verOrdenes) { <a asp-action="Index" class="btn btn-secondary">Ordenes</a> }
+
+</div>

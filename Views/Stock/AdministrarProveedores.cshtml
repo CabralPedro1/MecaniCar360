@@ -4,7 +4,8 @@
     ViewData["Title"] = "Administrar proveedores";
 }
 
-<h2>Administrar proveedores</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Administrar proveedores</h2></header>
 
 <hr />
 
@@ -139,16 +140,16 @@
 
         @if (Model.Proveedores.Any())
         {
-            <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped align-middle">
+            <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped align-middle mc-table">
 
-                <thead class="table-dark">
+                <thead class="mc-table-heading">
 
                     <tr>
-                        <th>Proveedor</th>
-                        <th>Precio compra</th>
-                        <th>Código</th>
-                        <th>Principal</th>
-                        <th>Acciones</th>
+                        <th scope="col">Proveedor</th>
+                        <th scope="col">Precio compra</th>
+                        <th scope="col">Código</th>
+                        <th scope="col">Principal</th>
+                        <th scope="col">Acciones</th>
                     </tr>
 
                 </thead>
@@ -253,7 +254,7 @@
                                            name="proveedorRepuestoId"
                                            value="@item.Id" />
 
-                                    <div class="row align-items-end">
+                                    <div class="row g-3 align-items-end">
 
                                         <div class="col-md-4">
 
@@ -310,6 +311,8 @@
        class="btn btn-secondary">
         Volver
     </a>
+
+</div>
 
 </div>
 

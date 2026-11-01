@@ -4,7 +4,8 @@
     ViewData["Title"] = "Órdenes de Trabajo";
 }
 
-<h2>Órdenes de Trabajo</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Órdenes de Trabajo</h2></header>
 
 <hr />
 
@@ -25,9 +26,9 @@
 @if (Model.Any())
 {
     <div class="table-responsive" role="region" aria-label="Órdenes de trabajo" tabindex="0">
-    <table class="table table-hover table-striped align-middle">
+    <table class="table table-hover table-striped align-middle mc-table">
 
-        <thead class="table-dark">
+        <thead class="mc-table-heading">
 
             <tr>
 
@@ -172,9 +173,11 @@
 }
 else
 {
-    <div class="alert alert-info">
+    <div class="alert alert-info mc-empty">
 
         No existen órdenes de trabajo.
 
     </div>
 }
+
+</div>

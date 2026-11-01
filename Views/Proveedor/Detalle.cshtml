@@ -4,7 +4,8 @@
     ViewData["Title"] = "Detalle proveedor";
 }
 
-<h2>Proveedor</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Proveedor</h2></header>
 
 <hr />
 
@@ -36,25 +37,25 @@
 
 @if (Model.Repuestos.Any())
 {
-    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
 
-        <thead class="table-dark">
+        <thead class="mc-table-heading">
 
             <tr>
 
-                <th>SKU</th>
+                <th scope="col">SKU</th>
 
-                <th>Repuesto</th>
+                <th scope="col">Repuesto</th>
 
-                <th>Precio Compra</th>
+                <th scope="col">Precio Compra</th>
 
-                <th>Precio Venta</th>
+                <th scope="col">Precio Venta</th>
 
-                <th>Stock</th>
+                <th scope="col">Stock</th>
 
-                <th>Mínimo</th>
+                <th scope="col">Mínimo</th>
 
-                <th>Principal</th>
+                <th scope="col">Principal</th>
 
             </tr>
 
@@ -123,3 +124,5 @@ else
     Volver
 
 </a>
+
+</div>

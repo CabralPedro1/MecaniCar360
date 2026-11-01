@@ -1,14 +1,17 @@
 @model MecaniCar360.Models.ViewModels.CalendarioViewModel
 @{ ViewData["Title"] = "Calendario de turnos"; }
 
-<h2 class="mb-4">
+<div class="mc-components">
+<header class="mc-page-header">
+<h2>
     Calendario de Turnos - @Model.Fecha.ToString("dd/MM/yyyy")
 </h2>
+</header>
 
 <partial name="_Mensajes" />
-<form asp-action="Index" method="get" class="mb-3">
-    <label for="fecha">Fecha</label>
-    <input id="fecha" name="fecha" type="date" value="@Model.Fecha.ToString("yyyy-MM-dd")" required />
+<form asp-action="Index" method="get" class="mc-toolbar mb-3">
+    <label for="fecha" class="form-label">Fecha</label>
+    <input id="fecha" name="fecha" class="form-control mc-filter-field" type="date" value="@Model.Fecha.ToString("yyyy-MM-dd")" required />
     <button class="btn btn-secondary" type="submit">Consultar</button>
     <a asp-action="Agenda" asp-route-fecha="@Model.Fecha.ToString("yyyy-MM-dd")" class="btn btn-outline-secondary">Agenda del día</a>
 </form>
@@ -20,12 +23,12 @@
 </div>
 
 <div class="table-responsive" role="region" aria-label="Turnos" tabindex="0">
-<table class="table table-bordered table-hover">
-    <thead class="table-dark">
+<table class="table table-bordered table-hover mc-table">
+    <thead class="mc-table-heading">
         <tr>
-            <th style="width:120px;">Hora</th>
+            <th class="mc-column-time" scope="col">Hora</th>
             <th scope="col">Turnos</th>
-            <th style="width:200px;">Capacidad</th>
+            <th class="mc-column-capacity" scope="col">Capacidad</th>
         </tr>
     </thead>
 
@@ -52,8 +55,8 @@
                                     👤 @t.Cliente.Nombre<br />
                                     ⏰ @t.FechaInicio.ToString("HH:mm")
 
-                                    <div>@t.Estado</div>
-                                    <div class="mt-2">
+                                    <div><span class="mc-state">@t.Estado</span></div>
+                                    <div class="mt-2 mc-actions">
                                         <a asp-action="Detalle" asp-route-id="@t.Id" class="btn btn-sm btn-outline-primary">Detalle</a>
 
                                         @if (t.IngresoVehiculo?.OrdenTrabajo != null)
@@ -83,7 +86,7 @@
                     }
                     else
                     {
-                        <span class="text-muted">Sin turnos</span>
+                        <span class="text-muted mc-empty">Sin turnos</span>
                     }
                 </td>
 
@@ -114,4 +117,6 @@
 
     </tbody>
 </table>
+</div>
+
 </div>

@@ -12,7 +12,8 @@
     var saldo = Model.Total - totalPagado;
     var turno = Model.OrdenTrabajo.IngresoVehiculo.Turno;
 }
-<h2>Detalle de factura</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Detalle de factura</h2></header>
 <partial name="_Mensajes" />
 <div class="card mb-3"><div class="card-body">
     <p class="text-break"><strong>Número:</strong> @Model.NumeroFactura</p>
@@ -20,12 +21,12 @@
     <p><strong>Orden de trabajo:</strong> @Model.OrdenTrabajoId</p>
     <p><strong>Cliente:</strong> @turno.Cliente.Nombre @turno.Cliente.Apellido · <strong>Vehículo:</strong> @Model.OrdenTrabajo.IngresoVehiculo.Vehiculo.Patente</p>
     <p>@Model.Observaciones</p>
-    <div class="table-responsive"><table class="table table-striped">
-        <thead><tr><th>Concepto</th><th>Cantidad</th><th>Precio unitario</th><th>Subtotal</th></tr></thead>
+    <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
+        <thead class="mc-table-heading"><tr><th scope="col">Concepto</th><th scope="col" class="text-end">Cantidad</th><th scope="col" class="text-end">Precio unitario</th><th scope="col" class="text-end">Subtotal</th></tr></thead>
         <tbody>
         @foreach (var item in Model.Items)
         {
-            <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("C2")</td><td>@item.Subtotal.ToString("C2")</td></tr>
+            <tr><td>@item.Descripcion</td><td class="text-end">@item.Cantidad</td><td class="text-end">@item.PrecioUnitario.ToString("C2")</td><td class="text-end">@item.Subtotal.ToString("C2")</td></tr>
         }
         </tbody>
     </table></div>
@@ -40,7 +41,7 @@
     <h3 class="h5">Pagos registrados</h3>
     <partial name="_TablaPagos" model="Model" />
 }
-<div class="d-flex flex-wrap gap-2 mb-3">
+<div class="mc-actions mb-3">
     @if (propia && await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER"))
     {
         <a asp-controller="PortalCliente" asp-action="Orden" asp-route-id="@Model.OrdenTrabajoId" class="btn btn-outline-secondary">Ver mi orden</a>
@@ -69,4 +70,6 @@
             <button class="btn btn-dark" type="submit">Entregar vehículo</button>
         </form>
     }
+</div>
+
 </div>

@@ -4,17 +4,18 @@
     ViewData["Title"] = "Editar proveedor";
 }
 
-<h2>Editar proveedor</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Editar proveedor</h2></header>
 
 <hr />
 
-<form asp-action="Editar">
+<form asp-action="Editar" class="mc-form-panel mb-3">
 
     <input asp-for="Id" type="hidden" />
 
     <div class="mb-3">
 
-        <label asp-for="Nombre"></label>
+        <label asp-for="Nombre" class="form-label"></label>
 
         <input asp-for="Nombre"
                class="form-control" />
@@ -23,7 +24,7 @@
 
     <div class="mb-3">
 
-        <label asp-for="Apellido"></label>
+        <label asp-for="Apellido" class="form-label"></label>
 
         <input asp-for="Apellido"
                class="form-control" />
@@ -32,7 +33,7 @@
 
     <div class="mb-3">
 
-        <label asp-for="Telefono"></label>
+        <label asp-for="Telefono" class="form-label"></label>
 
         <input asp-for="Telefono"
                class="form-control" />
@@ -41,7 +42,7 @@
 
     <div class="mb-3">
 
-        <label asp-for="Email"></label>
+        <label asp-for="Email" class="form-label"></label>
 
         <input asp-for="Email"
                class="form-control" />
@@ -58,6 +59,8 @@
     </a>
 
 </form>
+
+</div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

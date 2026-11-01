@@ -2,17 +2,18 @@
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{ ViewData["Title"] = "Crear garantía"; int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor); }
-<h1>Crear garantía — OT #@Model.OrdenTrabajoId</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Crear garantía — OT #@Model.OrdenTrabajoId</h1></header>
 <partial name="_Mensajes" />
 <div asp-validation-summary="All" class="text-danger" role="alert"></div>
 @if (Model.Items.Count > 0) {
 <p>Inicio de cobertura: @Model.FechaInicio.ToString("dd/MM/yyyy HH:mm") (entrega efectiva).</p>
 <p>Seleccione los ítems a cubrir e indique entre 1 y 120 meses para cada uno.</p>
-<form asp-action="Crear" method="post">
+<form asp-action="Crear" method="post" class="mc-form-panel mb-3">
 @Html.AntiForgeryToken()
 <input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
-<div class="table-responsive"><table class="table table-striped">
-<thead><tr><th>Incluir</th><th>Ítem facturado</th><th>Cantidad</th><th>Meses</th><th>Observaciones</th></tr></thead>
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
+<thead class="mc-table-heading"><tr><th scope="col">Incluir</th><th scope="col">Ítem facturado</th><th scope="col">Cantidad</th><th scope="col">Meses</th><th scope="col">Observaciones</th></tr></thead>
 <tbody>@foreach (var item in Model.Items) {
     <tr><td><input type="checkbox" name="items.Index" value="@item.Id" aria-label="Incluir @item.Descripcion" /></td>
     <td>@item.Descripcion<input type="hidden" name="items[@item.Id].FacturaItemId" value="@item.Id" /></td>
@@ -28,3 +29,5 @@
 @if (await Permisos.TienePermisoAsync(actor, "GARANTIA_VER")) {
     <a asp-action="Index" class="btn btn-outline-secondary">Ver garantías</a>
 }
+
+</div>

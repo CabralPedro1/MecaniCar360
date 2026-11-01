@@ -10,7 +10,8 @@
     var puedeEditarVehiculo = await Permisos.TienePermisoAsync(actor, "VEHICULO_MODIFICAR");
     var abierto = turno.IngresoVehiculo == null && (turno.Estado == EstadoTurno.Pendiente || turno.Estado == EstadoTurno.Confirmado);
 }
-<h2>Registrar recepcion</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Registrar recepcion</h2></header>
 @{ var pendientes = MecaniCar360.Helpers.DatosRecepcionCliente.Faltantes(turno.Cliente); }
 @if (pendientes.Count > 0) {
     <p class="alert alert-warning">Antes del ingreso debe completar los datos del cliente: @string.Join(", ", pendientes).</p>
@@ -32,10 +33,10 @@
         <a asp-action="Detalle" asp-route-id="@turno.IngresoVehiculo.Id">Ver ingreso existente</a>
     }
 } else {
-<form asp-action="Registrar" method="post">
+<form asp-action="Registrar" method="post" class="mc-form-panel">
     @Html.AntiForgeryToken()
     <input asp-for="TurnoId" type="hidden" />
-    <div class="mb-3"><label asp-for="VehiculoId">Vehiculo recibido</label>
+    <div class="mb-3"><label class="form-label" asp-for="VehiculoId">Vehiculo recibido</label>
         <select asp-for="VehiculoId" class="form-select">
             <option value="">Seleccione vehiculo</option>
             @foreach (var v in Model.Vehiculos) {
@@ -49,34 +50,35 @@
             <a asp-controller="Vehiculo" asp-action="Editar" asp-route-id="@v.Id" asp-route-personaId="@turno.ClienteId" asp-route-returnUrl="@retorno" class="btn btn-outline-secondary">Editar @v.Patente</a>
         }
     }
-    <div class="mb-3"><label asp-for="Kilometraje">Kilometraje al ingreso</label><input asp-for="Kilometraje" class="form-control" min="0" required /><span asp-validation-for="Kilometraje" class="text-danger"></span><p id="km-conocido" role="status"></p></div>
-    <div class="form-check"><input asp-for="ConfirmarKilometrajeMenor" class="form-check-input" /><label asp-for="ConfirmarKilometrajeMenor">Revise y confirmo que el kilometraje ingresado es menor al conocido.</label></div>
-    <div class="mb-3"><label asp-for="NivelCombustible">Combustible</label><select asp-for="NivelCombustible" class="form-select" required>
+    <div class="mb-3"><label class="form-label" asp-for="Kilometraje">Kilometraje al ingreso</label><input asp-for="Kilometraje" class="form-control" min="0" required /><span asp-validation-for="Kilometraje" class="text-danger"></span><p id="km-conocido" role="status" class="form-text"></p></div>
+    <div class="form-check"><input asp-for="ConfirmarKilometrajeMenor" class="form-check-input" /><label class="form-label" asp-for="ConfirmarKilometrajeMenor">Revise y confirmo que el kilometraje ingresado es menor al conocido.</label></div>
+    <div class="mb-3"><label class="form-label" asp-for="NivelCombustible">Combustible</label><select asp-for="NivelCombustible" class="form-select" required>
         <option value="">Seleccione nivel</option><option value="0">Reserva</option><option value="1">1/4</option><option value="2">1/2</option><option value="3">3/4</option><option value="4">Lleno</option>
     </select><span asp-validation-for="NivelCombustible" class="text-danger"></span></div>
     <fieldset class="mb-3"><legend>Estado exterior</legend>
-        <label><input asp-for="EstadoExterior" type="radio" value="0" required /> Sin danos visibles declarados</label>
-        <label><input asp-for="EstadoExterior" type="radio" value="1" required /> Con observaciones</label>
+        <label class="mc-choice"><input asp-for="EstadoExterior" type="radio" value="0" required /> Sin danos visibles declarados</label>
+        <label class="mc-choice"><input asp-for="EstadoExterior" type="radio" value="1" required /> Con observaciones</label>
         <span asp-validation-for="EstadoExterior" class="text-danger"></span>
-        <label asp-for="DescripcionEstadoExterior">Descripcion (obligatoria si hay observaciones)</label><textarea asp-for="DescripcionEstadoExterior" class="form-control"></textarea><span asp-validation-for="DescripcionEstadoExterior" class="text-danger"></span>
+        <label class="form-label" asp-for="DescripcionEstadoExterior">Descripcion (obligatoria si hay observaciones)</label><textarea asp-for="DescripcionEstadoExterior" class="form-control"></textarea><span asp-validation-for="DescripcionEstadoExterior" class="text-danger"></span>
     </fieldset>
     <fieldset class="mb-3"><legend>Objetos y accesorios presentes</legend>
         @foreach (var item in new[] { (AccesoriosRecepcion.RuedaDeAuxilio, "Rueda de auxilio"), (AccesoriosRecepcion.Crique, "Crique"), (AccesoriosRecepcion.LlaveDeRueda, "Llave de rueda"), (AccesoriosRecepcion.Matafuego, "Matafuego"), (AccesoriosRecepcion.Balizas, "Balizas"), (AccesoriosRecepcion.Otros, "Otros") }) {
-            <label class="me-3"><input type="checkbox" name="AccesoriosSeleccionados" value="@((int)item.Item1)" checked="@(Model.AccesoriosSeleccionados.Contains(item.Item1))" /> @item.Item2</label>
+            <label class="me-3 mc-choice"><input type="checkbox" name="AccesoriosSeleccionados" value="@((int)item.Item1)" checked="@(Model.AccesoriosSeleccionados.Contains(item.Item1))" /> @item.Item2</label>
         }
         <p>Sin selecciones significa que ninguno de los elementos listados permanece en el vehiculo.</p>
         <span asp-validation-for="AccesoriosSeleccionados" class="text-danger"></span>
-        <label asp-for="OtrosAccesorios">Descripcion de Otros</label><textarea asp-for="OtrosAccesorios" class="form-control"></textarea><span asp-validation-for="OtrosAccesorios" class="text-danger"></span>
+        <label class="form-label" asp-for="OtrosAccesorios">Descripcion de Otros</label><textarea asp-for="OtrosAccesorios" class="form-control"></textarea><span asp-validation-for="OtrosAccesorios" class="text-danger"></span>
     </fieldset>
-    <div class="mb-3"><label asp-for="ObservacionesRecepcion">Observaciones generales de recepcion (opcional)</label><textarea asp-for="ObservacionesRecepcion" class="form-control"></textarea><span asp-validation-for="ObservacionesRecepcion" class="text-danger"></span></div>
+    <div class="mb-3"><label class="form-label" asp-for="ObservacionesRecepcion">Observaciones generales de recepcion (opcional)</label><textarea asp-for="ObservacionesRecepcion" class="form-control"></textarea><span asp-validation-for="ObservacionesRecepcion" class="text-danger"></span></div>
     @if (turno.Tipo == TipoTurno.Servicio) {
-        <fieldset><legend>Modalidad</legend><label><input asp-for="ClienteEspera" type="radio" value="false" /> Deja el vehiculo</label><label><input asp-for="ClienteEspera" type="radio" value="true" /> Permanece esperando</label></fieldset>
+        <fieldset class="mb-3"><legend>Modalidad</legend><label class="mc-choice"><input asp-for="ClienteEspera" type="radio" value="false" /> Deja el vehiculo</label><label class="mc-choice"><input asp-for="ClienteEspera" type="radio" value="true" /> Permanece esperando</label></fieldset>
     } else { <p>Diagnostico: el cliente deja el vehiculo.</p> }
-    <div class="form-check my-3"><input asp-for="VerificadoConCliente" class="form-check-input" /><label asp-for="VerificadoConCliente">Los datos de recepcion fueron verificados junto con el cliente.</label><span asp-validation-for="VerificadoConCliente" class="text-danger"></span></div>
+    <div class="form-check my-3"><input asp-for="VerificadoConCliente" class="form-check-input" /><label class="form-label" asp-for="VerificadoConCliente">Los datos de recepcion fueron verificados junto con el cliente.</label><span asp-validation-for="VerificadoConCliente" class="text-danger"></span></div>
     <button type="submit" class="btn btn-primary">Confirmar ingreso y crear orden</button>
 </form>
 }
-<a asp-controller="Turno" asp-action="Detalle" asp-route-id="@turno.Id">Volver al turno</a>
+<a class="btn btn-outline-secondary mt-3" asp-controller="Turno" asp-action="Detalle" asp-route-id="@turno.Id">Volver al turno</a>
+</div>
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
 <script>

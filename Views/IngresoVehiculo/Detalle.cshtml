@@ -5,12 +5,13 @@
     ViewData["Title"] = "Detalle de ingreso";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
 }
-<h2>Ingreso #@Model.Id</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Ingreso #@Model.Id</h2></header>
 @if (TempData["Ok"] is string ok) { <div class="alert alert-success" role="status">@ok</div> }
 @if (TempData["Error"] is string error) { <div class="alert alert-danger" role="alert">@error</div> }
-<div class="card mb-3"><div class="card-body"><dl>
+<div class="card mb-3"><div class="card-body"><dl class="mc-facts">
 <dt>Fecha de ingreso</dt><dd>@Model.FechaIngreso.ToString("dd/MM/yyyy HH:mm")</dd>
-<dt>Situación</dt><dd>@(Model.FechaEgreso.HasValue ? "Egresado" : "En taller")</dd>
+<dt>Situación</dt><dd><span class="mc-state">@(Model.FechaEgreso.HasValue ? "Egresado" : "En taller")</span></dd>
 @if (Model.FechaEgreso.HasValue) { <dt>Fecha de egreso</dt><dd>@Model.FechaEgreso.Value.ToString("dd/MM/yyyy HH:mm")</dd> }
 <dt>Turno</dt><dd>#@Model.TurnoId — @Model.Turno.FechaInicio.ToString("dd/MM/yyyy HH:mm")</dd>
 <dt>Vehiculo recibido</dt><dd>@Model.VehiculoPatenteSnapshot - @Model.VehiculoDescripcionSnapshot</dd>
@@ -26,6 +27,7 @@
 <dt>Verificado con cliente</dt><dd>@(Model.DatosVerificadosConCliente ? "Si" : "No")</dd>
 <dt>Operador</dt><dd>Usuario #@Model.RegistradoPorUsuarioId</dd>
 </dl></div></div>
+<div class="mc-actions">
 @if (Model.OrdenTrabajo != null && await Permisos.TienePermisoAsync(usuarioId, "ORDEN_VER_DETALLE")) {
     <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.OrdenTrabajo.Id" class="btn btn-primary">Ver orden #@Model.OrdenTrabajo.Id</a>
 }
@@ -33,3 +35,6 @@
     <a asp-controller="Turno" asp-action="Detalle" asp-route-id="@Model.TurnoId" class="btn btn-outline-secondary">Ver turno</a>
 }
 <a asp-action="EnTaller" class="btn btn-secondary">Vehículos en taller</a>
+
+</div>
+</div>

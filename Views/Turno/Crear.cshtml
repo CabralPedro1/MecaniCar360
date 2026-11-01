@@ -3,30 +3,34 @@
 @using System.Security.Claims
 @inject MecaniCar360.Services.PermisoService Permisos
 @{ ViewData["Title"] = "Crear turno"; }
-<h2>Crear turno</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Crear turno</h2></header>
 @{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
    var inmediata = await Permisos.TienePermisoAsync(actor, "INGRESO_REGISTRAR"); }
-<form asp-action="Crear" method="post">
+<form asp-action="Crear" method="post" class="mc-form-panel">
 @Html.AntiForgeryToken()
 <div asp-validation-summary="All" class="text-danger" role="alert"></div>
-<div class="mb-3"><label asp-for="ClienteId">Cliente / Persona</label>
+<div class="mb-3"><label class="form-label" asp-for="ClienteId">Cliente / Persona</label>
 <select asp-for="ClienteId" asp-items="ViewBag.Clientes" class="form-select" required><option value="">Seleccione persona</option></select>
 <span asp-validation-for="ClienteId" class="text-danger"></span></div>
-<div class="mb-3"><label asp-for="VehiculoId">Vehiculo previsto (opcional)</label>
+<div class="mb-3"><label class="form-label" asp-for="VehiculoId">Vehiculo previsto (opcional)</label>
 <select asp-for="VehiculoId" asp-items="ViewBag.Vehiculos" class="form-select"><option value="">Sin especificar</option></select>
 <span asp-validation-for="VehiculoId" class="text-danger"></span><p id="aviso-vehiculos" role="status" class="text-danger"></p></div>
-<div class="mb-3"><label asp-for="Tipo">Tipo</label><select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoTurno>()" class="form-select"></select><span asp-validation-for="Tipo" class="text-danger"></span></div>
+<div class="mb-3"><label class="form-label" asp-for="Tipo">Tipo</label><select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoTurno>()" class="form-select"></select><span asp-validation-for="Tipo" class="text-danger"></span></div>
 @if (inmediata) {
-<div class="form-check mb-3"><input asp-for="AtencionInmediata" class="form-check-input" /><label asp-for="AtencionInmediata">Atencion inmediata (hora del servidor)</label></div>
+<div class="form-check mb-3"><input asp-for="AtencionInmediata" class="form-check-input" /><label class="form-label" asp-for="AtencionInmediata">Atencion inmediata (hora del servidor)</label></div>
 }
-<div class="mb-3"><label for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" class="form-control" required /></div>
-<div class="mb-3"><label for="horario-turno">Horario</label>
+<div class="mb-3"><label class="form-label" for="fecha-turno">Fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio?.ToString("yyyy-MM-dd")" class="form-control" required /></div>
+<div class="mb-3"><label class="form-label" for="horario-turno">Horario</label>
 <select asp-for="FechaInicio" id="horario-turno" data-seleccionado="@Model.FechaInicio?.ToString("yyyy-MM-ddTHH:mm")" class="form-select" required><option value="">Seleccione horario</option></select>
 <span asp-validation-for="FechaInicio" class="text-danger"></span><p id="aviso-horarios" role="status" class="text-danger"></p></div>
-<div class="mb-3"><label asp-for="Motivo"></label><textarea asp-for="Motivo" class="form-control"></textarea><span asp-validation-for="Motivo" class="text-danger"></span></div>
-<div class="mb-3"><label asp-for="Observaciones"></label><textarea asp-for="Observaciones" class="form-control"></textarea><span asp-validation-for="Observaciones" class="text-danger"></span></div>
+<div class="mb-3"><label class="form-label" asp-for="Motivo"></label><textarea asp-for="Motivo" class="form-control"></textarea><span asp-validation-for="Motivo" class="text-danger"></span></div>
+<div class="mb-3"><label class="form-label" asp-for="Observaciones"></label><textarea asp-for="Observaciones" class="form-control"></textarea><span asp-validation-for="Observaciones" class="text-danger"></span></div>
+<div class="mc-actions">
 <button class="btn btn-primary" type="submit">Guardar</button><a asp-action="Index" class="btn btn-secondary">Volver</a>
+</div>
 </form>
+</div>
 @section Scripts {
 <partial name="_ValidationScriptsPartial" />
 <partial name="_HorariosScript" />

@@ -6,7 +6,8 @@
     var propia = ViewData["Propia"] is true;
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
 }
-<h2>Historial de pagos</h2>
+<div class="mc-components">
+<header class="mc-page-header"><h2>Historial de pagos</h2></header>
 <partial name="_Mensajes" />
 <p class="text-break"><strong>Factura:</strong> @Model.NumeroFactura · <strong>Orden:</strong> @Model.OrdenTrabajoId</p>
 <partial name="_TablaPagos" model="Model" />
@@ -18,3 +19,5 @@ else
 {
     <a asp-controller="Dashboard" asp-action="Index" class="btn btn-secondary">Volver</a>
 }
+
+</div>

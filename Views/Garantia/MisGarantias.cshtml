@@ -1,6 +1,9 @@
 @model List<MecaniCar360.Models.ViewModels.GarantiaDetalleViewModel>
 @{ ViewData["Title"] = "Mis garantías"; }
-<h1>Mis garantías</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>Mis garantías</h1></header>
 <partial name="_Mensajes" />
 <a asp-controller="PortalCliente" asp-action="Index" class="btn btn-secondary mb-3">Volver al portal</a>
 <partial name="_Lista" model="Model" />
+
+</div>
