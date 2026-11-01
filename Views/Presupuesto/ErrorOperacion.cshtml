@@ -5,7 +5,8 @@
     ViewData["Title"] = "Operación de presupuesto";
     int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor);
 }
-<h1>No se pudo completar la operación</h1>
+<div class="mc-components">
+<header class="mc-page-header"><h1>No se pudo completar la operación</h1></header>
 <div class="alert alert-danger" role="alert">@Model</div>
 <p>No vuelva a enviar el formulario sin revisar el estado actual del presupuesto.</p>
 @if (ViewData["EsCliente"] is true)
@@ -20,3 +21,5 @@ else if (await Permisos.TienePermisoAsync(actor, "ORDEN_VER"))
     <a asp-controller="OrdenTrabajo" asp-action="Index" class="btn btn-primary">Órdenes de trabajo</a>
 }
 <a asp-controller="Account" asp-action="Inicio" class="btn btn-secondary">Volver al inicio</a>
+
+</div>

@@ -61,7 +61,8 @@ namespace MecaniCar360.Controllers
             if (!UsuarioId(out var usuario)) return Forbid();
             var resultado = await _service.ObtenerPropioAsync(ordenTrabajoId, usuario);
             if (!resultado.Exitoso) return ErrorOperacion(resultado.Mensaje, true);
-            ViewData["PuedeDecidir"] = PuedeDecidir(resultado.Data!);
+            ViewData["PuedeDecidir"] = PuedeDecidir(resultado.Data!,
+                await _service.PuedeDecidirAsync(resultado.Data!.Id, usuario));
             return View(resultado.Data);
         }
 
@@ -71,7 +72,8 @@ namespace MecaniCar360.Controllers
             if (!UsuarioId(out var usuario)) return Forbid();
             var resultado = await _service.ObtenerPropioAsync(ordenTrabajoId, usuario);
             return resultado.Exitoso
-                ? Json(new { exitoso = true, version = Snapshot(resultado.Data!), puedeDecidir = PuedeDecidir(resultado.Data!) })
+                ? Json(new { exitoso = true, version = Snapshot(resultado.Data!), puedeDecidir = PuedeDecidir(resultado.Data!,
+                    await _service.PuedeDecidirAsync(resultado.Data!.Id, usuario)) })
                 : Json(new { exitoso = false, mensaje = resultado.Mensaje });
         }
 
@@ -142,8 +144,8 @@ namespace MecaniCar360.Controllers
         private bool UsuarioId(out int usuarioId) =>
             int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out usuarioId);
 
-        private static bool PuedeDecidir(PresupuestoVersion v) =>
-            v.Decision == EstadoPresupuestoVersion.Pendiente &&
+        private static bool PuedeDecidir(PresupuestoVersion v, bool actorAutorizado) =>
+            actorAutorizado && v.Decision == EstadoPresupuestoVersion.Pendiente &&
             v.Presupuesto.Estado == EstadoPresupuesto.Pendiente &&
             v.Presupuesto.OrdenTrabajo.EstadoActual == EstadoOrden.EsperandoAprobacion &&
             !v.Presupuesto.OrdenTrabajo.FechaFin.HasValue && v.Presupuesto.OrdenTrabajo.Factura == null;

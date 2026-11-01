@@ -373,6 +373,15 @@ namespace MecaniCar360.Services
                 u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == RolesSistema.CLIENTE) &&
                 !u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre != RolesSistema.CLIENTE));
 
+        // Disponibilidad de presentación; los POST siguen revalidando bajo transacción.
+        public async Task<bool> PuedeDecidirAsync(int versionId, int usuarioId)
+        {
+            var usuario = await UsuarioAutorizadoAsync(usuarioId, "CLIENTE_PRESUPUESTO_VER");
+            return usuario != null && await ClienteDecisorAsync(usuario, versionId) &&
+                await _permisos.TieneAlgunoAsync(usuarioId,
+                    "CLIENTE_PRESUPUESTO_APROBAR", "CLIENTE_PRESUPUESTO_RECHAZAR");
+        }
+
         private async Task<bool> ClienteDecisorAsync(Usuario usuario, int versionId)
         {
             var clienteId = await _context.PresupuestoVersiones.AsNoTracking().Where(v => v.Id == versionId)

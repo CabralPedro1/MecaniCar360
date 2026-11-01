@@ -6,8 +6,9 @@
     var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     var vigente = ViewData["PuedeDecidir"] is true;
 }
-<h2>Presupuesto — versión @Model.NumeroVersion</h2>
-<div class="mb-3">
+<div class="mc-components">
+<header class="mc-page-header"><h2>Presupuesto — versión @Model.NumeroVersion</h2></header>
+<div class="mb-3 mc-actions">
     <a asp-controller="PortalCliente" asp-action="MisPresupuestos" class="btn btn-secondary">Volver a mis presupuestos</a>
     @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_ORDEN_VER")) {
         <a asp-controller="PortalCliente" asp-action="Orden" asp-route-id="@Model.Presupuesto.OrdenTrabajoId" class="btn btn-outline-primary">Ver orden</a>
@@ -16,12 +17,12 @@
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
 <p>Enviado: @Model.FechaEnvio — Decisión: @Model.Decision</p>
 @if (!vigente && Model.Decision == MecaniCar360.Models.Enums.EstadoPresupuestoVersion.Pendiente)
-{ <div class="alert alert-info">Este envío ya no admite decisiones. El taller debe enviar una nueva versión.</div> }
-<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped">
-<thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>
+{ <div class="alert alert-info">Esta versión está disponible sólo para consulta desde su cuenta o en su estado actual.</div> }
+<div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
+<thead class="mc-table-heading"><tr><th scope="col">Descripción</th><th scope="col" class="text-end">Cantidad</th><th scope="col" class="text-end">Precio</th><th scope="col" class="text-end">Subtotal</th></tr></thead>
 <tbody>@foreach (var item in Model.Items)
 {
-    <tr><td>@item.Descripcion</td><td>@item.Cantidad</td><td>@item.PrecioUnitario.ToString("N2")</td><td>@item.Subtotal.ToString("N2")</td></tr>
+    <tr><td>@item.Descripcion</td><td class="text-end">@item.Cantidad</td><td class="text-end">@item.PrecioUnitario.ToString("N2")</td><td class="text-end">@item.Subtotal.ToString("N2")</td></tr>
 }</tbody>
 </table></div>
 <p><strong>Total enviado: $ @Model.Total.ToString("N2")</strong></p>
@@ -41,11 +42,13 @@
     }
     @if (await Permisos.TienePermisoAsync(usuarioId, "CLIENTE_PRESUPUESTO_RECHAZAR"))
     {
-        <form asp-action="Rechazar" method="post">
+        <form asp-action="Rechazar" method="post" class="mc-form-panel">
             @Html.AntiForgeryToken()
             <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
-            <label for="presupuesto-motivo">Motivo del rechazo</label><input name="motivo" id="presupuesto-motivo" maxlength="1000" required class="form-control mb-2" />
+            <label class="form-label" for="presupuesto-motivo">Motivo del rechazo</label><input name="motivo" id="presupuesto-motivo" maxlength="1000" required class="form-control mb-2" />
             <button class="btn btn-warning">Rechazar esta versión</button>
         </form>
     }
 }
+
+</div>
