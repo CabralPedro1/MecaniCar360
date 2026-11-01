@@ -75,92 +75,89 @@ namespace MecaniCar360.Services
         // ABM
         // =====================================
 
-        public async Task<ServiceResult> CrearAsync(
-            int ordenTrabajoId,
-            int usuarioSolicitanteId,
-            int puntuacion,
-            string? comentario)
+        // Consultas frescas: no reutilizan entidades rastreadas antes de esperar el bloqueo.
+        private static IQueryable<Usuario> ClientesElegibles(IQueryable<Usuario> usuarios) =>
+            usuarios.Where(u => u.Activo && u.Persona.Activo && !u.PrimerLogin &&
+                u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == RolesSistema.CLIENTE) &&
+                !u.Persona.Roles.Any(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre != RolesSistema.CLIENTE));
+
+        private async Task<int?> ClienteAutorizadoAsync(int usuarioId)
         {
-            if (!await _permisos.TienePermisoAsync(usuarioSolicitanteId, "CLIENTE_CALIFICACION_CREAR")) return ServiceResult.Error("Acceso denegado.");
-            var personaId = await _permisos.ObtenerPersonaActivaIdAsync(usuarioSolicitanteId);
-            if (!personaId.HasValue) return ServiceResult.Error("Acceso denegado.");
-            var clienteId = personaId.Value;
-            if (!await _context.OrdenesTrabajo.AnyAsync(o => o.Id == ordenTrabajoId && o.IngresoVehiculo.Turno.ClienteId == clienteId))
-                return ServiceResult.Error("La orden no pertenece al cliente autenticado.");
+            var persona = await ClientesElegibles(_context.Usuarios.AsNoTracking())
+                .Where(u => u.Id == usuarioId).Select(u => (int?)u.PersonaId).SingleOrDefaultAsync();
+            return persona.HasValue &&
+                await new ClienteHabilitadoService(_context).EstaHabilitadoAsync(persona.Value) &&
+                await _permisos.TienePermisoAsync(usuarioId, "CLIENTE_CALIFICACION_CREAR")
+                ? persona : null;
+        }
 
-            if (puntuacion < 1 || puntuacion > 5)
+        private static string? ValidarOrden(EstadoOrden estado, int propietario, int cliente,
+            bool titularActual, bool existente)
+        {
+            if (propietario != cliente) return "La orden no pertenece al cliente autenticado.";
+            if (estado != EstadoOrden.Entregado) return "Solo se puede calificar una orden de trabajo entregada.";
+            if (existente) return "Esta orden de trabajo ya fue calificada.";
+            if (!titularActual) return "El cliente no puede calificar esta orden de trabajo.";
+            return null;
+        }
+
+        private async Task<string?> ValidarOrdenAsync(int ordenId, int clienteId)
+        {
+            var orden = await _context.OrdenesTrabajo.AsNoTracking().Where(o => o.Id == ordenId)
+                .Select(o => new { o.EstadoActual, o.IngresoVehiculo.Turno.ClienteId,
+                    Titular = o.IngresoVehiculo.Vehiculo.DominiosVehiculares.Any(d =>
+                        d.PersonaId == clienteId && d.FechaHasta == null),
+                    Existente = o.Calificacion != null }).SingleOrDefaultAsync();
+            return orden == null ? "La orden de trabajo no existe." :
+                ValidarOrden(orden.EstadoActual, orden.ClienteId, clienteId, orden.Titular, orden.Existente);
+        }
+
+        public async Task<bool> PuedeCalificarAsync(int ordenTrabajoId, int usuarioId)
+        {
+            var cliente = await ClienteAutorizadoAsync(usuarioId);
+            return cliente.HasValue && await ValidarOrdenAsync(ordenTrabajoId, cliente.Value) == null;
+        }
+
+        private static string? ValidarEntrada(int puntuacion, string? comentario)
+        {
+            if (puntuacion < 1 || puntuacion > 5) return "La puntuación debe estar entre 1 y 5.";
+            if (comentario?.Length > 1000) return "El comentario no puede superar los 1000 caracteres.";
+            return null;
+        }
+
+        public async Task<ServiceResult> CrearAsync(
+            int ordenTrabajoId, int usuarioSolicitanteId, int puntuacion, string? comentario)
+        {
+            var error = ValidarEntrada(puntuacion, comentario);
+            if (error != null) return ServiceResult.Error(error);
+
+            // BeginTransaction adquiere primero el mutex global DVH/DVV mediante el interceptor.
+            // Serializable protege también la ausencia de calificación; se conserva el índice único.
+            await using var tx = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
             {
-                return ServiceResult.Error(
-                    "La puntuación debe estar entre 1 y 5.");
-            }
+                var cliente = await ClienteAutorizadoAsync(usuarioSolicitanteId);
+                if (!cliente.HasValue) return ServiceResult.Error("Acceso denegado.");
+                error = await ValidarOrdenAsync(ordenTrabajoId, cliente.Value);
+                if (error != null) return ServiceResult.Error(error);
 
-            var orden =
-                await _context.OrdenesTrabajo
-                    .Include(o => o.IngresoVehiculo)
-                        .ThenInclude(i => i.Vehiculo)
-                            .ThenInclude(v => v!.DominiosVehiculares)
-                    .FirstOrDefaultAsync(
-                        o => o.Id == ordenTrabajoId);
-
-            if (orden == null)
-            {
-                return ServiceResult.Error(
-                    "La orden de trabajo no existe.");
-            }
-
-            // La calificación se habilita únicamente
-            // después de entregar el vehículo.
-            if (orden.EstadoActual != EstadoOrden.Entregado)
-            {
-                return ServiceResult.Error(
-                    "Solo se puede calificar una orden de trabajo entregada.");
-            }
-
-            // Una sola calificación por orden.
-            var yaExiste =
-                await _context.Calificaciones
-                    .AnyAsync(
-                        c => c.OrdenTrabajoId == ordenTrabajoId);
-
-            if (yaExiste)
-            {
-                return ServiceResult.Error(
-                    "Esta orden de trabajo ya fue calificada.");
-            }
-
-            // El cliente debe ser el titular actual
-            // del vehículo correspondiente a la orden.
-            var clienteEsPropietario =
-                orden.IngresoVehiculo.Vehiculo.DominiosVehiculares
-                    .Any(d =>
-                        d.PersonaId == clienteId &&
-                        d.FechaHasta == null);
-
-            if (!clienteEsPropietario)
-            {
-                return ServiceResult.Error(
-                    "El cliente no puede calificar esta orden de trabajo.");
-            }
-
-            var calificacion =
-                new CalificacionTrabajo
+                _context.Calificaciones.Add(new CalificacionTrabajo
                 {
                     OrdenTrabajoId = ordenTrabajoId,
-                    ClienteId = clienteId,
+                    ClienteId = cliente.Value,
                     Puntuacion = puntuacion,
-                    Comentario =
-                        string.IsNullOrWhiteSpace(comentario)
-                            ? null
-                            : comentario.Trim(),
+                    Comentario = string.IsNullOrWhiteSpace(comentario) ? null : comentario.Trim(),
                     Fecha = DateTime.Now
-                };
-
-            _context.Calificaciones.Add(calificacion);
-
-            await _context.SaveChangesAsync();
-
-            return ServiceResult.Ok(
-                "Calificación registrada correctamente.");
+                });
+                await _context.SaveChangesAsync();
+                await tx.CommitAsync();
+                return ServiceResult.Ok("Calificación registrada correctamente.");
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
         }
     }
 }

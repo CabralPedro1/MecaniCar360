@@ -28,6 +28,7 @@ namespace MecaniCar360.Models
     public enum TipoRecursoNotificacion
     {
         OrdenPropia = 1, PresupuestoPropio = 2, FacturaPropia = 3,
-        GarantiaPropia = 4, OrdenTrabajo = 5, Turno = 6, Repuesto = 7
+        GarantiaPropia = 4, OrdenTrabajo = 5, Turno = 6, Repuesto = 7,
+        SolicitudCalificacion = 8
     }
 }

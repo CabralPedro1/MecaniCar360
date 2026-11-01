@@ -790,7 +790,7 @@ namespace MecaniCar360.Services
                 ingreso.FechaEgreso =
                     DateTime.Now;
 
-                await _notificaciones.ClienteAsync(orden.Id, "Vehículo entregado", TipoRecursoNotificacion.OrdenPropia, orden.Id);
+                await _notificaciones.ClienteAsync(orden.Id, "Vehículo entregado", TipoRecursoNotificacion.SolicitudCalificacion, orden.Id);
                 _auditoria.RegistrarOperacion("VEHICULO_ENTREGADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
                 await _context.SaveChangesAsync();
 

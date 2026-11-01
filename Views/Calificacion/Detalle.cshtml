@@ -7,15 +7,27 @@
 @if (TempData["Ok"] is string ok) { <div class="alert alert-success">@ok</div> }
 @if (TempData["Error"] is string error) { <div class="alert alert-danger">@error</div> }
 @if (actual != null) {
+    <p class="alert alert-success">Calificación registrada</p>
     <p>Puntuación: @actual.Puntuacion / 5</p><p>@actual.Comentario</p><p>@actual.Fecha.ToString("dd/MM/yyyy HH:mm")</p>
 } else if (ViewBag.PuedeCalificar == true) {
     <form asp-action="Crear" method="post" class="mc-form-panel mb-3">
         @Html.AntiForgeryToken()
         <input asp-for="OrdenTrabajoId" type="hidden" />
         <div asp-validation-summary="All" class="text-danger"></div>
-        <label asp-for="Puntuacion" class="form-label">Puntuación (1–5)</label>
-        <input asp-for="Puntuacion" type="number" min="1" max="5" class="form-control" />
-        <span asp-validation-for="Puntuacion" class="text-danger"></span>
+        <fieldset class="mb-3">
+            <legend class="fs-6">Puntuación (1–5 estrellas)</legend>
+            @for (var estrellas = 1; estrellas <= 5; estrellas++)
+            {
+                <div class="form-check form-check-inline">
+                    <input asp-for="Puntuacion" type="radio" id="Puntuacion_@estrellas" value="@estrellas" class="form-check-input" />
+                    <label for="Puntuacion_@estrellas" class="form-check-label">
+                        <span aria-hidden="true">@(new string('★', estrellas))</span>
+                        <span class="visually-hidden">@estrellas @(estrellas == 1 ? "estrella" : "estrellas")</span>
+                    </label>
+                </div>
+            }
+            <span asp-validation-for="Puntuacion" class="text-danger"></span>
+        </fieldset>
         <label asp-for="Comentario" class="form-label">Comentario (opcional)</label>
         <textarea asp-for="Comentario" maxlength="1000" class="form-control"></textarea>
         <span asp-validation-for="Comentario" class="text-danger"></span>

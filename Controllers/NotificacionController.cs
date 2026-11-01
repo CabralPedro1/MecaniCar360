@@ -16,7 +16,9 @@ public sealed class NotificacionController(NotificacionService notificaciones) :
     public async Task<IActionResult> Index()
     {
         var r = await notificaciones.ObtenerPorPersonaAsync(Actor);
-        return r.Exitoso ? View(r.Data) : Forbid();
+        if (!r.Exitoso) return Forbid();
+        ViewBag.Calificaciones = await notificaciones.CalificacionesDeEntregasAsync(Actor);
+        return View(r.Data);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
@@ -40,6 +42,8 @@ public sealed class NotificacionController(NotificacionService notificaciones) :
         if (!r.Exitoso) return NotFound();
         var n = r.Data!;
         if (n.RecursoId is not > 0) return NotFound();
+        if ((await notificaciones.CalificacionesDeEntregasAsync(Actor)).ContainsKey(n.Id))
+            return RedirectToAction("Detalle", "Calificacion", new { ordenTrabajoId = n.RecursoId });
         // Sólo IDs de la notificación propia, nunca destinos recibidos del navegador.
         // Cada destino conserva su autorización y ownership/asignación.
         return n.TipoRecurso switch

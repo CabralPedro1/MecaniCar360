@@ -26,8 +26,8 @@ public sealed class CalificacionController(CalificacionTrabajoService calificaci
         }
         var orden = await ordenes.ObtenerPropiaAsync(ordenTrabajoId, Actor);
         if (!orden.Exitoso) return NotFound();
-        ViewBag.PuedeCalificar = orden.Data!.EstadoActual == EstadoOrden.Entregado &&
-            await permisos.TienePermisoAsync(Actor, "CLIENTE_CALIFICACION_CREAR");
+        ViewBag.PuedeCalificar = await permisos.TienePermisoAsync(Actor, "CLIENTE_CALIFICACION_CREAR") &&
+            await calificaciones.PuedeCalificarAsync(ordenTrabajoId, Actor);
         return View(new CalificacionViewModel { OrdenTrabajoId = ordenTrabajoId });
     }
 

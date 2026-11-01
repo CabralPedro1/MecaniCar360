@@ -27,6 +27,33 @@ public partial class NotificacionService
         return n == null ? ServiceResult<Notificacion>.Error("Notificación no encontrada.") : ServiceResult<Notificacion>.Ok(n);
     }
 
+    // Respuesta derivada de Calificacion, independiente de Leida; incluye entregas históricas.
+    private static IQueryable<Notificacion> EntregasPropias(IQueryable<Notificacion> notificaciones, int personaId) =>
+        notificaciones.Where(n => n.PersonaId == personaId &&
+            (n.TipoRecurso == TipoRecursoNotificacion.SolicitudCalificacion ||
+             // Compatibilidad de lectura: el tipo antiguo compartía eventos distintos.
+             (n.TipoRecurso == TipoRecursoNotificacion.OrdenPropia && n.Titulo == "Vehículo entregado")) &&
+            n.RecursoId > 0);
+
+    public async Task<Dictionary<int, bool>> CalificacionesDeEntregasAsync(int usuarioId)
+    {
+        var persona = await PersonaAutorizadaAsync(usuarioId);
+        if (!persona.HasValue) return new();
+        return await SolicitudesDeCalificacion(_context.Notificaciones.AsNoTracking(),
+                _context.OrdenesTrabajo.AsNoTracking(), persona.Value)
+            .ToDictionaryAsync(x => x.NotificacionId, x => x.Respondida);
+    }
+
+    private static IQueryable<SolicitudCalificacion> SolicitudesDeCalificacion(
+        IQueryable<Notificacion> notificaciones, IQueryable<OrdenTrabajo> ordenes, int personaId) =>
+        from n in EntregasPropias(notificaciones, personaId)
+        join o in ordenes on n.RecursoId equals (int?)o.Id
+        where o.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Entregado &&
+            o.IngresoVehiculo.Turno.ClienteId == personaId
+        select new SolicitudCalificacion(n.Id, o.Calificacion != null);
+
+    private sealed record SolicitudCalificacion(int NotificacionId, bool Respondida);
+
     // Sólo prepara entidades: SaveChanges y transacción pertenecen al caso de negocio.
     internal async Task AgregarAsync(int personaId, string titulo, string mensaje, TipoRecursoNotificacion tipo, int recursoId)
     {

@@ -1,5 +1,8 @@
 @model List<MecaniCar360.Models.Notificacion>
-@{ ViewData["Title"] = "Mis notificaciones"; }
+@{
+    ViewData["Title"] = "Mis notificaciones";
+    var calificaciones = ViewBag.Calificaciones as Dictionary<int, bool> ?? new();
+}
 <div class="mc-components">
 <header class="mc-page-header"><h1>Mis notificaciones</h1></header>
 @if (Model.Any(n => !n.Leida))
@@ -23,7 +26,12 @@ else
             <strong>@n.Titulo</strong>
             <small>@n.Fecha.ToString("dd/MM/yyyy HH:mm")</small>
             <p>@n.Mensaje</p>
-            @if (n.RecursoId is > 0 && n.TipoRecurso.HasValue && Enum.IsDefined(n.TipoRecurso.Value))
+            @if (calificaciones.TryGetValue(n.Id, out var respondida))
+            {
+                <p>@(respondida ? "Calificación registrada" : $"Puede calificar el trabajo de la orden #{n.RecursoId}. La calificación es opcional.")</p>
+                <a asp-action="Recurso" asp-route-id="@n.Id" class="btn btn-outline-primary btn-sm">@(respondida ? "Consultar calificación" : "Calificar")</a>
+            }
+            else if (n.RecursoId is > 0 && n.TipoRecurso.HasValue && Enum.IsDefined(n.TipoRecurso.Value))
             {
                 <a asp-action="Recurso" asp-route-id="@n.Id" class="btn btn-outline-primary btn-sm">Ver recurso</a>
             }
