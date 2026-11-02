@@ -35,6 +35,7 @@
 
 
     <!-- ===================================== -->
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
     <!-- MENSAJES -->
     <!-- ===================================== -->
     @if (TempData["Error"] != null)
@@ -260,10 +261,12 @@
                         <input id="ot-horasReales" type="number"
                                name="horasReales"
                                class="form-control"
+                               value="@ViewData.ModelState["horasReales"]?.AttemptedValue"
                                placeholder="Horas reales"
                                min="0"
                                max="1000"
                                />
+                        @Html.ValidationMessage("horasReales", null, new { @class = "text-danger" })
 
                         <button type="submit"
                                 class="btn btn-warning">
@@ -325,49 +328,7 @@
 
 
                 <!-- GUARDAR DIAGNÓSTICO -->
-                @if (asignado && await Permisos.TienePermisoAsync(usuarioId, Model.Diagnostico == null ? "DIAGNOSTICO_CREAR" : "DIAGNOSTICO_MODIFICAR") && !Model.FechaFin.HasValue &&
-                    (Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
-                     (Model.Diagnostico != null && Model.EstadoActual is
-                        MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion or
-                        MecaniCar360.Models.Enums.EstadoOrden.Aprobado or
-                        MecaniCar360.Models.Enums.EstadoOrden.EnReparacion or
-                        MecaniCar360.Models.Enums.EstadoOrden.Rechazado)))
-                {
-                    <form asp-controller="Diagnostico"
-                          asp-action="Guardar"
-                          method="post" class="mc-form-panel">
-
-                        @Html.AntiForgeryToken()
-
-                        <input type="hidden"
-                               name="id"
-                               value="@Model.Id" />
-
-                        <div class="mb-3">
-
-                            <label for="ot-diagnostico" class="form-label">
-                                Descripción del diagnóstico
-                            </label>
-
-                            <textarea name="descripcion" id="ot-diagnostico"
-                              class="form-control"
-                              rows="5"
-                              required></textarea>
-
-                        </div>
-
-                        <div class="mc-actions">
-
-                            <button type="submit"
-                                    class="btn btn-primary">
-                                Guardar diagnóstico
-                            </button>
-
-                        </div>
-
-                    </form>
-                }
-
+                <partial name="~/Views/Diagnostico/_Formulario.cshtml" model="Model" />
 
                 <!-- DIAGNÓSTICOS EXISTENTES -->
                 @if (Model.Diagnostico != null)
@@ -568,7 +529,8 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="ordenTrabajoId" value="@Model.Id" />
                     <label for="costoDiagnostico" class="form-label">Costo de diagnóstico/revisión</label>
-                    <input id="costoDiagnostico" name="costoDiagnostico" value="@Model.CostoDiagnostico" type="text" inputmode="decimal" class="form-control mb-2" required />
+                    <input id="costoDiagnostico" name="costoDiagnostico" value="@(ViewData.ModelState["costoDiagnostico"]?.AttemptedValue ?? Model.CostoDiagnostico?.ToString())" type="text" inputmode="decimal" class="form-control mb-2" required />
+                    @Html.ValidationMessage("costoDiagnostico", null, new { @class = "text-danger" })
                     <button type="submit" class="btn btn-outline-primary">Guardar costo</button>
                 </form>
             }
@@ -674,7 +636,8 @@
 
                         <textarea name="observaciones" id="ot-observaciones"
                               class="form-control"
-                              rows="3">@Model.Observaciones</textarea>
+                              rows="3">@(ViewData.ModelState["observaciones"]?.AttemptedValue ?? Model.Observaciones)</textarea>
+                        @Html.ValidationMessage("observaciones", null, new { @class = "text-danger" })
 
                     </div>
 

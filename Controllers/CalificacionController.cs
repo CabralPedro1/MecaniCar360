@@ -16,27 +16,36 @@ public sealed class CalificacionController(CalificacionTrabajoService calificaci
 
     [HttpGet, Permiso("CLIENTE_ORDEN_VER")]
     public async Task<IActionResult> Detalle(int ordenTrabajoId)
+        => await MostrarDetalle(new CalificacionViewModel { OrdenTrabajoId = ordenTrabajoId });
+
+    private async Task<IActionResult> MostrarDetalle(CalificacionViewModel model)
     {
+        var ordenTrabajoId = model.OrdenTrabajoId;
         var existente = await calificaciones.ObtenerPorOrdenTrabajoAsync(ordenTrabajoId, Actor);
         ViewBag.Calificacion = existente.Data;
         if (existente.Exitoso)
         {
             ViewBag.PuedeCalificar = false;
-            return View(new CalificacionViewModel { OrdenTrabajoId = ordenTrabajoId });
+            return View("Detalle", model);
         }
         var orden = await ordenes.ObtenerPropiaAsync(ordenTrabajoId, Actor);
         if (!orden.Exitoso) return NotFound();
         ViewBag.PuedeCalificar = await permisos.TienePermisoAsync(Actor, "CLIENTE_CALIFICACION_CREAR") &&
             await calificaciones.PuedeCalificarAsync(ordenTrabajoId, Actor);
-        return View(new CalificacionViewModel { OrdenTrabajoId = ordenTrabajoId });
+        return View("Detalle", model);
     }
 
     [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_CALIFICACION_CREAR")]
     public async Task<IActionResult> Crear(CalificacionViewModel model)
     {
-        if (!ModelState.IsValid) return BadRequest(ModelState);
+        if (!ModelState.IsValid) return await MostrarDetalle(model);
         var r = await calificaciones.CrearAsync(model.OrdenTrabajoId, Actor, model.Puntuacion, model.Comentario);
-        TempData[r.Exitoso ? "Ok" : "Error"] = r.Mensaje;
+        if (!r.Exitoso)
+        {
+            ModelState.AddModelError(string.Empty, r.Mensaje);
+            return await MostrarDetalle(model);
+        }
+        TempData["Ok"] = r.Mensaje;
         return RedirectToAction(nameof(Detalle), new { ordenTrabajoId = model.OrdenTrabajoId });
     }
 }

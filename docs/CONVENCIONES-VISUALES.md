@@ -1,5 +1,15 @@
 # Componentes visuales — fase B
 
+## Navegación superpuesta — actualización posterior a clase 12
+
+El menú usa el offcanvas local de Bootstrap 5.1 en todos los tamaños: cerrado inicialmente, sin columna permanente. Conserva los cinco grupos existentes (Inicio, Operaciones, Taller, Administración y Gestión), sus destinos y condiciones Razor. Los grupos vacíos se ocultan; los de una opción presentan el acceso directamente. `details/summary` conserva la interacción nativa de teclado; el módulo actual se abre al cargar.
+
+El logo completo conserva `Account/Inicio`: ADMIN/CAJA llegan a Agenda según la resolución existente, MECANICO a Mi trabajo, STOCK a Inventario y CLIENTE a su portal según sus permisos efectivos. No se añaden permisos ni rutas. Diagnóstico, presupuesto y demás operaciones contextuales siguen disponibles desde sus pantallas existentes.
+
+Bootstrap controla Escape, backdrop y confinamiento del foco. El mismo botón hamburguesa se traslada dentro del panel mientras está abierto y vuelve al encabezado con foco al cerrar. La selección ordinaria de un enlace cierra el panel. En detalles reconocidos, la referencia de ubicación usa el texto y destino de una opción ya renderizada y autorizada; no inventa nombres de rutas ni repite el título de página. Las siete vistas independientes con `Layout = null` no cambian.
+
+Aceptación pendiente (no ejecutada en navegador): para cada perfil, comprobar a 320, 375, 768 y 1366 px y zoom 200 %: apertura/cierre con el mismo botón, Escape, clic exterior, selección de destino, Tab/Shift+Tab sin salir del panel abierto, Enter/Espacio en submenús, retorno de foco, opción actual, grupos de una opción, scroll vertical y ausencia de columna vacía/desbordamiento. Comprobar también Mi cuenta, notificaciones y retorno mediante logo. Las pruebas JavaScript con DOM simulado no certifican estas interacciones reales ni el renderizado responsive. Reiniciar la aplicación requiere autorización; esta modificación no la reinicia.
+
 Alcance: presentación de tres pilotos, sin cambios de reglas, rutas, permisos ni contratos. No constituye aceptación visual en navegador.
 
 ## Aplicación gradual

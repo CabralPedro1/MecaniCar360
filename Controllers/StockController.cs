@@ -149,6 +149,7 @@ namespace MecaniCar360.Controllers
         public async Task<IActionResult> AgregarProveedor(
             AdministrarProveedoresViewModel model)
         {
+            if (!ModelState.IsValid) return await ProveedoresRechazados(model.RepuestoId);
             var resultado = await _service.AgregarProveedorARepuestoAsync(
                 model.RepuestoId,
                 model.ProveedorId,
@@ -156,7 +157,12 @@ namespace MecaniCar360.Controllers
                 model.CodigoProveedor,
                 model.Principal, SolicitanteId());
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await ProveedoresRechazados(model.RepuestoId);
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(AdministrarProveedores),
@@ -198,11 +204,18 @@ namespace MecaniCar360.Controllers
             if (!relacionResultado.Exitoso)
                 return NotFound();
 
+            ViewData["RelacionPrecioRechazada"] = proveedorRepuestoId;
+            if (!ModelState.IsValid) return await ProveedoresRechazados(relacionResultado.Data!.RepuestoId);
             var resultado = await _service.ActualizarPrecioCompraAsync(
                 proveedorRepuestoId,
                 precioCompra, SolicitanteId());
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await ProveedoresRechazados(relacionResultado.Data!.RepuestoId);
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(AdministrarProveedores),
@@ -343,8 +356,7 @@ namespace MecaniCar360.Controllers
         {
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
-                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarIngreso));
             }
             int usuarioId = SolicitanteId();
 
@@ -356,7 +368,12 @@ namespace MecaniCar360.Controllers
                 usuarioId,
                 observaciones);
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarIngreso));
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(Detalle), new { id = repuestoId });
         }
@@ -376,8 +393,7 @@ namespace MecaniCar360.Controllers
         {
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
-                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarSalida));
             }
             int usuarioId = SolicitanteId();
 
@@ -388,7 +404,12 @@ namespace MecaniCar360.Controllers
                 observaciones,
                 ordenTrabajoId);
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarSalida));
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(Detalle), new { id = repuestoId });
         }
@@ -408,8 +429,7 @@ namespace MecaniCar360.Controllers
         {
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Revise los campos del movimiento: ingrese cantidades e identificadores válidos y un precio con hasta dos decimales cuando corresponda.";
-                return RedirectToAction(nameof(Detalle), new { id = repuestoId });
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarAjuste));
             }
             int usuarioId = SolicitanteId();
 
@@ -420,7 +440,12 @@ namespace MecaniCar360.Controllers
                 observaciones,
                 loteRepuestoId);
 
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await MovimientoRechazado(repuestoId, nameof(RegistrarAjuste));
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(nameof(Detalle), new { id = repuestoId });
         }
@@ -447,6 +472,30 @@ namespace MecaniCar360.Controllers
         // ======================================
         // MÉTODOS PRIVADOS
         // ======================================
+
+        private async Task<IActionResult> ProveedoresRechazados(int repuestoId)
+        {
+            if (!await _permisos.TienePermisoAsync(SolicitanteId(), "STOCK_MODIFICAR")) return Forbid();
+            if (ViewData["RelacionPrecioRechazada"] is int)
+            {
+                // PrecioCompra del alta y precioCompra de la fila comparten clave en ModelState.
+                ViewData["EstadoPrecioFila"] = ModelState["precioCompra"];
+                ModelState.Remove("precioCompra");
+            }
+            var resultado = await AdministrarProveedores(repuestoId);
+            if (resultado is ViewResult vista) vista.ViewName = "AdministrarProveedores";
+            return resultado;
+        }
+
+        private async Task<IActionResult> MovimientoRechazado(int repuestoId, string accion)
+        {
+            // Direct calls do not execute MVC filters: retain the GET's permission boundary.
+            if (!await _permisos.TienePermisoAsync(SolicitanteId(), "STOCK_VER")) return Forbid();
+            ViewData["MovimientoRechazado"] = accion;
+            var resultado = await Detalle(repuestoId);
+            if (resultado is ViewResult vista && string.IsNullOrEmpty(vista.ViewName)) vista.ViewName = "Detalle";
+            return resultado;
+        }
 
         // Consulta MVC tecnica: solo utiliza la proyeccion sin datos comerciales.
         private async Task<IActionResult> ConsultaTecnica(int? id)

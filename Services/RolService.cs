@@ -115,6 +115,7 @@ namespace MecaniCar360.Services
             Rol rol,
             int usuarioSolicitanteId)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return ServiceResult.Error(PoliticaSeguridadEstructural.Mensaje);
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "ROL_CREAR"))
@@ -156,6 +157,7 @@ namespace MecaniCar360.Services
             Rol rol,
             int usuarioSolicitanteId)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return ServiceResult.Error(PoliticaSeguridadEstructural.Mensaje);
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "ROL_MODIFICAR"))
@@ -204,6 +206,7 @@ namespace MecaniCar360.Services
             int id,
             int usuarioSolicitanteId)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return ServiceResult.Error(PoliticaSeguridadEstructural.Mensaje);
             if (!await _permisoService.TienePermisoAsync(
                 usuarioSolicitanteId,
                 "ROL_DESACTIVAR"))

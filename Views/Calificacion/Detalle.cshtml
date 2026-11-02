@@ -6,6 +6,7 @@
 <header class="mc-page-header"><h1>Calificación de la orden #@Model.OrdenTrabajoId</h1></header>
 @if (TempData["Ok"] is string ok) { <div class="alert alert-success">@ok</div> }
 @if (TempData["Error"] is string error) { <div class="alert alert-danger">@error</div> }
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
 @if (actual != null) {
     <p class="alert alert-success">Calificación registrada</p>
     <p>Puntuación: @actual.Puntuacion / 5</p><p>@actual.Comentario</p><p>@actual.Fecha.ToString("dd/MM/yyyy HH:mm")</p>
@@ -13,7 +14,6 @@
     <form asp-action="Crear" method="post" class="mc-form-panel mb-3">
         @Html.AntiForgeryToken()
         <input asp-for="OrdenTrabajoId" type="hidden" />
-        <div asp-validation-summary="All" class="text-danger"></div>
         <fieldset class="mb-3">
             <legend class="fs-6">Puntuación (1–5 estrellas)</legend>
             @for (var estrellas = 1; estrellas <= 5; estrellas++)

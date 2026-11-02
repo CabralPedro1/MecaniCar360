@@ -1,4 +1,4 @@
-﻿@inject MecaniCar360.Services.PresentacionCuentaService PresentacionCuenta
+@inject MecaniCar360.Services.PresentacionCuentaService PresentacionCuenta
 @{ int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var cuentaActor); var cuentaVisible = await PresentacionCuenta.ObtenerAsync(cuentaActor); }
 @inject MecaniCar360.Services.PermisosVista Permisos
 @inject MecaniCar360.Services.NotificacionService Notificaciones
@@ -23,14 +23,15 @@
         <nav class="navbar navbar-dark bg-dark mc-navbar" aria-label="Cuenta">
             <div class="container-fluid">
 
-                <a class="navbar-brand" asp-controller="Account" asp-action="Inicio">MecaniCar360</a>
-
+                <div class="mc-header-menu">
                 @if (User.Identity?.IsAuthenticated == true) {
-                <button class="navbar-toggler mc-menu-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#navigationSidebar" aria-controls="navigationSidebar" aria-label="Abrir navegación">
+                <button class="navbar-toggler mc-menu-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#navigationSidebar" aria-controls="navigationSidebar" id="navigationToggle" aria-expanded="false" aria-label="Abrir menú de navegación">
                     <span class="navbar-toggler-icon"></span>
                 </button>
 
                 }
+                </div>
+                <a class="navbar-brand" asp-controller="Account" asp-action="Inicio" aria-label="MecaniCar360 — Ir a mi inicio" title="Ir a mi inicio">MecaniCar360</a>
                 <div class="mc-header-actions">
 
 <ul class="navbar-nav">
@@ -94,7 +95,7 @@
             <button type="button" class="btn-close btn-close-white mc-sidebar-close" data-bs-dismiss="offcanvas" aria-label="Cerrar navegación"></button>
         </div>
         <nav class="offcanvas-body" aria-label="Navegación principal">
-            <details class="mc-nav-group" open>
+            <details class="mc-nav-group">
                 <summary>Inicio</summary>
                 <ul class="nav flex-column">
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var dashboardActor) && await Permisos.TienePermisoAsync(dashboardActor, "DASHBOARD_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li> }
@@ -110,7 +111,7 @@
 @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "STOCK_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Inicio" asp-action="Stock">Inventario</a></li> }
                 </ul>
             </details>
-            <details class="mc-nav-group" open>
+            <details class="mc-nav-group">
                 <summary>Operaciones</summary>
                 <ul class="nav flex-column">
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var turnoActor) && await Permisos.TienePermisoAsync(turnoActor, "TURNO_VER"))
@@ -128,7 +129,7 @@
                         }
                 </ul>
             </details>
-            <details class="mc-nav-group" open>
+            <details class="mc-nav-group">
                 <summary>Taller</summary>
                 <ul class="nav flex-column">
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var ordenActor) && await Permisos.TienePermisoAsync(ordenActor, "ORDEN_VER"))
@@ -145,7 +146,7 @@
                         }
                 </ul>
             </details>
-            <details class="mc-nav-group" open>
+            <details class="mc-nav-group">
                 <summary>Administración</summary>
                 <ul class="nav flex-column">
 @if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioCatalogoId) &&
@@ -155,8 +156,6 @@
                                 <a class="nav-link" asp-controller="Marca" asp-action="Index">Marcas y modelos</a>
                             </li>
                         }
-@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "ROL_VER")) { <li class="nav-item"><a class="nav-link" asp-controller="Rol" asp-action="Index">Roles</a></li> }
-@if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "SEGURIDAD_ADMINISTRAR")) { <li class="nav-item"><a class="nav-link" asp-controller="Seguridad" asp-action="Index">Seguridad</a></li> }
 @if (usuarioFacturacionId > 0 &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "PERSONA_VER") &&
                             await Permisos.TienePermisoAsync(usuarioFacturacionId, "USUARIO_VER"))
@@ -168,7 +167,7 @@
                         }
                 </ul>
             </details>
-            <details class="mc-nav-group" open>
+            <details class="mc-nav-group">
                 <summary>Gestión</summary>
                 <ul class="nav flex-column">
 @if (usuarioFacturacionId > 0 && await Permisos.TienePermisoAsync(usuarioFacturacionId, "FACTURA_VER"))
@@ -199,6 +198,7 @@
     }
 
     <div class="container mc-content">
+        <nav id="navigationBreadcrumb" aria-label="Ubicación" hidden><ol class="breadcrumb"></ol></nav>
         <main id="contenido-principal" tabindex="-1" class="pb-3">
             @RenderBody()
         </main>
@@ -216,6 +216,7 @@
     <script src="~/js/navigation.js" asp-append-version="true"></script>
 
     @await RenderSectionAsync("Scripts", required: false)
+    <script src="~/js/forms.js" asp-append-version="true"></script>
 
 </body>
 </html>

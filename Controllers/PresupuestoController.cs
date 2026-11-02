@@ -87,43 +87,80 @@ namespace MecaniCar360.Controllers
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("PRESUPUESTO_MODIFICAR")]
         public async Task<IActionResult> AgregarItem(int presupuestoId, string descripcion,
-            int cantidad, decimal precioUnitario, int? repuestoId)
+            int cantidad, decimal precioUnitario, int? repuestoId, int ordenTrabajoId = 0)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return ErrorOperacion("Datos del ítem inválidos.");
-            return Resultado(await _service.AgregarItemAsync(presupuestoId, usuario, descripcion, cantidad, precioUnitario, repuestoId));
+            ViewData["OperacionRechazada"] = nameof(AgregarItem);
+            if (!ModelState.IsValid) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false);
+            var resultado = await _service.AgregarItemAsync(presupuestoId, usuario, descripcion, cantidad, precioUnitario, repuestoId);
+            if (!resultado.Exitoso) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false, resultado.Mensaje);
+            return Resultado(resultado);
         }
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("PRESUPUESTO_MODIFICAR")]
-        public async Task<IActionResult> EliminarItem(int presupuestoId, int itemId)
+        public async Task<IActionResult> EliminarItem(int presupuestoId, int itemId, int ordenTrabajoId = 0)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return ErrorOperacion("Datos inválidos.");
-            return Resultado(await _service.EliminarItemAsync(presupuestoId, itemId, usuario));
+            if (!ModelState.IsValid) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false);
+            var resultado = await _service.EliminarItemAsync(presupuestoId, itemId, usuario);
+            if (!resultado.Exitoso) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false, resultado.Mensaje);
+            return Resultado(resultado);
         }
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("PRESUPUESTO_ENVIAR")]
-        public async Task<IActionResult> EnviarAprobacion(int presupuestoId, IEnumerable<int>? evidenciaIds = null)
+        public async Task<IActionResult> EnviarAprobacion(int presupuestoId, IEnumerable<int>? evidenciaIds = null, int ordenTrabajoId = 0)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return ErrorOperacion("Datos de envío inválidos.");
-            return Resultado(await _service.EnviarAprobacionAsync(presupuestoId, usuario, evidenciaIds));
+            ViewData["EvidenciasSeleccionadas"] = evidenciaIds?.ToHashSet() ?? new HashSet<int>();
+            if (!ModelState.IsValid) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false);
+            var resultado = await _service.EnviarAprobacionAsync(presupuestoId, usuario, evidenciaIds);
+            if (!resultado.Exitoso) return await MostrarRechazo(ordenTrabajoId, presupuestoId, false, resultado.Mensaje);
+            return Resultado(resultado);
         }
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_PRESUPUESTO_APROBAR")]
-        public async Task<IActionResult> Aprobar(int presupuestoVersionId)
+        public async Task<IActionResult> Aprobar(int presupuestoVersionId, int ordenTrabajoId = 0)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return ErrorOperacion("Versión inválida.", true);
-            return Resultado(await _service.AprobarAsync(presupuestoVersionId, usuario), true);
+            if (!ModelState.IsValid) return await MostrarRechazo(ordenTrabajoId, presupuestoVersionId, true);
+            var resultado = await _service.AprobarAsync(presupuestoVersionId, usuario);
+            if (!resultado.Exitoso) return await MostrarRechazo(ordenTrabajoId, presupuestoVersionId, true, resultado.Mensaje);
+            return Resultado(resultado, true);
         }
 
         [HttpPost, ValidateAntiForgeryToken, Permiso("CLIENTE_PRESUPUESTO_RECHAZAR")]
-        public async Task<IActionResult> Rechazar(int presupuestoVersionId, string motivo)
+        public async Task<IActionResult> Rechazar(int presupuestoVersionId, string motivo, int ordenTrabajoId = 0)
         {
             if (!UsuarioId(out var usuario)) return Forbid();
-            if (!ModelState.IsValid) return ErrorOperacion("Versión o motivo inválidos.", true);
-            return Resultado(await _service.RechazarAsync(presupuestoVersionId, usuario, motivo), true);
+            if (!ModelState.IsValid) return await MostrarRechazo(ordenTrabajoId, presupuestoVersionId, true);
+            var resultado = await _service.RechazarAsync(presupuestoVersionId, usuario, motivo);
+            if (!resultado.Exitoso) return await MostrarRechazo(ordenTrabajoId, presupuestoVersionId, true, resultado.Mensaje);
+            return Resultado(resultado, true);
+        }
+
+        private async Task<IActionResult> MostrarRechazo(int ordenTrabajoId, int recursoId, bool cliente, string? mensaje = null)
+        {
+            if (mensaje != null) ModelState.AddModelError(string.Empty, mensaje);
+            // El contexto de presentación no autoriza ni cambia el recurso del POST.
+            if (ordenTrabajoId <= 0) return ErrorOperacion(mensaje ?? "Revise los datos ingresados.", cliente);
+            var resultado = cliente ? await Propio(ordenTrabajoId) : await Detalle(ordenTrabajoId);
+            return PresentarRechazo(resultado, recursoId, cliente);
+        }
+
+        private IActionResult PresentarRechazo(IActionResult resultado, int recursoId, bool cliente)
+        {
+            if (resultado is not ViewResult vista) return resultado;
+            if (vista.Model is not Presupuesto && vista.Model is not PresupuestoVersion) return vista;
+            var coincide = cliente ? vista.Model is PresupuestoVersion v && v.Id == recursoId
+                : vista.Model is Presupuesto p && p.Id == recursoId;
+            if (!coincide) return ErrorOperacion("El presupuesto o su versión cambió. Revise la versión vigente antes de volver a decidir o editar.", cliente);
+            if (!cliente && ViewData["OperacionRechazada"] as string == nameof(AgregarItem) &&
+                ModelState["repuestoId"]?.AttemptedValue is string seleccionado && !string.IsNullOrEmpty(seleccionado) &&
+                ViewData["Repuestos"] is IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> opciones &&
+                !opciones.Any(o => o.Value == seleccionado))
+                ModelState.AddModelError("repuestoId", "El repuesto seleccionado no está disponible en las opciones actuales. Revise la selección antes de reenviar.");
+            vista.ViewName = cliente ? "Propio" : "Detalle";
+            return vista;
         }
 
         private IActionResult Resultado(ServiceResult<PresupuestoOperacion> resultado, bool cliente = false)

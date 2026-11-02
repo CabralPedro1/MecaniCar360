@@ -177,7 +177,11 @@ namespace MecaniCar360.Controllers
                     "Account");
 
             if (ordenTrabajoId <= 0 || !ModelState.IsValid)
-                return BadRequest(ModelState);
+            {
+                if (ordenTrabajoId <= 0) ModelState.AddModelError(nameof(ordenTrabajoId), "Orden inválida.");
+                ViewData["ItemsSeleccionados"] = items.Select(i => i.FacturaItemId).ToHashSet();
+                return await Crear(ordenTrabajoId);
+            }
 
             var resultado =
                 await _garantiaService
@@ -188,15 +192,9 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return RedirectToAction(
-                    nameof(Crear),
-                    new
-                    {
-                        ordenTrabajoId
-                    });
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                ViewData["ItemsSeleccionados"] = items.Select(i => i.FacturaItemId).ToHashSet();
+                return await Crear(ordenTrabajoId);
             }
 
             TempData["Ok"] =

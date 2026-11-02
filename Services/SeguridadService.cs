@@ -25,6 +25,7 @@ public sealed class SeguridadService(MecaniCarContext db, PermisoService permiso
     // Serializa las escrituras del grafo completo, incluida la comprobación de ciclos.
     private async Task<ServiceResult> EscribirAsync(int actor, Func<Task<ServiceResult>> cambio)
     {
+        if (!PoliticaSeguridadEstructural.PermiteModificar) return ServiceResult.Error(PoliticaSeguridadEstructural.Mensaje);
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         await db.Database.ExecuteSqlRawAsync("DECLARE @r int; EXEC @r = sys.sp_getapplock @Resource=N'MecaniCar360.Seguridad', @LockMode='Exclusive', @LockOwner='Transaction', @LockTimeout=10000; IF @r < 0 THROW 51000, 'No se pudo bloquear la configuración de seguridad.', 1;");
         if (!await permisos.TienePermisoAsync(actor, Capacidad)) return ServiceResult.Error("Acceso denegado.");

@@ -203,3 +203,111 @@ Pendiente con autorización separada y base SQL aislada:
 6. Login ADMIN y CAJA estándar con TURNO_VER abre Turno/Agenda; MECANICO/STOCK/CLIENTE conservan destino. Dashboard sigue accesible con DASHBOARD_VER. Probar logo, Inicio, primer ingreso, denegación y permisos personalizados.
 
 No usar MecaniCar360 ni TEST_CIERRE10_A123 para esta campaña. No se ejecutaron SQL, migraciones, seeds, navegador ni escenarios opt-in durante la implementación. En navegador quedan pendientes radios con flechas/Tab/Space, foco visible, lector de pantalla, anchos móviles y recorrido de notificación ajena. La campaña de 28 escenarios existente conserva su limitación B1.
+
+
+## Formularios y mutaciones — revisión del 01/11/2026
+
+Referencia inspeccionada: [clase 12 MDW 2026](https://dariomaranes.github.io/UAI-MDW-2026/clase-12/index.html). Base: `d38ec01` más los cambios locales de esta tarea. Esta sección registra implementación y límites; no certifica aceptación en navegador. La segunda pasada de cierre se detalla al final.
+
+### Aplicación a MVC y alcance comprobado
+
+Los controladores validan `ModelState`, los servicios devuelven `ServiceResult` y aplican permisos, ownership y reglas. Los formularios nativos conservan POST y antiforgery. El actor se obtiene de Claims, no de un campo editable. Tras éxito, las redirecciones producen un GET que consulta información nuevamente: no hacen falta Server Actions, AJAX ni invalidaciones de caché de Next.js. Esto no garantiza que una pestaña ya abierta o una página restaurada desde la caché del navegador muestre datos actuales; antes de una acción crítica debe revisarse el estado y el servicio debe revalidarlo.
+
+Inventario de acciones POST de los módulos solicitados (los nombres corresponden a sus controladores; revisión estática, no ejecución funcional):
+
+| Módulo / operaciones | Validación, rechazo y conservación | Éxito / actualización |
+|---|---|---|
+| Turno: Crear | `ModelState`, errores del servicio y reconstrucción de opciones; conserva ViewModel | Redirección existente |
+| Turno: Confirmar, Cancelar, ClienteAusente, Reprogramar | Confirmación/ausencia mantienen TempData. **Corregido:** cancelación/reprogramación recuperan entrada y errores en detalle autorizado; horarios se vuelven a consultar y sólo se reseleccionan si siguen disponibles | GET de detalle; estado revalidado en servicio |
+| Turno: CrearPropio, CancelarPropio | Contratos HTTP auxiliares, no confundirlos con los formularios HTML del portal | Respuestas HTTP existentes; sin conversión a MVC HTML |
+| Vehiculo: Crear, Editar, CambiarEstado | Alta/edición conservan modelo y catálogos; estado usa mensaje general | PRG existente |
+| IngresoVehiculo: Registrar | Conserva ViewModel y recarga información de pantalla; servicio revalida turno | PRG existente; no se modifica la atomicidad de ingreso/OT |
+| OrdenTrabajo: AsignarMecanico, TomarOrden, IniciarReparacion, Finalizar, Entregar, CambiarUrgencia, ActualizarObservaciones, ActualizarCostoDiagnostico | **Corregido:** Finalizar, ActualizarObservaciones y ActualizarCostoDiagnostico conservan entrada/errores y no invocan escritura con binding inválido; reconstruyen detalle autorizado. Las otras transiciones conservan mensajes/redirección | GET de detalle; ADMIN asigna, MECANICO toma; no se amplían permisos |
+| Diagnostico: Iniciar, Guardar | Corregido en segunda pasada: Guardar conserva descripción/ModelState y reutiliza un parcial con controles de acceso y estado | GET de OT tras éxito; error reconstruye formulario desde consulta autorizada de OT |
+| Presupuesto: Crear, AgregarItem, EliminarItem, EnviarAprobacion, Aprobar, Rechazar | Corregido en segunda pasada: recupera formulario autorizado, entrada y evidencias; ErrorOperacion es fallback si falta contexto o cambia el recurso/versión | PRG a Detalle/Propio; decide sólo propietario habilitado; versiones no se sustituyen al reintentar |
+| Stock: Crear, Editar, CambiarEstado | Alta/edición ya conservan modelo y opciones; cambio de estado no requiere borrador | PRG existente |
+| Stock: RegistrarIngreso, RegistrarSalida, RegistrarAjuste | **Corregido:** error de binding junto al campo y resumen; rechazo de servicio general; vuelve al detalle autorizado con ModelState, datos y opciones actuales. Se distingue el formulario rechazado para no copiar cantidad/observaciones a otro | PRG sólo tras éxito; sin cambio del servicio ni de lotes |
+| Stock: AgregarProveedor, CambiarProveedorPrincipal, ActualizarPrecio, EliminarProveedor | Corregido en segunda pasada: asociación/precio conservan entrada y opciones; sólo la fila rechazada se abre y recupera su precio | GET de asociaciones |
+| Proveedor: Crear, Editar, CambiarEstado | Alta/edición conservan modelo y mensajes; estado sin datos adicionales | PRG existente |
+| Factura: Emitir, RegistrarPago | Pago conserva ViewModel y recarga factura; **conserva SaldoEsperado original**, no permite convertir un reintento en un cobro nuevo | PRG existente; no se altera control de saldo ni transacción |
+| Garantia: Crear, Anular | **Corregido Crear:** binding y negocio vuelven a la vista, recuperan selección y valores desde ModelState y reconstruyen ítems autorizados. Anulación mantiene su mensaje | PRG tras éxito; si ya no es elegible, no se ofrecen ítems obsoletos |
+| Calificacion: Crear | **Corregido:** ya no devuelve JSON de ModelState al formulario HTML; conserva modelo, separa error general y errores de campos. Reconsulta acceso/elegibilidad y oculta formulario si dejó de corresponder | PRG tras éxito; una calificación existente no se convierte en otra escritura |
+| Usuario: NuevoPersonal, Crear, Editar, CambiarEstado | Alta/edición ya devuelven modelo y reconstruyen opciones donde corresponde; no se almacenan credenciales en el navegador | PRG existente |
+| PortalCliente: MisDatos, NuevoVehiculo, NuevoTurno, CancelarTurno | Formularios principales conservan ViewModel/opciones; cancelación conserva contrato existente | PRG y consultas propias; ownership sigue en servidor |
+
+El inventario no convierte el atributo de un controlador en prueba de autorización completa. Los tests de permisos, ownership, concurrencia y modelos existentes siguen vigentes; falta comprobar los resultados persistidos en un entorno autorizado.
+
+### Componente compartido
+
+`wwwroot/js/forms.js`, cargado al final de `_Layout`, añade feedback a POST nativos del mismo origen y ventana. Respeta confirmaciones canceladas, validación HTML/unobtrusive y handlers que cancelan el envío. Excluye GET, destinos externos/otras ventanas, `data-ajax="true"` y `data-mc-submit="false"`. No intercepta ni reemplaza la escritura con fetch. No toca las vistas `Layout = null`.
+
+- Publica «Procesando…» con `role=status` y `aria-busy`; bloquea un segundo submit por clic o Enter. Deshabilita los submitters después de su serialización para conservar nombre/valor. No deshabilita campos ni antiforgery.
+- Al volver con `pageshow`, o si un handler cancela el envío, restaura sólo los botones que habilitó el componente y el estado previo de `aria-busy`.
+- «Recuperar formulario» permite recuperar una navegación interrumpida, previa advertencia de resultado incierto. **No reenvía**. Antes de repetir, comprobar si se guardó: ni un timeout ni una red interrumpida prueban rollback. No se desbloquea por temporizador ni se reintenta automáticamente.
+- Asocia mensajes MVC `data-valmsg-for` a controles del mismo formulario con IDs únicos y `aria-describedby`, conservando ayudas existentes. Actualiza `aria-invalid` al cambiar el mensaje. No inventa etiquetas ni cambia validaciones. Esta mejora requiere JS; no certifica toda la accesibilidad sin JS.
+- No guarda borradores, secretos ni valores en localStorage, sessionStorage o cookies. El servidor conserva únicamente la entrada en la respuesta al rechazo; las opciones retiradas/inaccesibles no se reintroducen.
+
+### Doble envío: límites de servidor y trabajo detenido
+
+El feedback no es idempotencia. Se inspeccionaron las protecciones existentes: transacciones de turnos/recepción/toma de OT, decisión de versiones de presupuesto, unicidad de factura/garantía/calificación y validación de saldo esperado en pagos. No se modificaron ni se probaron carreras SQL.
+
+`StockService.Lotes.RegistrarIngresoAsync`, `RegistrarSalidaAsync` y los ajustes manuales validan y serializan operaciones, pero dos POST válidos sucesivos pueden representar dos movimientos. No se agregó una clave de idempotencia ni se cambió la regla de negocio. Para comprobarlo: en base aislada, repetir la misma operación y comparar movimientos/lotes/saldo/auditoría; distinguir dos movimientos intencionales de un reintento requiere acordar el contrato antes de modificar persistencia.
+
+**Actualización:** se corrigieron las brechas de diagnóstico, presupuesto y asociaciones señaladas en la primera pasada. No se restauran acciones cuando se perdió acceso o elegibilidad, ni se sustituye una versión obsoleta. Ver detalles de la segunda pasada al final.
+
+Tampoco se clasificaron mensajes de `ServiceResult` comparando texto: hay validaciones de entrada dentro de servicios que devuelven un mensaje general sin clave de campo. Incorporar errores tipados afectaría contratos; se conserva el mensaje general y no se duplica la regla en JavaScript.
+
+### Evidencia automatizada y pendientes
+
+Ejecutado en la primera pasada (histórico):
+
+```powershell
+dotnet build MecaniCar360.csproj --configuration CierreB -p:UseAppHost=false -v:q
+dotnet test tests/MecaniCar360.Tests/MecaniCar360.Tests.csproj --configuration CierreB -p:UseAppHost=false --filter 'FullyQualifiedName!~OnboardingSqlIntegrationTests' -v:q
+node --test tests/browser/forms.test.cjs
+git diff --check
+```
+
+`FormulariosMutacionesTests` agrega doce casos: rechazos reales de controlador/servicio con un doble ADO.NET en memoria que no permite escrituras ni transacciones; conservación de ModelState/selección; denegación de acceso al reconstruir formularios; más una comprobación estructural de contratos Razor. No prueba creación exitosa ni renderizado HTML completo. `tests/browser/forms.test.cjs` ejecuta el JS con un DOM doble usando únicamente Node y su runner incorporado: doble submit, controles inicialmente deshabilitados, cancelaciones, recuperación, exclusiones y asociación dinámica de errores. **No es una prueba de navegador**. Node es sólo necesario para esa comprobación, no para ejecutar MVC.
+
+Build: 0 errores y 26 CS8618 conocidas. Suite .NET de la primera pasada: 349 aprobadas, 0 fallidas, integración SQL opt-in excluida. JavaScript: 14 aprobadas con DOM doble. Diff sin errores de whitespace, incluidos archivos nuevos. No se inició la aplicación ni se ejecutó SQL, SMTP, OAuth, migraciones o seeds.
+
+Pendientes de navegador y dispositivo real, complementando la matriz de CONVENCIONES-VISUALES:
+
+1. En cada formulario cambiado, provocar un error de formato y un rechazo de negocio; verificar campo/resumen, valores, selección y permiso vigente. Corregir y guardar una sola vez; comprobar GET y datos persistidos sólo con autorización SQL.
+2. Probar 320, 375, 768 y 1366 px, zoom 200 %, Tab/Enter, lector de pantalla y radios de calificación. Mensajes, recuperación y botones alcanzables; sin desbordamiento ni foco invisible.
+3. En teléfono real: teclado abierto, botón alcanzable, campos sin zoom inesperado, toque y doble toque, red lenta, cancelación de navegación y regreso con Back. Comprobar el estado antes de cualquier reintento tras interrupción.
+4. Verificar que un botón con nombre/valor siga enviándolo, que las confirmaciones canceladas no bloqueen y que un campo inválido no inicie el estado pendiente.
+5. Comprobar menú Mi cuenta, logout y formularios con scripts propios; las páginas independientes de activación/restablecimiento deben conservar aislamiento.
+
+Todas estas comprobaciones están **NO EJECUTADAS**. No se declara aceptación integral ni equivalencia entre las pruebas en memoria y concurrencia SQL.
+
+
+### Segunda pasada — cierre de brechas de formularios (01/11/2026)
+
+- **Diagnóstico:** `Guardar` conserva descripción/ModelState, consulta `OrdenTrabajoService.ObtenerPorIdAsync` (permiso y alcance) y presenta `Views/Diagnostico/Guardar.cshtml`. El formulario se extrajo a `_Formulario.cshtml` y se reutiliza desde OT: mismos campos, POST, antiforgery, asignación y estados. Error de campo junto a descripción; negocio en resumen. `Iniciar` sólo envía ID. No hay otro editor ni selector HTML de evidencias de diagnóstico: no se inventó uno.
+- **Presupuesto:** cada alta de ítem es un POST; no hay grilla editable dinámica. Se recuperan descripción/cantidad/precio/repuesto, evidencias al enviar y motivo al rechazar. Eliminar/aprobar no tienen más entrada editable. Crear sólo recibe OT y mantiene error general. Tras éxito se conserva PRG.
+- **Contexto de pantalla:** se añadió `ordenTrabajoId` opcional a los POST de presupuesto y sus formularios, exclusivamente para reconstrucción. No se pasa a las mutaciones. `MostrarRechazo` utiliza consultas autorizadas existentes; `PresentarRechazo` verifica ID de presupuesto/versión. Una versión cambiada no se reemplaza silenciosamente para decidir otra. Formularios antiguos sin ese contexto mantienen el fallback seguro y deben abrirse nuevamente. No cambiaron contratos de servicios ni consultas EF.
+- **Asociaciones comerciales:** `AgregarProveedor` rechaza binding inválido antes de negocio y reconstruye opciones autorizadas. `ActualizarPrecio` consulta la relación autorizada y recupera precio/error sólo en su fila, abriendo el panel. No contamina otras filas ni el formulario de alta. Principal/eliminar sólo envían ID y conservan PRG/mensajes.
+- **ViewModel:** Repuesto/Proveedores/ProveedoresDisponibles son datos de presentación con `BindNever`/`ValidateNever`, cargados en servidor. Así no se rechaza un alta válida por no enviar el objeto Repuesto completo. No es un cambio del modelo persistido.
+- **Opciones retiradas:** no se reintroducen proveedores/repuestos/evidencias fuera del catálogo autorizado. El selector de proveedor tiene opción vacía; un repuesto retirado genera error de selección, evitando convertir silenciosamente el ítem en uno sin repuesto. Si desaparece elegibilidad o acceso, no se ofrece una acción indebida.
+
+Errores de binding por campo; `ServiceResult` permanece general cuando no proporciona clave de campo. No se interpretaron textos ni se duplicaron reglas. No se afirma que todos los servicios tengan errores tipados: cambiar ese contrato queda fuera del alcance.
+
+**Movimientos manuales: recomendación de idempotencia, no implementación**
+
+`StockService.Lotes.EjecutarStockAsync` posee transacción Serializable, commit/rollback y limpieza del tracker tras rechazo. La protección global DVH/DVV precede a los bloqueos de OT/inventario/lotes. Mantiene coherencia por operación, pero no identifica la intención del usuario. Un mismo ingreso válido reenviado puede generar otro movimiento; una salida puede repetirse si queda saldo, y un ajuste si siguen cumpliéndose sus restricciones. Dos pestañas, reintento tras perder la respuesta o POST directo son escenarios relevantes. Es un riesgo derivado del código, no un duplicado observado mediante SQL aquí.
+
+| Alternativa | Evaluación |
+|---|---|
+| Bloqueo JS o caché por proceso/sesión | No coordina commit ni sobrevive reinicios/otras instancias; sólo UX |
+| Comparar contenido y ventana temporal | Confunde reintento con dos movimientos legítimos idénticos; no recomendable |
+| Clave persistida por actor/operación, única, con huella de entrada y resultado | Alternativa robusta recomendada para una tarea separada autorizada |
+
+La opción recomendada genera una clave por intención y la reutiliza al reintentar; misma clave/otra entrada se rechaza. Registro de clave y movimiento deben confirmarse atómicamente, respetando el orden de bloqueos e integridad. Revalidar autorización también al devolver un resultado anterior. Requiere diseñar contrato, almacenamiento/índice único, caducidad y migración: no se implementa aquí. No reutilizar observaciones ni auditoría como almacén improvisado.
+
+Pruebas futuras autorizadas: dos conexiones con misma clave dejan un movimiento; otra entrada con igual clave se rechaza; claves distintas permiten movimientos intencionales idénticos; rollback permite reintentar sin parcial; respuesta perdida recupera resultado confirmado; otro actor no obtiene resultados ajenos. Verificar lotes/saldo/auditoría/DVH/DVV. No se ejecutó esa campaña.
+
+**Resultados de segunda pasada:** build con 0 errores y las 26 CS8618 conocidas; suite .NET no SQL con **365 aprobadas, 0 fallidas** (16 casos nuevos sobre las 349 iniciales); JavaScript con **14 aprobadas**; `git diff --check` sin errores, también comprobados los archivos nuevos. Sin SQL, migraciones, seeds ni inicio de aplicación. Pruebas nuevas en `FormulariosMutacionesTests`: binding inválido sin escritura, consulta denegada al reconstruir, conservación de ModelState, identidad de recurso/versión y selección retirada; más comprobaciones estructurales de Razor/metadatos. Los dobles ADO.NET no abren conexiones reales y fallan ante cualquier intento de escritura/transacción. No prueban persistencia exitosa ni renderizado completo en navegador.
+
+Aceptación pendiente: provocar error de campo y negocio en diagnóstico, ítem/repuesto, evidencias, rechazo, asociación y precio en dos filas. Confirmar valores, fila abierta, opciones, permiso revocado, versión cambiada, selección retirada, mensajes y posterior PRG. Probar anchos/teclado/dispositivo según la matriz anterior. No se declara cerrada integralmente la clase 12: falta evidencia funcional y queda documentada la idempotencia, cuyo cambio de persistencia está fuera de esta tarea.

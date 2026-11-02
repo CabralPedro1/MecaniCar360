@@ -1,0 +1,52 @@
+@model MecaniCar360.Models.OrdenTrabajo
+@using System.Security.Claims
+@using MecaniCar360.Models.Enums
+@inject MecaniCar360.Services.PermisoService Permisos
+@{
+    int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
+    var personaId = await Permisos.ObtenerPersonaActivaIdAsync(usuarioId);
+    var asignado = Model.MecanicoId == personaId || await Permisos.EsAdministradorAsync(usuarioId);
+}
+@if (asignado && await Permisos.TienePermisoAsync(usuarioId, Model.Diagnostico == null ? "DIAGNOSTICO_CREAR" : "DIAGNOSTICO_MODIFICAR") && !Model.FechaFin.HasValue &&
+                    (Model.EstadoActual == MecaniCar360.Models.Enums.EstadoOrden.Diagnostico ||
+                     (Model.Diagnostico != null && Model.EstadoActual is
+                        MecaniCar360.Models.Enums.EstadoOrden.EsperandoAprobacion or
+                        MecaniCar360.Models.Enums.EstadoOrden.Aprobado or
+                        MecaniCar360.Models.Enums.EstadoOrden.EnReparacion or
+                        MecaniCar360.Models.Enums.EstadoOrden.Rechazado)))
+                {
+                    <form asp-controller="Diagnostico"
+                          asp-action="Guardar"
+                          method="post" class="mc-form-panel">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@Model.Id" />
+
+                        <div class="mb-3">
+
+                            <label for="ot-diagnostico" class="form-label">
+                                Descripción del diagnóstico
+                            </label>
+
+                            <textarea name="descripcion" id="ot-diagnostico"
+                              class="form-control"
+                              rows="5"
+                              required>@ViewData.ModelState["descripcion"]?.AttemptedValue</textarea>
+                            @Html.ValidationMessage("descripcion", null, new { @class = "text-danger" })
+
+                        </div>
+
+                        <div class="mc-actions">
+
+                            <button type="submit"
+                                    class="btn btn-primary">
+                                Guardar diagnóstico
+                            </button>
+
+                        </div>
+
+                    </form>
+                }

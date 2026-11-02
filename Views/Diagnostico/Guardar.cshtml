@@ -1,0 +1,8 @@
+@model MecaniCar360.Models.OrdenTrabajo
+@{ ViewData["Title"] = "Revisar diagnóstico"; }
+<div class="mc-components">
+    <header class="mc-page-header"><h1>Diagnóstico — OT #@Model.Id</h1></header>
+    <div asp-validation-summary="All" class="text-danger" role="alert"></div>
+    <partial name="_Formulario" model="Model" />
+    <a asp-controller="OrdenTrabajo" asp-action="Detalle" asp-route-id="@Model.Id" class="btn btn-secondary">Volver a la orden</a>
+</div>

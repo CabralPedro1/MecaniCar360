@@ -6,11 +6,14 @@
 ViewData["Title"] = "Detalle de turno";
 int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var usuarioId);
 var modificar = await Permisos.TienePermisoAsync(usuarioId, "TURNO_MODIFICAR");
+var seleccion = ViewData.ModelState["nuevaFechaInicio"]?.AttemptedValue;
+var fechaElegida = DateTime.TryParse(seleccion, out var fechaIngresada) ? fechaIngresada : Model.FechaInicio;
 var abierto = Model.Estado == EstadoTurno.Pendiente || Model.Estado == EstadoTurno.Confirmado;
 }
 <div class="mc-components">
 <header class="mc-page-header"><h2>Turno #@Model.Id</h2></header>
 <partial name="_Mensajes" />
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
 @if (Model.IngresoVehiculo != null)
 {
     if (await Permisos.TienePermisoAsync(usuarioId, "INGRESO_VER"))
@@ -42,7 +45,8 @@ else if (abierto && await Permisos.TienePermisoAsync(usuarioId, "INGRESO_REGISTR
 @if (abierto && Model.IngresoVehiculo == null && await Permisos.TienePermisoAsync(usuarioId, "TURNO_CANCELAR")) {
 <form asp-action="Cancelar" method="post" class="mb-3 mc-form-panel" onsubmit="return confirm('¿Cancelar turno?');">
 @Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
-<label class="form-label" for="motivo-cancelacion">Motivo de cancelación (opcional)</label><input id="motivo-cancelacion" name="motivo" class="form-control" />
+<label class="form-label" for="motivo-cancelacion">Motivo de cancelación (opcional)</label><input id="motivo-cancelacion" name="motivo" value="@ViewData.ModelState["motivo"]?.AttemptedValue" class="form-control" />
+@Html.ValidationMessage("motivo", null, new { @class = "text-danger" })
 <button type="submit" class="btn btn-danger">Cancelar turno</button></form>
 }
 @if (modificar && Model.Estado == EstadoTurno.Confirmado && Model.FechaInicio <= DateTime.Now) {
@@ -54,8 +58,9 @@ else if (abierto && await Permisos.TienePermisoAsync(usuarioId, "INGRESO_REGISTR
 <h3>Reprogramar</h3>
 <form asp-action="Reprogramar" method="post" class="mb-3 mc-form-panel">
 @Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Id" />
-<label class="form-label" for="fecha-turno">Nueva fecha</label><input id="fecha-turno" type="date" value="@Model.FechaInicio.ToString("yyyy-MM-dd")" class="form-control" required />
-<label class="form-label" for="horario-turno">Nuevo horario</label><select id="horario-turno" name="nuevaFechaInicio" class="form-select" required><option value="">Seleccione horario</option></select>
+<label class="form-label" for="fecha-turno">Nueva fecha</label><input id="fecha-turno" type="date" value="@fechaElegida.ToString("yyyy-MM-dd")" class="form-control" required />
+<label class="form-label" for="horario-turno">Nuevo horario</label><select id="horario-turno" name="nuevaFechaInicio" data-seleccionado="@seleccion" class="form-select" required><option value="">Seleccione horario</option></select>
+@Html.ValidationMessage("nuevaFechaInicio", null, new { @class = "text-danger" })
 <p id="aviso-horarios" role="status" class="text-danger"></p>
 <button type="submit" class="btn btn-primary">Reprogramar</button></form>
 }

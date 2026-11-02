@@ -1,5 +1,17 @@
 # Seguridad de Controllers y Services — MecaniCar360
 
+## Política vigente: configuración técnica fuera de la interfaz operativa
+
+Actualización: también se deniegan las consultas HTTP de `RolController.Index/Detalle` y `SeguridadController.Index/Familia/Patentes/Rol`, incluso para ADMIN, mediante `PermiteConsultarPantallasTecnicas`. Se retiraron el enlace Roles del menú y el acceso secundario a composición. Los servicios de consulta internos se conservan: no constituyen pantallas públicas. `Persona/AdministrarRoles` obtiene sus opciones con `PersonaService.ObtenerAdministracionRolesAsync` y `ObtenerRolesDisponiblesAsync`, sin depender de los controladores técnicos. La prueba de rutas operativas es estática; los rechazos se ejecutan mediante invocación directa de acciones para los cinco perfiles simulados. La aceptación HTTP con sesiones reales sigue pendiente.
+
+La aplicación operativa no permite modificar el catálogo de roles, familias ni sus asociaciones con patentes, incluso a ADMIN. `PoliticaSeguridadEstructural` es una restricción fija, independiente del bypass de patentes y sin configuración o desbloqueo web. `RolController` bloquea Crear/Editar (GET y POST) y CambiarEstado; `SeguridadController` bloquea Editar (GET y POST), Patente, Hija y FamiliaRol. Los métodos mutantes de `RolService` y la entrada común `SeguridadService.EscribirAsync` rechazan antes de consultar dependencias, abrir transacciones o escribir.
+
+Las consultas internas conservan sus controles anteriores, pero no se exponen mediante las pantallas técnicas bloqueadas. El menú no ofrece configuración estructural y las vistas no renderizan sus controles mutantes. Se conservan los métodos y vistas anteriores, sin nuevas cuentas, roles, migraciones ni modificación de catálogos.
+
+La administración de empleados y `PersonaService.AsignarRolAsync/QuitarRolAsync` quedan fuera de este bloqueo: asignar roles existentes no redefine esos roles. Se mantienen las restricciones de último ADMIN, autoquita, cuenta interna activa y separación CLIENTE. Las referencias históricas de este documento a edición estructural están subordinadas a esta política.
+
+Regresión no SQL: `SeguridadEstructuralTests` invoca todas las acciones estructurales con identidades simuladas de los cinco perfiles y los servicios sin dependencias de persistencia, comprobando rechazo y conservación de las entradas. Esto acredita rechazo previo al acceso a dependencias; no sustituye pruebas HTTP con sesiones reales ni pruebas de persistencia SQL. La aceptación de alta/baja de empleados, asignación de roles y consultas con cuentas reales continúa pendiente.
+
 Revisión de código y pruebas en memoria. Las familias actuales de CAJA se conservaron por confirmación del usuario. No se ejecutó el seed ni se modificó la base de la aplicación. No se agregaron migraciones en esta tarea; la migración de Facturación pertenece al trabajo anterior.
 
 ## Matriz de acciones

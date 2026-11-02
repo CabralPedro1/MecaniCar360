@@ -1,4 +1,4 @@
-﻿@model MecaniCar360.Models.Rol
+@model MecaniCar360.Models.Rol
 
 @{
     ViewData["Title"] = "Nuevo Rol";
@@ -9,6 +9,8 @@
 
 <hr />
 
+@if (MecaniCar360.Services.PoliticaSeguridadEstructural.PermiteModificar)
+{
 <form asp-action="Crear" method="post" class="mc-form-panel">
 
     @Html.AntiForgeryToken()
@@ -56,6 +58,7 @@
     </a>
 
 </form>
+}
 
 </div>
 

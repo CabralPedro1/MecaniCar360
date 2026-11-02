@@ -4,6 +4,8 @@
 @inject MecaniCar360.Services.PermisoService Permisos
 @{
     ViewData["Title"] = "Presupuesto";
+    string? Entrada(string campo) => ViewData["OperacionRechazada"] as string == "AgregarItem" ? ViewData.ModelState[campo]?.AttemptedValue : null;
+    var repuestos = ViewData["Repuestos"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> ?? Enumerable.Empty<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>();
     var usuarioId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     var activa = !Model.OrdenTrabajo.FechaFin.HasValue && Model.OrdenTrabajo.Factura == null &&
         Model.OrdenTrabajo.EstadoActual is EstadoOrden.Diagnostico or EstadoOrden.EsperandoAprobacion or
@@ -19,6 +21,7 @@
     <div class="alert alert-warning" role="alert">@errorRepuestos</div>
 }
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
 <p>Cliente: @Model.OrdenTrabajo.IngresoVehiculo.Turno.Cliente.Nombre</p>
 <p>Vehículo: @Model.OrdenTrabajo.IngresoVehiculo.VehiculoPatenteSnapshot</p>
 <p>Estado: @Model.Estado — Total actual: $ @Model.Total.ToString("N2")</p>
@@ -27,11 +30,15 @@
     <h4>Agregar ítem</h4>
     <form asp-action="AgregarItem" method="post" class="row g-2 mc-form-panel mb-3">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
         <input type="hidden" name="presupuestoId" value="@Model.Id" />
-        <div class="col-md-4"><label class="form-label" for="presupuesto-descripcion">Descripción</label><input name="descripcion" id="presupuesto-descripcion" class="form-control" required /></div>
-        <div class="col-md-2"><label class="form-label" for="presupuesto-cantidad">Cantidad</label><input name="cantidad" id="presupuesto-cantidad" type="number" min="1" value="1" class="form-control" required /></div>
-        <div class="col-md-2"><label class="form-label" for="presupuesto-precioUnitario">Precio unitario</label><input name="precioUnitario" id="presupuesto-precioUnitario" type="number" min="0" step="0.01" class="form-control" required /></div>
-        <div class="col-md-2"><label class="form-label" for="presupuesto-repuestoId">Repuesto opcional</label><select name="repuestoId" id="presupuesto-repuestoId" class="form-select" asp-items='@(ViewData["Repuestos"] as IEnumerable<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>)'><option value="">Sin repuesto</option></select></div>
+        <div class="col-md-4"><label class="form-label" for="presupuesto-descripcion">Descripción</label><input name="descripcion" value="@Entrada("descripcion")" id="presupuesto-descripcion" class="form-control" required />@Html.ValidationMessage("descripcion", null, new { @class = "text-danger" })</div>
+        <div class="col-md-2"><label class="form-label" for="presupuesto-cantidad">Cantidad</label><input name="cantidad" id="presupuesto-cantidad" type="number" min="1" value="@(Entrada("cantidad") ?? "1")" class="form-control" required />@Html.ValidationMessage("cantidad", null, new { @class = "text-danger" })</div>
+        <div class="col-md-2"><label class="form-label" for="presupuesto-precioUnitario">Precio unitario</label><input name="precioUnitario" value="@Entrada("precioUnitario")" id="presupuesto-precioUnitario" type="number" min="0" step="0.01" class="form-control" required />@Html.ValidationMessage("precioUnitario", null, new { @class = "text-danger" })</div>
+        <div class="col-md-2"><label class="form-label" for="presupuesto-repuestoId">Repuesto opcional</label><select name="repuestoId" id="presupuesto-repuestoId" class="form-select"><option value="">Sin repuesto</option>
+            @foreach (var repuesto in repuestos)
+            { <option value="@repuesto.Value" selected="@(Entrada("repuestoId") == repuesto.Value)">@repuesto.Text</option> }
+        </select>@Html.ValidationMessage("repuestoId", null, new { @class = "text-danger" })</div>
         <div class="col-md-2"><button class="btn btn-success mt-4">Agregar</button></div>
     </form>
 }
@@ -46,6 +53,7 @@
         {
             <form asp-action="EliminarItem" method="post">
                 @Html.AntiForgeryToken()
+        <input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
                 <input type="hidden" name="presupuestoId" value="@Model.Id" />
                 <input type="hidden" name="itemId" value="@item.Id" />
                 <button class="btn btn-danger btn-sm">Eliminar</button>
@@ -58,12 +66,14 @@
 {
     <form asp-action="EnviarAprobacion" method="post" class="mc-form-panel">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="ordenTrabajoId" value="@Model.OrdenTrabajoId" />
         <input type="hidden" name="presupuestoId" value="@Model.Id" />
         @foreach (var evidencia in Model.OrdenTrabajo.Evidencias)
         {
-            <div class="form-check"><input class="form-check-input" type="checkbox" name="evidenciaIds" value="@evidencia.Id" id="evidencia-@evidencia.Id" />
+            <div class="form-check"><input class="form-check-input" type="checkbox" name="evidenciaIds" value="@evidencia.Id" checked="@((ViewData["EvidenciasSeleccionadas"] as HashSet<int>)?.Contains(evidencia.Id) == true)" id="evidencia-@evidencia.Id" />
             <label class="form-check-label" for="evidencia-@evidencia.Id">@evidencia.Descripcion</label></div>
         }
+        @Html.ValidationMessage("evidenciaIds", null, new { @class = "text-danger" })
         <button class="btn btn-primary">Enviar versión al cliente</button>
     </form>
 }

@@ -258,9 +258,12 @@ namespace MecaniCar360.Controllers
                     ObtenerUsuarioId(),
                     motivo);
 
-            TempData[
-                resultado.Exitoso ? "Ok" : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await DetalleRechazado(id);
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
@@ -306,8 +309,8 @@ namespace MecaniCar360.Controllers
         {
             if (!ModelState.IsValid || nuevaFechaInicio == default)
             {
-                TempData["Error"] = "Seleccione una fecha y un horario válidos.";
-                return RedirectToAction(nameof(Detalle), new { id });
+                ModelState.AddModelError(nameof(nuevaFechaInicio), "Seleccione una fecha y un horario válidos.");
+                return await DetalleRechazado(id);
             }
             var resultado =
                 await _turnoService.ReprogramarAsync(
@@ -315,9 +318,12 @@ namespace MecaniCar360.Controllers
                     nuevaFechaInicio,
                     ObtenerUsuarioId());
 
-            TempData[
-                resultado.Exitoso ? "Ok" : "Error"
-            ] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await DetalleRechazado(id);
+            }
+            TempData["Ok"] = resultado.Mensaje;
 
             return RedirectToAction(
                 nameof(Detalle),
@@ -402,6 +408,14 @@ namespace MecaniCar360.Controllers
             var resultado = await _dominioService.ObtenerVehiculosDePersonaAsync(clienteId, SolicitanteId());
             if (!resultado.Exitoso) return StatusCode(403, new { mensaje = "No se pudieron cargar los vehículos." });
             return Json(resultado.Data!.Select(v => new { id = v.Id, patente = v.Marca.Nombre + " " + v.Modelo.Nombre + " - " + v.Patente }));
+        }
+
+        private async Task<IActionResult> DetalleRechazado(int id)
+        {
+            // ObtenerPorIdAsync revalidates TURNO_VER before rebuilding the page.
+            var resultado = await Detalle(id);
+            if (resultado is ViewResult vista) vista.ViewName = "Detalle";
+            return resultado;
         }
 
         private int ObtenerUsuarioId()

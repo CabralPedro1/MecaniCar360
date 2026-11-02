@@ -97,13 +97,6 @@
   .mc-app main .card-body { padding: 1rem; }
 }
 
-/* Desktop shell; mobile retains the normal document flow and Bootstrap offcanvas. */
-@media (min-width: 992px) {
-  .mc-app.mc-has-navigation { display: grid; grid-template-columns: 17rem minmax(0, 1fr); grid-template-rows: auto 1fr auto; }
-  .mc-app > header { grid-column: 1 / -1; }
-  .mc-app > .mc-content, .mc-app > footer { grid-column: 2; }
-}
-
 /* Shared opt-in components for reviewed views in phases B, C and D. */
 .mc-app .mc-components { min-width: 0; }
 .mc-app .mc-components .mc-page-header {

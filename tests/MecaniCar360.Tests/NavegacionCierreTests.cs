@@ -11,6 +11,19 @@ namespace MecaniCar360.Tests;
 
 public class NavegacionCierreTests
 {
+    [Fact]
+    public void Logo_EnlaceCompletoAlInicioPorPerfil_ConNombreAccesible()
+    {
+        var layout = Fuente("Views/Shared/_Layout.cshtml");
+        var logo = Regex.Match(layout, "<a class=\"navbar-brand\"[^>]*>MecaniCar360</a>");
+        Assert.True(logo.Success);
+        Assert.Contains("asp-controller=\"Account\" asp-action=\"Inicio\"", logo.Value);
+        Assert.Contains("aria-label=\"MecaniCar360 — Ir a mi inicio\"", logo.Value);
+        Assert.Contains("title=\"Ir a mi inicio\"", logo.Value);
+        Assert.DoesNotContain("onclick", logo.Value);
+        Assert.DoesNotContain("tabindex=\"-1\"", logo.Value);
+    }
+
     [Theory]
     [InlineData("Views/Account/AccesoDenegado.cshtml")]
     [InlineData("Views/Factura/RegistrarPago.cshtml")]

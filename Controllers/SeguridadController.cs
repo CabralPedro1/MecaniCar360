@@ -13,11 +13,13 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     private int Actor => int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : 0;
     [HttpGet] public async Task<IActionResult> Index()
     {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
         var model = await service.ConsultarAsync(Actor);
         return model == null ? Forbid() : View(model);
     }
     [HttpGet] public async Task<IActionResult> Familia(int id)
     {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
         var model = await service.ConsultarAsync(Actor);
         if (model == null) return Forbid();
         if (!model.Familias.Any(f => f.Id == id)) return NotFound();
@@ -26,11 +28,13 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpGet] public async Task<IActionResult> Patentes()
     {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
         var model = await service.ConsultarAsync(Actor);
         return model == null ? Forbid() : View(model);
     }
     [HttpGet] public async Task<IActionResult> Rol(int id)
     {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
         var model = await service.ConsultarAsync(Actor);
         if (model == null) return Forbid();
         if (!model.Roles.Any(r => r.Id == id)) return NotFound();
@@ -39,6 +43,7 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpGet] public async Task<IActionResult> Editar(int id = 0)
     {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
         var model = await service.ConsultarAsync(Actor);
         if (model == null) return Forbid();
         if (id == 0) return View(new FamiliaEdicionViewModel());
@@ -47,6 +52,7 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> Editar(FamiliaEdicionViewModel model)
     {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
         if (!ModelState.IsValid) return View(model);
         var r = await service.GuardarFamiliaAsync(model, Actor);
         if (!r.Exitoso) { ModelState.AddModelError("", r.Mensaje); return View(model); }
@@ -55,6 +61,7 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> Patente(int familiaId, int patenteId, bool agregar)
     {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
         if (!ModelState.IsValid) return BadRequest();
         var r = await service.PatenteAsync(familiaId, patenteId, agregar, Actor);
         TempData[r.Exitoso ? "Ok" : "Error"] = r.Mensaje;
@@ -62,6 +69,7 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> Hija(int familiaId, int hijaId, bool agregar)
     {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
         if (!ModelState.IsValid) return BadRequest();
         var r = await service.HijaAsync(familiaId, hijaId, agregar, Actor);
         TempData[r.Exitoso ? "Ok" : "Error"] = r.Mensaje;
@@ -69,6 +77,7 @@ public sealed class SeguridadController(SeguridadService service) : Controller
     }
     [HttpPost, ValidateAntiForgeryToken] public async Task<IActionResult> FamiliaRol(int rolId, int familiaId, bool agregar)
     {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
         if (!ModelState.IsValid) return BadRequest();
         var r = await service.RolAsync(rolId, familiaId, agregar, Actor);
         TempData[r.Exitoso ? "Ok" : "Error"] = r.Mensaje;

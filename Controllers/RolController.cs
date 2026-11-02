@@ -23,6 +23,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_VER")]
         public async Task<IActionResult> Index()
         {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)
@@ -39,6 +40,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_VER")]
         public async Task<IActionResult> Detalle(int id)
         {
+        if (!PoliticaSeguridadEstructural.PermiteConsultarPantallasTecnicas) return Forbid();
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)
@@ -60,6 +62,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_CREAR")]
         public IActionResult Crear()
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
             return View();
         }
 
@@ -68,6 +71,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_CREAR")]
         public async Task<IActionResult> Crear([Bind("Id,Nombre,EsRolCliente")] Rol rol)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
             if (!ModelState.IsValid)
                 return View(rol);
 
@@ -95,6 +99,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_MODIFICAR")]
         public async Task<IActionResult> Editar(int id)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)
@@ -115,6 +120,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_MODIFICAR")]
         public async Task<IActionResult> Editar([Bind("Id,Nombre,EsRolCliente")] Rol rol)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
             if (!ModelState.IsValid)
                 return View(rol);
 
@@ -145,6 +151,7 @@ namespace MecaniCar360.Controllers
         [Permiso("ROL_DESACTIVAR")]
         public async Task<IActionResult> CambiarEstado(int id)
         {
+            if (!PoliticaSeguridadEstructural.PermiteModificar) return Forbid();
             var usuarioId = ObtenerUsuarioActualId();
 
             if (!usuarioId.HasValue)

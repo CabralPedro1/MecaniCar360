@@ -1,4 +1,4 @@
-﻿@model IEnumerable<MecaniCar360.Models.Rol>
+@model IEnumerable<MecaniCar360.Models.Rol>
 
 @{
     ViewData["Title"] = "Roles";
@@ -23,10 +23,13 @@
 
 <div class="mb-3">
 
-    <a asp-action="Crear"
+    @if (MecaniCar360.Services.PoliticaSeguridadEstructural.PermiteModificar)
+{
+<a asp-action="Crear"
        class="btn btn-primary">
         Nuevo Rol
     </a>
+}
 
 </div>
 
@@ -114,13 +117,18 @@
                             Detalle
                         </a>
 
-                        <a asp-action="Editar"
+                        @if (MecaniCar360.Services.PoliticaSeguridadEstructural.PermiteModificar)
+{
+<a asp-action="Editar"
                            asp-route-id="@rol.Id"
                            class="btn btn-warning btn-sm">
                             Editar
                         </a>
+}
 
-                        <form asp-action="CambiarEstado"
+                        @if (MecaniCar360.Services.PoliticaSeguridadEstructural.PermiteModificar)
+{
+<form asp-action="CambiarEstado"
                               asp-route-id="@rol.Id"
                               method="post"
                               class="d-inline">
@@ -135,6 +143,7 @@
                             </button>
 
                         </form>
+}
 
                     </td>
 

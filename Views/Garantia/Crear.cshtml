@@ -15,10 +15,16 @@
 <div class="table-responsive" role="region" aria-label="Tabla desplazable" tabindex="0"><table class="table table-striped mc-table">
 <thead class="mc-table-heading"><tr><th scope="col">Incluir</th><th scope="col">Ítem facturado</th><th scope="col">Cantidad</th><th scope="col">Meses</th><th scope="col">Observaciones</th></tr></thead>
 <tbody>@foreach (var item in Model.Items) {
-    <tr><td><input type="checkbox" name="items.Index" value="@item.Id" aria-label="Incluir @item.Descripcion" /></td>
+    <tr><td><input type="checkbox" name="items.Index" value="@item.Id" checked="@((ViewData["ItemsSeleccionados"] as HashSet<int>)?.Contains(item.Id) == true)" aria-label="Incluir @item.Descripcion" /></td>
     <td>@item.Descripcion<input type="hidden" name="items[@item.Id].FacturaItemId" value="@item.Id" /></td>
-    <td>@item.Cantidad</td><td><input type="number" name="items[@item.Id].MesesGarantia" min="1" max="120" class="form-control" aria-label="Meses para @item.Descripcion" /></td>
-    <td><input name="items[@item.Id].Observaciones" maxlength="1000" class="form-control" aria-label="Observaciones de @item.Descripcion" /></td></tr>
+    <td>@item.Cantidad</td><td>
+        @Html.TextBox($"items[{item.Id}].MesesGarantia", null, new { type = "number", min = "1", max = "120", @class = "form-control", aria_label = $"Meses para {item.Descripcion}" })
+        @Html.ValidationMessage($"items[{item.Id}].MesesGarantia", null, new { @class = "text-danger" })
+    </td>
+    <td>
+        @Html.TextBox($"items[{item.Id}].Observaciones", null, new { maxlength = "1000", @class = "form-control", aria_label = $"Observaciones de {item.Descripcion}" })
+        @Html.ValidationMessage($"items[{item.Id}].Observaciones", null, new { @class = "text-danger" })
+    </td></tr>
 }</tbody></table></div>
 <button class="btn btn-primary mb-3" type="submit">Crear garantía</button>
 </form>

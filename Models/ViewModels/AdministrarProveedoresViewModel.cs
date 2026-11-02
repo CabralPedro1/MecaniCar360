@@ -5,10 +5,16 @@ namespace MecaniCar360.Models.ViewModels
     public class AdministrarProveedoresViewModel
     {
         public int RepuestoId { get; set; }
+        [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+        [Microsoft.AspNetCore.Mvc.ModelBinding.Validation.ValidateNever]
         public Repuesto Repuesto { get; set; } = null!;
 
+        [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+        [Microsoft.AspNetCore.Mvc.ModelBinding.Validation.ValidateNever]
         public List<ProveedorRepuesto> Proveedores { get; set; } = new();
 
+        [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+        [Microsoft.AspNetCore.Mvc.ModelBinding.Validation.ValidateNever]
         public List<SelectListItem> ProveedoresDisponibles { get; set; } = new();
 
         public int ProveedorId { get; set; }

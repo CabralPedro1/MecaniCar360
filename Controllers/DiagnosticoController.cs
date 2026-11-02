@@ -10,9 +10,11 @@ namespace MecaniCar360.Controllers
     public class DiagnosticoController : Controller
     {
         private readonly DiagnosticoService _diagnosticoService;
-        public DiagnosticoController(DiagnosticoService diagnosticoService)
+        private readonly OrdenTrabajoService _ordenes;
+        public DiagnosticoController(DiagnosticoService diagnosticoService, OrdenTrabajoService ordenes)
         {
             _diagnosticoService = diagnosticoService;
+            _ordenes = ordenes;
         }
 
         [HttpGet]
@@ -55,12 +57,24 @@ namespace MecaniCar360.Controllers
             if (!ObtenerUsuarioId(out var usuarioSolicitanteId)) return Forbid();
             if (!ModelState.IsValid)
             {
-                TempData["Error"] = "Los datos del diagnóstico o de las evidencias no son válidos.";
-                return RedirectToAction("Detalle", "OrdenTrabajo", new { id });
+                return await MostrarRechazo(id, usuarioSolicitanteId);
             }
             var resultado = await _diagnosticoService.GuardarAsync(id, usuarioSolicitanteId, descripcion, evidenciaIds);
-            TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+            if (!resultado.Exitoso)
+            {
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await MostrarRechazo(id, usuarioSolicitanteId);
+            }
+            TempData["Ok"] = resultado.Mensaje;
             return RedirectToAction("Detalle", "OrdenTrabajo", new { id });
+        }
+
+        private async Task<IActionResult> MostrarRechazo(int id, int usuarioId)
+        {
+            // La consulta existente exige permiso de detalle y alcance de la OT.
+            var orden = await _ordenes.ObtenerPorIdAsync(id, usuarioId);
+            if (!orden.Exitoso) return NotFound();
+            return View("Guardar", orden.Data);
         }
 
         [HttpGet]

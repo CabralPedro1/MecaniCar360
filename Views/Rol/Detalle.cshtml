@@ -1,4 +1,4 @@
-﻿@model MecaniCar360.Models.Rol
+@model MecaniCar360.Models.Rol
 
 @{
     ViewData["Title"] = "Detalle del Rol";
@@ -8,11 +8,7 @@
 @inject MecaniCar360.Services.PermisoService Permisos
 <div class="mc-components">
 <header class="mc-page-header"><h2>Detalle del Rol</h2></header>
-@if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var actor) &&
-    await Permisos.TienePermisoAsync(actor, "SEGURIDAD_ADMINISTRAR"))
-{
-    <a class="btn btn-outline-primary" asp-controller="Seguridad" asp-action="Rol" asp-route-id="@Model.Id">Administrar familias y permisos</a>
-}
+
 
 <hr />
 
@@ -78,13 +74,16 @@
 
 <div class="mt-3">
 
-    <a asp-action="Editar"
+    @if (MecaniCar360.Services.PoliticaSeguridadEstructural.PermiteModificar)
+{
+<a asp-action="Editar"
        asp-route-id="@Model.Id"
        class="btn btn-warning">
 
         Editar
 
     </a>
+}
 
     <a asp-action="Index"
        class="btn btn-secondary">

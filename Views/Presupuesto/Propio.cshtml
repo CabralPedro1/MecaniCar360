@@ -15,6 +15,7 @@
     }
 </div>
 @if (TempData["Ok"] != null) { <div class="alert alert-success">@TempData["Ok"]</div> }
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
 <p>Enviado: @Model.FechaEnvio — Decisión: @Model.Decision</p>
 @if (!vigente && Model.Decision == MecaniCar360.Models.Enums.EstadoPresupuestoVersion.Pendiente)
 { <div class="alert alert-info">Esta versión está disponible sólo para consulta desde su cuenta o en su estado actual.</div> }
@@ -36,6 +37,7 @@
     {
         <form asp-action="Aprobar" method="post" class="mb-3">
             @Html.AntiForgeryToken()
+        <input type="hidden" name="ordenTrabajoId" value="@Model.Presupuesto.OrdenTrabajoId" />
             <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
             <button class="btn btn-primary">Aprobar esta versión</button>
         </form>
@@ -44,8 +46,10 @@
     {
         <form asp-action="Rechazar" method="post" class="mc-form-panel">
             @Html.AntiForgeryToken()
+        <input type="hidden" name="ordenTrabajoId" value="@Model.Presupuesto.OrdenTrabajoId" />
             <input type="hidden" name="presupuestoVersionId" value="@Model.Id" />
-            <label class="form-label" for="presupuesto-motivo">Motivo del rechazo</label><input name="motivo" id="presupuesto-motivo" maxlength="1000" required class="form-control mb-2" />
+            <label class="form-label" for="presupuesto-motivo">Motivo del rechazo</label><input name="motivo" value="@ViewData.ModelState["motivo"]?.AttemptedValue" id="presupuesto-motivo" maxlength="1000" required class="form-control mb-2" />
+            @Html.ValidationMessage("motivo", null, new { @class = "text-danger" })
             <button class="btn btn-warning">Rechazar esta versión</button>
         </form>
     }

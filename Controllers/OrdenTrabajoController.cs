@@ -381,6 +381,8 @@ namespace MecaniCar360.Controllers
                     "Login",
                     "Account");
 
+            if (!ModelState.IsValid) return await DetalleRechazado(ordenTrabajoId);
+
             var resultado =
                 await _ordenTrabajoService
                     .FinalizarAsync(
@@ -390,15 +392,8 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return RedirectToAction(
-                    nameof(Detalle),
-                    new
-                    {
-                        id = ordenTrabajoId
-                    });
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await DetalleRechazado(ordenTrabajoId);
             }
 
             TempData["Ok"] =
@@ -538,6 +533,8 @@ namespace MecaniCar360.Controllers
                     "Login",
                     "Account");
 
+            if (!ModelState.IsValid) return await DetalleRechazado(ordenTrabajoId);
+
             var resultado =
                 await _ordenTrabajoService
                     .ActualizarObservacionesAsync(
@@ -547,15 +544,8 @@ namespace MecaniCar360.Controllers
 
             if (!resultado.Exitoso)
             {
-                TempData["Error"] =
-                    resultado.Mensaje;
-
-                return RedirectToAction(
-                    nameof(Detalle),
-                    new
-                    {
-                        id = ordenTrabajoId
-                    });
+                ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                return await DetalleRechazado(ordenTrabajoId);
             }
 
             TempData["Ok"] =
@@ -581,12 +571,17 @@ namespace MecaniCar360.Controllers
         {
             if (ObtenerUsuarioId() is not int usuarioId) return Forbid();
             if (!ModelState.IsValid)
-                TempData["Error"] = "Ingrese un costo de diagnóstico válido.";
+                return await DetalleRechazado(ordenTrabajoId);
             else
             {
                 var resultado = await _ordenTrabajoService.ActualizarCostoDiagnosticoAsync(
                     ordenTrabajoId, costoDiagnostico, usuarioId);
-                TempData[resultado.Exitoso ? "Ok" : "Error"] = resultado.Mensaje;
+                if (!resultado.Exitoso)
+                {
+                    ModelState.AddModelError(string.Empty, resultado.Mensaje);
+                    return await DetalleRechazado(ordenTrabajoId);
+                }
+                TempData["Ok"] = resultado.Mensaje;
             }
             return RedirectToAction(nameof(Detalle), new { id = ordenTrabajoId });
         }
@@ -606,6 +601,14 @@ namespace MecaniCar360.Controllers
             if (!resultado.Exitoso) return NotFound();
             var o = resultado.Data!;
             return Json(new { o.Id, o.EstadoActual, o.FechaInicio, o.FechaFin });
+        }
+
+        private async Task<IActionResult> DetalleRechazado(int id)
+        {
+            if (!await _permisos.TienePermisoAsync(ObtenerUsuarioId() ?? 0, "ORDEN_VER_DETALLE")) return Forbid();
+            var resultado = await Detalle(id);
+            if (resultado is ViewResult vista) vista.ViewName = "Detalle";
+            return resultado;
         }
 
         private async Task PrepararNavegacionAsync(int usuarioId)

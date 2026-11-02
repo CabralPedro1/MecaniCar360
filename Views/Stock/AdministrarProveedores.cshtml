@@ -2,10 +2,14 @@
 
 @{
     ViewData["Title"] = "Administrar proveedores";
+    var relacionPrecioRechazada = ViewData["RelacionPrecioRechazada"] as int?;
+    var estadoPrecioFila = relacionPrecioRechazada.HasValue
+        ? ViewData["EstadoPrecioFila"] as Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateEntry : null;
 }
 
 <div class="mc-components">
 <header class="mc-page-header"><h2>Administrar proveedores</h2></header>
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
 
 <hr />
 
@@ -77,7 +81,9 @@
                     <select asp-for="ProveedorId"
                             asp-items="Model.ProveedoresDisponibles"
                             class="form-select">
+                        <option value="">Seleccione un proveedor activo</option>
                     </select>
+                    <span asp-validation-for="ProveedorId" class="text-danger"></span>
 
                 </div>
 
@@ -85,11 +91,8 @@
 
                     <label asp-for="PrecioCompra" class="form-label"></label>
 
-                    <input asp-for="PrecioCompra"
-                           class="form-control" />
-
-                    <span asp-validation-for="PrecioCompra"
-                          class="text-danger"></span>
+                    <input asp-for="PrecioCompra" class="form-control" />
+                    <span asp-validation-for="PrecioCompra" class="text-danger"></span>
 
                 </div>
 
@@ -99,6 +102,7 @@
 
                     <input asp-for="CodigoProveedor"
                            class="form-control" />
+                    <span asp-validation-for="CodigoProveedor" class="text-danger"></span>
 
                 </div>
 
@@ -110,6 +114,8 @@
                     <label asp-for="Principal"
                            class="form-check-label">
                     </label>
+
+                    <span asp-validation-for="Principal" class="text-danger"></span>
 
                 </div>
 
@@ -240,7 +246,7 @@
 
                         </tr>
 
-                        <tr class="collapse"
+                        <tr class="collapse @(relacionPrecioRechazada == item.Id ? "show" : "")"
                             id="editar-@item.Id">
 
                             <td colspan="5">
@@ -267,7 +273,14 @@
                                                    type="number"
                                                    step="0.01"
                                                    min="0"
-                                                   value="@item.PrecioCompraActual" />
+                                                   value="@(relacionPrecioRechazada == item.Id ? estadoPrecioFila?.AttemptedValue : item.PrecioCompraActual.ToString(System.Globalization.CultureInfo.InvariantCulture))" />
+                                            @if (relacionPrecioRechazada == item.Id && estadoPrecioFila?.Errors.Count > 0)
+                                            {
+                                                <span data-valmsg-for="precioCompra" class="text-danger field-validation-error">
+                                                    @foreach (var error in estadoPrecioFila.Errors)
+                                                    { <span>@(string.IsNullOrEmpty(error.ErrorMessage) ? "Ingrese un precio válido." : error.ErrorMessage)</span> }
+                                                </span>
+                                            }
 
                                         </div>
 
