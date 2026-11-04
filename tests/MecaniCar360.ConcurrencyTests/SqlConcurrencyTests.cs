@@ -5,7 +5,7 @@ using Xunit;
 
 namespace MecaniCar360.Concurrency;
 
-public sealed class SqlConcurrencyTests
+public sealed partial class SqlConcurrencyTests
 {
     private sealed record Outcome(bool Success,string Message)
     {

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Security.Claims;
 using MecaniCar360.Data;
 using MecaniCar360.Services;
@@ -27,6 +28,9 @@ public sealed class ConcurrencyEnvironment
 {
     private static readonly SemaphoreSlim ClaimLock = new(1,1);
     private static string? claimedRun;
+    internal AvisosCorreoPrueba Avisos { get; } = new();
+    internal CorreoCuentaSimulado Correo { get; } = new();
+    private readonly Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider proteccion = new();
     public IsolatedDatabaseGuard Guard { get; } = IsolatedDatabaseGuard.FromEnvironment();
     public async Task<ActorContext> OpenAsync(int actor = 0, params IInterceptor[] interceptors)
     {
@@ -57,7 +61,7 @@ public sealed class ConcurrencyEnvironment
                 }
             }
             finally { ClaimLock.Release(); }
-            return new ActorContext(db, actor);
+            return new ActorContext(db, actor, Correo, proteccion, Avisos);
         }
         catch { await db.DisposeAsync(); throw; }
     }
@@ -120,22 +124,31 @@ public sealed class ActorContext : IAsyncDisposable
 {
     public MecaniCarContext Db { get; }
     private readonly ServiceProvider provider;
+    public SeguridadClienteService Seguridad => provider.GetRequiredService<SeguridadClienteService>();
+    public InvitacionClienteService Invitaciones => provider.GetRequiredService<InvitacionClienteService>();
+    public StockService Stock => provider.GetRequiredService<StockService>();
+    public DiagnosticoService Diagnosticos => provider.GetRequiredService<DiagnosticoService>();
     public TurnoService Turnos => provider.GetRequiredService<TurnoService>();
     public OrdenTrabajoService Ordenes => provider.GetRequiredService<OrdenTrabajoService>();
     public IngresoVehiculoService Recepcion => provider.GetRequiredService<IngresoVehiculoService>();
-    public ActorContext(MecaniCarContext db, int actor)
+    internal ActorContext(MecaniCarContext db, int actor, CorreoCuentaSimulado correo, Microsoft.AspNetCore.DataProtection.IDataProtectionProvider proteccion, AvisosCorreoPrueba avisos)
     {
         Db = db;
         // Fixed accessor per independent scope; no ambient shared identity.
         var accessor = new FixedAccessor { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity(
             new[] { new Claim(ClaimTypes.NameIdentifier, actor.ToString()) }, "IsolatedFixture")) } };
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
+            ["Invitaciones:UrlBase"]="https://fixture.example.invalid",
             ["ConfiguracionTaller:TurnosPorFranja"]="2", ["ConfiguracionTaller:DuracionFranjaTurnoMinutos"]="30",
             ["ConfiguracionTaller:HoraApertura"]="08:00", ["ConfiguracionTaller:HoraCierre"]="18:00"
         }).Build();
-        provider = new ServiceCollection().AddLogging().AddSingleton(db).AddSingleton<IHttpContextAccessor>(accessor)
+        provider = new ServiceCollection().AddLogging(b => b.AddProvider(avisos)).AddSingleton(db).AddSingleton<IHttpContextAccessor>(accessor)
+            .AddSingleton<EmailService>(correo).AddSingleton(proteccion)
+            .AddSingleton<Microsoft.AspNetCore.Hosting.IWebHostEnvironment>(new AmbienteCorreoPrueba())
+            .AddTransient<IdentidadClienteService>().AddTransient<ClienteHabilitadoService>()
+            .AddTransient<SeguridadClienteService>().AddTransient<InvitacionClienteService>()
             .AddSingleton<IConfiguration>(config).AddTransient<PermisoService>().AddTransient<AuditoriaService>()
-            .AddTransient<NotificacionService>().AddTransient<AgendaService>().AddTransient<VehiculoService>()
+            .AddTransient<StockService>().AddTransient<NotificacionService>().AddTransient<AgendaService>().AddTransient<VehiculoService>()
             .AddTransient<DominioVehicularService>().AddTransient<TurnoService>().AddTransient<OrdenTrabajoService>()
             .AddTransient<OrdenStateService>().AddTransient<DiagnosticoService>().AddTransient<IngresoVehiculoService>()
             .BuildServiceProvider();

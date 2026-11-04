@@ -47,9 +47,11 @@ public sealed class ConcurrencyFixtures
         var first = await User("MECANICO", 1); f.Mechanic1=first.Id; f.MechanicPerson1=first.PersonaId;
         var second = await User("MECANICO", 2); f.Mechanic2=second.Id; f.MechanicPerson2=second.PersonaId;
         var client = await User("CLIENTE", 3); f.Client=client.PersonaId;
+        var ahora = DateTime.UtcNow;
+        var creacionInvitacion = ahora.AddHours(-1);
         db.InvitacionesCliente.Add(new InvitacionCliente { PersonaId=f.Client, EmailDestino=client.EmailLogin,
-            TokenHash=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), FechaCreacion=DateTime.Now.AddHours(-1),
-            FechaExpiracion=DateTime.Now.AddHours(1), FechaConsumida=DateTime.Now, EmitidaPorUsuarioId=f.Admin });
+            TokenHash=Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), FechaCreacion=creacionInvitacion,
+            FechaExpiracion=creacionInvitacion.AddHours(48), FechaConsumida=ahora, EmitidaPorUsuarioId=f.Admin });
         var marca = new Marca { Nombre=f.Label };
         var modelo = new Modelo { Nombre=f.Label, Marca=marca };
         var vehicles = Enumerable.Range(0,3).Select(_ => new Vehiculo { Marca=marca, Modelo=modelo,
@@ -134,12 +136,9 @@ public sealed class ConcurrencyFixtures
         {
             using var cmd=db.Database.GetDbConnection().CreateCommand();
             cmd.Transaction=db.Database.CurrentTransaction?.GetDbTransaction();
-            cmd.CommandText=$"SELECT (SELECT * FROM {table} FOR JSON PATH, INCLUDE_NULL_VALUES)";
-            var json=Convert.ToString(await cmd.ExecuteScalarAsync(cancellationToken)) ?? "[]";
-            using var document=System.Text.Json.JsonDocument.Parse(json);
-            var rows=document.RootElement.EnumerateArray().Select(e=>e.GetRawText()).OrderBy(s=>s,StringComparer.Ordinal);
-            text.Append(table).AppendJoin('\n',rows);
+            cmd.CommandText=SnapshotJson.Query(table);
+            SnapshotJson.Append(text, table, await cmd.ExecuteScalarAsync(cancellationToken));
         }
-        return SHA256.HashData(Encoding.UTF8.GetBytes(text.ToString()));
+        return SnapshotJson.Hash(text);
     }
 }
