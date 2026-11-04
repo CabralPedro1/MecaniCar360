@@ -999,6 +999,49 @@ namespace MecaniCar360.Migrations
                     b.ToTable("Notificaciones");
                 });
 
+            modelBuilder.Entity("MecaniCar360.Models.OperacionStockIdempotente", b =>
+                {
+                    b.Property<Guid>("Clave")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("FechaConfirmacionUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte[]>("HuellaSolicitud")
+                        .IsRequired()
+                        .HasColumnType("binary(32)");
+
+                    b.Property<string>("MensajeResultado")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("MovimientoStockId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TipoOperacion")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("UsuarioId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Clave");
+
+                    b.HasIndex("MovimientoStockId")
+                        .IsUnique();
+
+                    b.HasIndex("UsuarioId");
+
+                    b.ToTable("OperacionesStockIdempotentes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_OperacionStock_Clave", "[Clave] <> '00000000-0000-0000-0000-000000000000'");
+
+                            t.HasCheckConstraint("CK_OperacionStock_Tipo", "[TipoOperacion] IN ('Ingreso','Salida','Ajuste')");
+                        });
+                });
+
             modelBuilder.Entity("MecaniCar360.Models.OrdenTrabajo", b =>
                 {
                     b.Property<int>("Id")
@@ -2234,6 +2277,21 @@ namespace MecaniCar360.Migrations
                         .IsRequired();
 
                     b.Navigation("Persona");
+                });
+
+            modelBuilder.Entity("MecaniCar360.Models.OperacionStockIdempotente", b =>
+                {
+                    b.HasOne("MecaniCar360.Models.MovimientoStock", null)
+                        .WithOne()
+                        .HasForeignKey("MecaniCar360.Models.OperacionStockIdempotente", "MovimientoStockId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("MecaniCar360.Models.Usuario", null)
+                        .WithMany()
+                        .HasForeignKey("UsuarioId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("MecaniCar360.Models.OrdenTrabajo", b =>

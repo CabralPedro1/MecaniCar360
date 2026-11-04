@@ -13,6 +13,7 @@ namespace MecaniCar360.Data
 
         internal Services.EstadoIntegridad? EstadoIntegridad { get; }
         internal bool IntegridadFallida { get; set; }
+        public DbSet<OperacionStockIdempotente> OperacionesStockIdempotentes { get; set; }
         public DbSet<DigitoVerificadorVertical> DigitosVerificadoresVerticales { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -162,6 +163,22 @@ namespace MecaniCar360.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<OperacionStockIdempotente>(e =>
+            {
+                e.ToTable("OperacionesStockIdempotentes", t =>
+                {
+                    t.HasCheckConstraint("CK_OperacionStock_Tipo", "[TipoOperacion] IN ('Ingreso','Salida','Ajuste')");
+                    t.HasCheckConstraint("CK_OperacionStock_Clave", "[Clave] <> '00000000-0000-0000-0000-000000000000'");
+                });
+                e.HasKey(x => x.Clave);
+                e.Property(x => x.Clave).ValueGeneratedNever();
+                e.Property(x => x.TipoOperacion).HasMaxLength(10).IsRequired();
+                e.Property(x => x.HuellaSolicitud).HasColumnType("binary(32)").IsRequired();
+                e.Property(x => x.MensajeResultado).HasMaxLength(500).IsRequired();
+                e.HasIndex(x => x.MovimientoStockId).IsUnique();
+                e.HasOne<Usuario>().WithMany().HasForeignKey(x => x.UsuarioId).OnDelete(DeleteBehavior.NoAction);
+                e.HasOne<MovimientoStock>().WithOne().HasForeignKey<OperacionStockIdempotente>(x => x.MovimientoStockId).OnDelete(DeleteBehavior.NoAction);
+            });
             modelBuilder.Entity<EnlacePasswordCliente>(entity =>
             {
                 entity.HasOne(e => e.Usuario).WithMany().HasForeignKey(e => e.UsuarioId).OnDelete(DeleteBehavior.Restrict);

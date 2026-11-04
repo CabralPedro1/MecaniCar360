@@ -160,6 +160,7 @@
             <div class="card-body">
 
                 <form asp-action="RegistrarIngreso" method="post">
+                    <input type="hidden" name="claveOperacion" value="@ViewData["ClaveRegistrarIngreso"]" />
 
                     @Html.AntiForgeryToken()
                     @if (ViewData["MovimientoRechazado"] as string == "RegistrarIngreso")
@@ -247,6 +248,7 @@
             <div class="card-body">
 
                 <form asp-action="RegistrarSalida" method="post">
+                    <input type="hidden" name="claveOperacion" value="@ViewData["ClaveRegistrarSalida"]" />
 
                     @Html.AntiForgeryToken()
                     @if (ViewData["MovimientoRechazado"] as string == "RegistrarSalida")
@@ -315,6 +317,7 @@
             <div class="card-body">
 
                 <form asp-action="RegistrarAjuste" method="post">
+                    <input type="hidden" name="claveOperacion" value="@ViewData["ClaveRegistrarAjuste"]" />
 
                     @Html.AntiForgeryToken()
                     @if (ViewData["MovimientoRechazado"] as string == "RegistrarAjuste")

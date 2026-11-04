@@ -87,6 +87,7 @@ namespace MecaniCar360.Controllers
                     Text = $"{l.CodigoLote} | {l.FechaIngreso.ToLocalTime():dd/MM/yyyy HH:mm} | Ingresadas: {l.CantidadIngresada} | Disponibles: {l.CantidadDisponible} | {l.Proveedor}"
                 }).ToList();
             }
+            PrepararClavesMovimiento();
             ViewData["OrdenesSalida"] = ordenes;
             ViewData["LotesRestitucion"] = lotes;
             return View(resultado.Data);
@@ -352,8 +353,10 @@ namespace MecaniCar360.Controllers
             int proveedorRepuestoId,
             int cantidad,
             decimal precioCompra,
-            string? observaciones)
+            string? observaciones, Guid claveOperacion = default)
         {
+            if (claveOperacion == Guid.Empty)
+                ModelState.AddModelError("claveOperacion", "Falta una clave de operación válida. Vuelva a abrir el formulario.");
             if (!ModelState.IsValid)
             {
                 return await MovimientoRechazado(repuestoId, nameof(RegistrarIngreso));
@@ -366,7 +369,7 @@ namespace MecaniCar360.Controllers
                 cantidad,
                 precioCompra,
                 usuarioId,
-                observaciones);
+                observaciones, claveOperacion);
 
             if (!resultado.Exitoso)
             {
@@ -389,8 +392,10 @@ namespace MecaniCar360.Controllers
             int repuestoId,
             int cantidad,
             int ordenTrabajoId,
-            string? observaciones)
+            string? observaciones, Guid claveOperacion = default)
         {
+            if (claveOperacion == Guid.Empty)
+                ModelState.AddModelError("claveOperacion", "Falta una clave de operación válida. Vuelva a abrir el formulario.");
             if (!ModelState.IsValid)
             {
                 return await MovimientoRechazado(repuestoId, nameof(RegistrarSalida));
@@ -402,7 +407,7 @@ namespace MecaniCar360.Controllers
                 cantidad,
                 usuarioId,
                 observaciones,
-                ordenTrabajoId);
+                ordenTrabajoId, claveOperacion);
 
             if (!resultado.Exitoso)
             {
@@ -425,8 +430,10 @@ namespace MecaniCar360.Controllers
             int repuestoId,
             int diferencia,
             string observaciones,
-            int? loteRepuestoId = null)
+            int? loteRepuestoId = null, Guid claveOperacion = default)
         {
+            if (claveOperacion == Guid.Empty)
+                ModelState.AddModelError("claveOperacion", "Falta una clave de operación válida. Vuelva a abrir el formulario.");
             if (!ModelState.IsValid)
             {
                 return await MovimientoRechazado(repuestoId, nameof(RegistrarAjuste));
@@ -438,7 +445,7 @@ namespace MecaniCar360.Controllers
                 diferencia,
                 usuarioId,
                 observaciones,
-                loteRepuestoId);
+                claveOperacion, loteRepuestoId);
 
             if (!resultado.Exitoso)
             {
@@ -485,6 +492,14 @@ namespace MecaniCar360.Controllers
             var resultado = await AdministrarProveedores(repuestoId);
             if (resultado is ViewResult vista) vista.ViewName = "AdministrarProveedores";
             return resultado;
+        }
+
+        private void PrepararClavesMovimiento()
+        {
+            foreach (var accion in new[] { nameof(RegistrarIngreso), nameof(RegistrarSalida), nameof(RegistrarAjuste) })
+                ViewData["Clave" + accion] = ViewData["MovimientoRechazado"] as string == accion
+                    ? ModelState["claveOperacion"]?.AttemptedValue ?? string.Empty
+                    : Guid.NewGuid().ToString("D");
         }
 
         private async Task<IActionResult> MovimientoRechazado(int repuestoId, string accion)

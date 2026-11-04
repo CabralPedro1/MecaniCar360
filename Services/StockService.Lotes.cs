@@ -109,7 +109,7 @@ namespace MecaniCar360.Services
             return ServiceResult<Consumo>.Ok(new Consumo(consumir, cantidad - consumir, detalles));
         }
 
-        private async Task GuardarMovimientoAsync(int repuestoId, int cantidad, TipoMovimientoStock tipo,
+        private async Task<int> GuardarMovimientoAsync(int repuestoId, int cantidad, TipoMovimientoStock tipo,
             int usuarioId, string? observaciones, List<MovimientoStockLote> detalles,
             int? proveedorRepuestoId = null, int? ordenTrabajoId = null)
         {
@@ -132,6 +132,7 @@ namespace MecaniCar360.Services
             _auditoria.RegistrarOperacion("MOVIMIENTO_STOCK", "MovimientoStock", movimiento.Id, usuarioId,
                 $"Tipo: {tipo}; repuesto: {repuestoId}; cantidad: {cantidad}; OT: {ordenTrabajoId}; lotes: {detalles.Count}.");
             await _context.SaveChangesAsync();
+            return movimiento.Id;
         }
 
         public async Task<ServiceResult> CrearRepuestoAsync(Repuesto repuesto, int usuarioSolicitanteId)
@@ -190,12 +191,13 @@ namespace MecaniCar360.Services
         }
 
         public async Task<ServiceResult> RegistrarIngresoAsync(int repuestoId, int proveedorRepuestoId,
-            int cantidad, decimal precioCompra, int usuarioId, string? observaciones)
+            int cantidad, decimal precioCompra, int usuarioId, string? observaciones, Guid claveOperacion)
         {
             if (!await UsuarioAutorizadoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
             if (repuestoId <= 0 || proveedorRepuestoId <= 0 || cantidad <= 0 || !PrecioValido(precioCompra) || observaciones?.Length > 500)
                 return ServiceResult.Error("Ingrese IDs positivos, cantidad positiva, precio válido con hasta dos decimales y observaciones de hasta 500 caracteres.");
-            return await EjecutarStockAsync(async () =>
+            return await EjecutarMovimientoAsync(claveOperacion, usuarioId, "Ingreso",
+                HuellaMovimiento("Ingreso", repuestoId, cantidad, observaciones, proveedor: proveedorRepuestoId, precio: precioCompra), async registro =>
             {
                 var estado = await BloquearInventarioAsync(repuestoId);
                 if (!estado.Exitoso) return ServiceResult.Error(estado.Mensaje);
@@ -214,19 +216,20 @@ namespace MecaniCar360.Services
                 };
                 _context.LotesRepuesto.Add(lote);
                 inventario.Repuesto.StockActual += cantidad;
-                await GuardarMovimientoAsync(repuestoId, cantidad, TipoMovimientoStock.IngresoCompra, usuarioId,
+                registro.MovimientoStockId = await GuardarMovimientoAsync(repuestoId, cantidad, TipoMovimientoStock.IngresoCompra, usuarioId,
                     observaciones, new() { new() { LoteRepuesto = lote, Cantidad = cantidad } }, proveedorRepuestoId);
                 return ServiceResult.Ok($"Ingreso registrado. Lote {lote.CodigoLote}.");
             });
         }
 
         public async Task<ServiceResult> RegistrarSalidaAsync(int repuestoId, int cantidad,
-            int usuarioId, string? observaciones, int ordenTrabajoId)
+            int usuarioId, string? observaciones, int ordenTrabajoId, Guid claveOperacion)
         {
             if (!await UsuarioAutorizadoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
             if (repuestoId <= 0 || ordenTrabajoId <= 0 || cantidad <= 0 || observaciones?.Length > 500)
                 return ServiceResult.Error("La salida requiere OT, repuesto y cantidad positivos y observaciones de hasta 500 caracteres.");
-            return await EjecutarStockAsync(async () =>
+            return await EjecutarMovimientoAsync(claveOperacion, usuarioId, "Salida",
+                HuellaMovimiento("Salida", repuestoId, cantidad, observaciones, orden: ordenTrabajoId), async registro =>
             {
                 var orden = await BloquearOrdenAsync(ordenTrabajoId);
                 if (orden == null || orden.EstadoActual is not (EstadoOrden.Aprobado or EstadoOrden.EnReparacion) ||
@@ -236,14 +239,14 @@ namespace MecaniCar360.Services
                 if (!estado.Exitoso) return ServiceResult.Error(estado.Mensaje);
                 var consumo = ConsumirFifo(estado.Data!, cantidad, false);
                 if (!consumo.Exitoso) return ServiceResult.Error(consumo.Mensaje);
-                await GuardarMovimientoAsync(repuestoId, -consumo.Data!.Cantidad, TipoMovimientoStock.EgresoOrdenTrabajo,
+                registro.MovimientoStockId = await GuardarMovimientoAsync(repuestoId, -consumo.Data!.Cantidad, TipoMovimientoStock.EgresoOrdenTrabajo,
                     usuarioId, observaciones, consumo.Data.Detalles, ordenTrabajoId: ordenTrabajoId);
                 return ServiceResult.Ok("Salida registrada mediante FIFO.");
             });
         }
 
         public async Task<ServiceResult> RegistrarAjusteAsync(int repuestoId, int diferencia,
-            int usuarioId, string observaciones, int? loteRepuestoId = null)
+            int usuarioId, string observaciones, Guid claveOperacion, int? loteRepuestoId = null)
         {
             if (!await UsuarioAutorizadoAsync(usuarioId, "STOCK_MOVIMIENTO")) return ServiceResult.Error("Acceso denegado.");
             if (repuestoId <= 0 || diferencia == 0 || diferencia == int.MinValue ||
@@ -251,7 +254,8 @@ namespace MecaniCar360.Services
                 return ServiceResult.Error("Ingrese una diferencia válida y un motivo de hasta 500 caracteres.");
             if (diferencia > 0 && (!loteRepuestoId.HasValue || loteRepuestoId <= 0))
                 return ServiceResult.Error("La restitución requiere identificar el lote físico de origen.");
-            return await EjecutarStockAsync(async () =>
+            return await EjecutarMovimientoAsync(claveOperacion, usuarioId, "Ajuste",
+                HuellaMovimiento("Ajuste", repuestoId, diferencia, observaciones, lote: loteRepuestoId), async registro =>
             {
                 var estado = await BloquearInventarioAsync(repuestoId);
                 if (!estado.Exitoso) return ServiceResult.Error(estado.Mensaje);
@@ -275,7 +279,7 @@ namespace MecaniCar360.Services
                     inventario.Repuesto.StockActual += diferencia;
                     detalles = new() { new() { LoteRepuestoId = lote.Id, Cantidad = diferencia } };
                 }
-                await GuardarMovimientoAsync(repuestoId, diferencia, TipoMovimientoStock.Ajuste, usuarioId, observaciones, detalles);
+                registro.MovimientoStockId = await GuardarMovimientoAsync(repuestoId, diferencia, TipoMovimientoStock.Ajuste, usuarioId, observaciones, detalles);
                 return ServiceResult.Ok("Ajuste registrado con trazabilidad por lotes.");
             });
         }
