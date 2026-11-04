@@ -20,6 +20,12 @@
                     return false;
                 }
 
+                if (System.Text.Encoding.UTF8.GetByteCount(password) > 72)
+                {
+                    error = "La contraseña no puede superar 72 bytes UTF-8. Las letras acentuadas y los emojis pueden ocupar varios bytes.";
+                    return false;
+                }
+
                 if (!Regex.IsMatch(password, @"[A-Z]"))
                 {
                     error = "Debe contener al menos una letra mayúscula.";

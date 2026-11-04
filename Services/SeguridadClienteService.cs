@@ -16,6 +16,7 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
     ClienteHabilitadoService habilitado, IDataProtectionProvider proteccion, EmailService correo,
     AuditoriaService auditoria, ILogger<SeguridadClienteService> logger, IConfiguration config, IWebHostEnvironment ambiente)
 {
+    private static readonly LimiteOrientacionCorreo LimiteOrientacion = new();
     private sealed record Comprobante(int UsuarioId, string Stamp, string Email);
     private ITimeLimitedDataProtector Protector(string uso) => proteccion
         .CreateProtector("MecaniCar360.Cliente.PruebaCorreo.v1", uso).ToTimeLimitedDataProtector();
@@ -52,7 +53,8 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
     internal async Task EnviarOrientacionAsync(int id)
     {
         var u = await ClienteAsync(id);
-        if (u != null) await EnviarAsync(u, "orientacion");
+        if (u != null && LimiteOrientacion.IntentarReservar(u.Id, DateTime.UtcNow))
+            await EnviarAsync(u, "orientacion");
     }
 
     private async Task<Usuario?> VerificarAsync(string? codigo, string uso)
@@ -124,8 +126,8 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
         }
         var previo = await ClienteAsync(actor);
         if (previo == null) return false;
-        var token = TokenInvitacion.Generar();
-        var hash = TokenInvitacion.Hash(token);
+        string token;
+        string hash;
         string email;
         var originales = Capturar(); var confirmado = false;
         try
@@ -136,13 +138,17 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
             if (u == null || !await habilitado.EstaHabilitadoAsync(u.PersonaId)) return false;
             email = u.EmailLogin;
             var enlace = await db.EnlacesPasswordCliente.SingleOrDefaultAsync(e => e.UsuarioId == actor);
+            if (enlace != null) await db.Entry(enlace).ReloadAsync();
+            var ahora = DateTime.UtcNow;
+            if (!EmisionCorreoCuenta.PuedeReemitir(enlace?.FechaCreacion, ahora)) return false;
+            token = TokenInvitacion.Generar();
+            hash = TokenInvitacion.Hash(token);
             if (enlace == null) { enlace = new() { UsuarioId = actor }; db.EnlacesPasswordCliente.Add(enlace); }
-            else await db.Entry(enlace).ReloadAsync();
             enlace.TokenHash = hash; enlace.StampHash = TokenInvitacion.Hash(u.SecurityStamp);
             enlace.EmailHash = HashEmail(u.EmailLogin); enlace.TeniaPassword = u.PasswordHash != null;
             enlace.Finalidad = recuperacion ? FinalidadPasswordCliente.Recuperar : enlace.TeniaPassword
                 ? FinalidadPasswordCliente.Cambiar : FinalidadPasswordCliente.Agregar;
-            enlace.FechaCreacion = DateTime.UtcNow; enlace.FechaExpiracion = enlace.FechaCreacion.AddMinutes(10);
+            enlace.FechaCreacion = ahora; enlace.FechaExpiracion = enlace.FechaCreacion.AddMinutes(10);
             enlace.FechaConsumida = null; enlace.FechaInvalidacion = null;
             // Reemplazar el hash invalida cualquier enlace anterior, incluso de otra finalidad.
             await db.SaveChangesAsync(); await tx.CommitAsync(); confirmado = true;
@@ -202,8 +208,10 @@ public sealed class SeguridadClienteService(MecaniCarContext db, IdentidadClient
     public async Task<ServiceResult> RestablecerAsync(RestablecerPasswordClienteViewModel vm)
     {
         if (!TokenInvitacion.FormatoValido(vm.Token) || !Disponible()) return ServiceResult.Error(EnlaceNoValido);
-        if (vm.Password != vm.ConfirmarPassword || !PasswordValidator.EsValida(vm.Password, out _))
+        if (vm.Password != vm.ConfirmarPassword)
             return ServiceResult.Error("Revise la contraseña y su confirmación.");
+        if (!PasswordValidator.EsValida(vm.Password, out var error))
+            return ServiceResult.Error(error);
         var hash = TokenInvitacion.Hash(vm.Token);
         var localizador = await db.EnlacesPasswordCliente.AsNoTracking().Where(e => e.TokenHash == hash)
             .Select(e => new { e.UsuarioId, e.Usuario.PersonaId }).SingleOrDefaultAsync();

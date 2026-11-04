@@ -23,7 +23,7 @@ public sealed class SeguridadClienteController(SeguridadClienteService seguridad
         base.OnActionExecuting(context);
     }
 
-    [Authorize, HttpPost, ValidateAntiForgeryToken]
+    [Authorize, HttpPost, ValidateAntiForgeryToken, EnableRateLimiting(MecaniCar360.Helpers.EmisionCorreoCuenta.PoliticaHttp)]
     public async Task<IActionResult> SolicitarEnlace()
     {
         if (!await seguridad.PuedeGestionarAsync(Actor)) return Forbid();
@@ -34,7 +34,7 @@ public sealed class SeguridadClienteController(SeguridadClienteService seguridad
     [AllowAnonymous, HttpGet]
     public IActionResult Recuperar() => View(new RecuperarPasswordClienteViewModel());
 
-    [AllowAnonymous, HttpPost, ValidateAntiForgeryToken]
+    [AllowAnonymous, HttpPost, ValidateAntiForgeryToken, EnableRateLimiting(MecaniCar360.Helpers.EmisionCorreoCuenta.PoliticaHttp)]
     public async Task<IActionResult> Recuperar(RecuperarPasswordClienteViewModel vm)
     {
         if (!ModelState.IsValid) return View(vm);

@@ -85,7 +85,7 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
                 "Emisión detenida: falta una configuración válida de Invitaciones:UrlBase. No se generó token ni se intentó SMTP.");
             return ServiceResult.Error("Falta una URL publica de activacion valida en Invitaciones:UrlBase.");
         }
-        var token = TokenInvitacion.Generar();
+        string token;
         InvitacionCliente nueva;
         var anteriores = db.ChangeTracker.Entries().Select(e => e.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
         try
@@ -101,6 +101,11 @@ public sealed class InvitacionClienteService(MecaniCarContext db, PermisoService
                 return ServiceResult.Error("No se puede emitir la invitacion con el email indicado.");
             var reemision = await db.InvitacionesCliente.AnyAsync(i => i.PersonaId == personaId);
             var ahora = DateTime.UtcNow;
+            var ultima = await db.InvitacionesCliente.Where(i => i.PersonaId == personaId)
+                .MaxAsync(i => (DateTime?)i.FechaCreacion);
+            if (!EmisionCorreoCuenta.PuedeReemitir(ultima, ahora))
+                return ServiceResult.Ok("Solicitud recibida. Espere un minuto antes de solicitar otra invitacion.");
+            token = TokenInvitacion.Generar();
             await InvalidarAsync(personaId, ahora);
             nueva = new InvitacionCliente { PersonaId = personaId, EmailDestino = email,
                 TokenHash = TokenInvitacion.Hash(token), FechaCreacion = ahora, FechaExpiracion = ahora.AddHours(48),

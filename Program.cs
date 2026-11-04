@@ -37,6 +37,7 @@ namespace MecaniCar360
             builder.Services.AddRateLimiter(options =>
             {
                 options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                EmisionCorreoCuenta.ConfigurarLimiteHttp(options);
                 options.AddPolicy(LoginRateLimitPolicy, context =>
                 {
                     var ip = context.Connection.RemoteIpAddress;
@@ -319,6 +320,8 @@ namespace MecaniCar360
             // MANEJO DE ERRORES
             // =====================================
 
+            app.UseMiddleware<MecaniCar360.Middleware.CabecerasHtmlMiddleware>();
+
             if (!app.Environment.IsDevelopment())
             {
                 app.UseExceptionHandler(
@@ -332,7 +335,6 @@ namespace MecaniCar360
             // MIDDLEWARE
             // =====================================
 
-            app.UseMiddleware<MecaniCar360.Middleware.CabecerasHtmlMiddleware>();
             app.UseMiddleware<MecaniCar360.Middleware.IntegridadMiddleware>();
             app.UseHttpsRedirection();
 

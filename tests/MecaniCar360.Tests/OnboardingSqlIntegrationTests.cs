@@ -73,6 +73,35 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
             finally { accessor.HttpContext = null; }
         }
         void Check(bool value, string label) { Assert.True(value, label); output.WriteLine("PASS " + label); }
+        // Only this run's fixture may be aged; never change the production clock/policy.
+        // EF preserves integrity. This executes only inside the explicitly opted-in SQL test.
+        async Task PrepararReemision(int usuarioId)
+        {
+            await using var db = new MecaniCarContext(options);
+            Check(await db.Usuarios.AnyAsync(u => u.Id == usuarioId && u.EmailLogin.StartsWith(prefix)),
+                "cooldown preparation restricted to this fixture");
+            var enlace = await db.EnlacesPasswordCliente.SingleAsync(e => e.UsuarioId == usuarioId);
+            enlace.FechaCreacion = DateTime.UtcNow - EmisionCorreoCuenta.Intervalo - TimeSpan.FromSeconds(1);
+            await db.SaveChangesAsync();
+        }
+        async Task ComprobarSupresion(int usuarioId, string email)
+        {
+            await using var db = new MecaniCarContext(options);
+            var antes = await db.EnlacesPasswordCliente.AsNoTracking().SingleAsync(e => e.UsuarioId == usuarioId);
+            var envios = mail.PasswordHistory.Count;
+            var resultados = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ =>
+                Use<SeguridadClienteService, bool>(s => s.SolicitarPasswordAsync(usuarioId), usuarioId)));
+            await Use<SeguridadClienteService, bool>(async s => { await s.SolicitarRecuperacionAsync(email); return true; });
+            var despues = await db.EnlacesPasswordCliente.AsNoTracking().SingleAsync(e => e.UsuarioId == usuarioId);
+            Check(resultados.All(r => !r) && mail.PasswordHistory.Count == envios,
+                "shared cooldown suppresses concurrent authenticated and public mail attempts");
+            Check(antes.TokenHash == despues.TokenHash && antes.StampHash == despues.StampHash &&
+                antes.EmailHash == despues.EmailHash && antes.Finalidad == despues.Finalidad &&
+                antes.TeniaPassword == despues.TeniaPassword && antes.FechaCreacion == despues.FechaCreacion &&
+                antes.FechaExpiracion == despues.FechaExpiracion && antes.FechaConsumida == despues.FechaConsumida &&
+                antes.FechaInvalidacion == despues.FechaInvalidacion,
+                "suppressed requests preserve the entire password link, including consumption and invalidation");
+        }
         async Task Integrity(string label)
         {
             await using var db = new MecaniCarContext(options);
@@ -156,12 +185,16 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
             var googleRecovery = mail.PasswordTokens[Email("g")];
             Check(await Use<SeguridadClienteService, bool>(s => s.ValidarEnlaceAsync(googleRecovery)),
                 "Google-only verified account can request recovery with normalized email");
+            await ComprobarSupresion(googleId, Email("g"));
+            Check(await Use<SeguridadClienteService, bool>(s => s.ValidarEnlaceAsync(googleRecovery)),
+                "suppressed requests leave the current link usable");
             await using (var db = new MecaniCarContext(options)) {
                 var u = await db.Usuarios.SingleAsync(u => u.Id == googleId);
                 u.SecurityStamp = Guid.NewGuid().ToString("N"); await db.SaveChangesAsync();
             }
             Check(!await Use<SeguridadClienteService, bool>(s => s.ValidarEnlaceAsync(googleRecovery)),
                 "security stamp change invalidates pending password link");
+            await PrepararReemision(googleId);
             Check(await Use<SeguridadClienteService, bool>(s => s.SolicitarPasswordAsync(googleId), googleId), "send recent verification for add password");
             var proof = mail.PasswordTokens[Email("g")];
             await using (var db = new MecaniCarContext(options))
@@ -178,7 +211,12 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
             Check(await Use<SeguridadClienteService, bool>(s => s.SolicitarPasswordAsync(googleId), googleId), "reissue password link");
             Check(!await Use<SeguridadClienteService, bool>(s => s.ValidarEnlaceAsync(proof)), "new link invalidates previous link");
             proof = mail.PasswordTokens[Email("g")];
-            await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => Use<SeguridadClienteService, bool>(s => s.SolicitarPasswordAsync(googleId))));
+            await ComprobarSupresion(googleId, Email("g"));
+            await PrepararReemision(googleId);
+            var emisiones = mail.PasswordHistory.Count;
+            var issuanceRace = await Task.WhenAll(Enumerable.Range(0, 2).Select(_ => Use<SeguridadClienteService, bool>(s => s.SolicitarPasswordAsync(googleId))));
+            Check(issuanceRace.Count(r => r) == 1 && mail.PasswordHistory.Count == emisiones + 1,
+                "concurrent issuance after cooldown sends exactly one new link");
             await using (var db = new MecaniCarContext(options)) {
                 var current = await db.EnlacesPasswordCliente.SingleAsync(e => e.UsuarioId == googleId);
                 proof = mail.PasswordHistory.Single(t => TokenInvitacion.Hash(t) == current.TokenHash);
@@ -194,8 +232,12 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
                 "concurrent email proof establishes password exactly once on same account");
             Check(!(await Use<SeguridadClienteService, ServiceResult>(s => s.RestablecerAsync(addPassword))).Exitoso,
                 "proof consumed by security stamp rotation");
+            await ComprobarSupresion(googleId, Email("g"));
+            await PrepararReemision(googleId);
             await Use<SeguridadClienteService, bool>(async s => { await s.SolicitarRecuperacionAsync(Email("g")); return true; });
             var disabledToken = mail.PasswordTokens[Email("g")];
+            Check(disabledToken != proof && await Use<SeguridadClienteService, bool>(s => s.ValidarEnlaceAsync(disabledToken)),
+                "recovery after cooldown produces a usable new link before disabling account");
             await using (var db = new MecaniCarContext(options)) {
                 var u = await db.Usuarios.SingleAsync(u => u.Id == googleId); u.Activo = false; await db.SaveChangesAsync();
             }
@@ -409,7 +451,10 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
                     var result = await client.PostAsync(path, new FormUrlEncodedContent(values));
                     // Respect the real rate limit; retry only 429 (action was not executed).
                     for (var retry = 0; result.StatusCode == HttpStatusCode.TooManyRequests && retry < 4; retry++) {
-                        result.Dispose(); await Task.Delay(3500); result = await client.PostAsync(path, new FormUrlEncodedContent(values));
+                        var espera = result.Headers.RetryAfter?.Delta ?? TimeSpan.FromMilliseconds(3500);
+                        Check(espera >= TimeSpan.Zero && espera <= TimeSpan.FromMinutes(1), "bounded HTTP Retry-After");
+                        result.Dispose(); await Task.Delay(espera + TimeSpan.FromMilliseconds(100));
+                        result = await client.PostAsync(path, new FormUrlEncodedContent(values));
                     }
                     return result;
                 }
@@ -544,7 +589,11 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
                     var bothPortal = await Page(client, "/PortalCliente/Index");
                     Check(!WebUtility.HtmlDecode(bothPortal).Contains("Agregar contraseña") && !bothPortal.Contains("passwordGoogle") &&
                         bothPortal.Contains("Cambiar"), "HTTP both methods show change password only");
-                    await Post(client, "/SeguridadCliente/SolicitarEnlace", Anti(bothPortal), new());
+                    await PrepararReemision(httpId);
+                    var previousToken = smtp.PasswordToken;
+                    var changeSent = await Post(client, "/SeguridadCliente/SolicitarEnlace", Anti(bothPortal), new());
+                    Check(changeSent.StatusCode == HttpStatusCode.OK && smtp.PasswordToken != previousToken,
+                        "HTTP change emits a new link after fixture cooldown");
                     var changeForm = await OpenLink(smtp.PasswordToken);
                     var changedPassword = password + "http";
                     Check((await Post(client, "/SeguridadCliente/Restablecer", Anti(changeForm), new() {
@@ -553,9 +602,13 @@ public sealed class OnboardingSqlIntegrationTests(ITestOutputHelper output)
                     Check(!(await Use<AccountService, LoginResult>(s => s.LoginAsync(Email("http"), password))).Exitoso,
                         "old password no longer authenticates");
                     var recoveryForm = await Page(client, "/SeguridadCliente/Recuperar");
+                    await PrepararReemision(httpId);
+                    previousToken = smtp.PasswordToken;
                     var recovered = await Post(client, "/SeguridadCliente/Recuperar", Anti(recoveryForm), new() { ["Email"] = Email("http") });
                     var neutral = WebUtility.HtmlDecode(await recovered.Content.ReadAsStringAsync());
                     var recoveryToken = smtp.PasswordToken;
+                    Check(recovered.StatusCode == HttpStatusCode.OK && recoveryToken != previousToken,
+                        "HTTP recovery emits a new link after fixture cooldown");
                     var absent = await Post(client, "/SeguridadCliente/Recuperar", Anti(await Page(client, "/SeguridadCliente/Recuperar")),
                         new() { ["Email"] = Email("absent") });
                     Check(recovered.StatusCode == absent.StatusCode && neutral.Contains(SeguridadClienteService.RespuestaNeutra) &&

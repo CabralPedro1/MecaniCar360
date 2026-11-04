@@ -25,7 +25,7 @@ public sealed class RegistroClienteController(RegistroClienteService registro, S
         return View(new VerificarCorreoClienteViewModel());
     }
 
-    [HttpPost, ValidateAntiForgeryToken, EnableRateLimiting(Program.LoginRateLimitPolicy)]
+    [HttpPost, ValidateAntiForgeryToken, EnableRateLimiting(MecaniCar360.Helpers.EmisionCorreoCuenta.PoliticaHttp)]
     public async Task<IActionResult> Index(RegistroClienteViewModel model)
     {
         if (!ModelState.IsValid) return View(model);

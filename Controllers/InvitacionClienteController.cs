@@ -8,7 +8,8 @@ namespace MecaniCar360.Controllers;
 [Authorize]
 public sealed class InvitacionClienteController(InvitacionClienteService invitaciones) : Controller
 {
-    [HttpPost, ValidateAntiForgeryToken, Permiso("USUARIO_CREAR"), Permiso("PERSONA_VER")]
+    [HttpPost, ValidateAntiForgeryToken, Permiso("USUARIO_CREAR"), Permiso("PERSONA_VER"),
+        Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(MecaniCar360.Helpers.EmisionCorreoCuenta.PoliticaHttp)]
     public async Task<IActionResult> Emitir(int personaId)
     {
         if (!ModelState.IsValid || personaId <= 0) return BadRequest();
