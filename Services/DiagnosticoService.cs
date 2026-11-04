@@ -29,24 +29,37 @@ namespace MecaniCar360.Services
             if (usuario == null || !await _permisoService.TienePermisoAsync(usuarioSolicitanteId, "DIAGNOSTICO_CREAR"))
                 return ServiceResult.Error("Usuario inactivo o sin permisos para iniciar el diagnóstico.");
 
-            var orden = await _context.OrdenesTrabajo.FirstOrDefaultAsync(o => o.Id == ordenTrabajoId);
-            if (orden == null)
-                return ServiceResult.Error("Orden de trabajo no encontrada.");
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
+                    $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}").FirstOrDefaultAsync();
+                if (orden != null) await _context.Entry(orden).ReloadAsync();
+                if (orden == null || _context.Entry(orden).State == EntityState.Detached)
+                    return ServiceResult.Error("Orden de trabajo no encontrada.");
 
-            var acceso = await ValidarAccesoAsync(orden, usuario, trabajoTecnico: true);
-            if (!acceso.Exitoso) return acceso;
-            if (orden.FechaFin.HasValue || orden.EstadoActual != EstadoOrden.Pendiente)
-                return ServiceResult.Error("La orden debe estar pendiente y sin finalizar para iniciar el diagnóstico.");
-            if (await _context.Diagnosticos.AnyAsync(d => d.OrdenTrabajoId == ordenTrabajoId))
-                return ServiceResult.Error("La orden ya tiene un diagnóstico.");
+                var acceso = await ValidarAccesoAsync(orden, usuario, trabajoTecnico: true);
+                if (!acceso.Exitoso) return acceso;
+                if (orden.FechaFin.HasValue || orden.EstadoActual != EstadoOrden.Pendiente)
+                    return ServiceResult.Error("La orden debe estar pendiente y sin finalizar para iniciar el diagnóstico.");
+                if (await _context.Diagnosticos.AnyAsync(d => d.OrdenTrabajoId == ordenTrabajoId))
+                    return ServiceResult.Error("La orden ya tiene un diagnóstico.");
 
-            _ordenStateService.CambiarEstado(orden, new EstadoDiagnosticoHandler());
-            var historial = orden.HistorialEstados.LastOrDefault();
-            if (historial != null)
-                historial.MecanicoId = await MecanicoActorAsync(usuario);
-            _auditoria.RegistrarOperacion("DIAGNOSTICO_INICIADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
-            await _context.SaveChangesAsync();
-            return ServiceResult.Ok("Diagnóstico iniciado correctamente.");
+                _ordenStateService.CambiarEstado(orden, new EstadoDiagnosticoHandler());
+                var historial = orden.HistorialEstados.LastOrDefault();
+                if (historial != null)
+                    historial.MecanicoId = await MecanicoActorAsync(usuario);
+                _auditoria.RegistrarOperacion("DIAGNOSTICO_INICIADO", "OrdenTrabajo", orden.Id, usuarioSolicitanteId);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return ServiceResult.Ok("Diagnóstico iniciado correctamente.");
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                throw;
+            }
         }
 
         public async Task<ServiceResult<Diagnostico>> ObtenerAsync(int ordenTrabajoId, int usuarioSolicitanteId)

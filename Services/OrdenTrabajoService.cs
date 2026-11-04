@@ -493,8 +493,9 @@ namespace MecaniCar360.Services
             var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
                 $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
                 .FirstOrDefaultAsync();
+            if (orden != null) await _context.Entry(orden).ReloadAsync();
 
-            if (orden == null)
+            if (orden == null || _context.Entry(orden).State == EntityState.Detached)
             {
                 return ServiceResult.Error(
                     "Orden de trabajo no encontrada.");
@@ -582,8 +583,9 @@ namespace MecaniCar360.Services
             var orden = await _context.OrdenesTrabajo.FromSqlInterpolated(
                 $"SELECT * FROM [OrdenesTrabajo] WITH (UPDLOCK, HOLDLOCK) WHERE [Id] = {ordenTrabajoId}")
                 .FirstOrDefaultAsync();
+            if (orden != null) await _context.Entry(orden).ReloadAsync();
 
-            if (orden == null)
+            if (orden == null || _context.Entry(orden).State == EntityState.Detached)
             {
                 return ServiceResult.Error(
                     "Orden de trabajo no encontrada.");
