@@ -251,7 +251,7 @@ El inventario no convierte el atributo de un controlador en prueba de autorizaci
 
 El feedback no es idempotencia. Se inspeccionaron las protecciones existentes: transacciones de turnos/recepción/toma de OT, decisión de versiones de presupuesto, unicidad de factura/garantía/calificación y validación de saldo esperado en pagos. No se modificaron ni se probaron carreras SQL.
 
-`StockService.Lotes.RegistrarIngresoAsync`, `RegistrarSalidaAsync` y los ajustes manuales validan y serializan operaciones, pero dos POST válidos sucesivos pueden representar dos movimientos. No se agregó una clave de idempotencia ni se cambió la regla de negocio. Para comprobarlo: en base aislada, repetir la misma operación y comparar movimientos/lotes/saldo/auditoría; distinguir dos movimientos intencionales de un reintento requiere acordar el contrato antes de modificar persistencia.
+**Antecedente de clase 12 (superado por SEC-05 abajo):** `StockService.Lotes.RegistrarIngresoAsync`, `RegistrarSalidaAsync` y los ajustes manuales validan y serializan operaciones, pero dos POST válidos sucesivos pueden representar dos movimientos. No se agregó una clave de idempotencia ni se cambió la regla de negocio. Para comprobarlo: en base aislada, repetir la misma operación y comparar movimientos/lotes/saldo/auditoría; distinguir dos movimientos intencionales de un reintento requiere acordar el contrato antes de modificar persistencia.
 
 **Actualización:** se corrigieron las brechas de diagnóstico, presupuesto y asociaciones señaladas en la primera pasada. No se restauran acciones cuando se perdió acceso o elegibilidad, ni se sustituye una versión obsoleta. Ver detalles de la segunda pasada al final.
 
@@ -311,3 +311,91 @@ Pruebas futuras autorizadas: dos conexiones con misma clave dejan un movimiento;
 **Resultados de segunda pasada:** build con 0 errores y las 26 CS8618 conocidas; suite .NET no SQL con **365 aprobadas, 0 fallidas** (16 casos nuevos sobre las 349 iniciales); JavaScript con **14 aprobadas**; `git diff --check` sin errores, también comprobados los archivos nuevos. Sin SQL, migraciones, seeds ni inicio de aplicación. Pruebas nuevas en `FormulariosMutacionesTests`: binding inválido sin escritura, consulta denegada al reconstruir, conservación de ModelState, identidad de recurso/versión y selección retirada; más comprobaciones estructurales de Razor/metadatos. Los dobles ADO.NET no abren conexiones reales y fallan ante cualquier intento de escritura/transacción. No prueban persistencia exitosa ni renderizado completo en navegador.
 
 Aceptación pendiente: provocar error de campo y negocio en diagnóstico, ítem/repuesto, evidencias, rechazo, asociación y precio en dos filas. Confirmar valores, fila abierta, opciones, permiso revocado, versión cambiada, selección retirada, mensajes y posterior PRG. Probar anchos/teclado/dispositivo según la matriz anterior. No se declara cerrada integralmente la clase 12: falta evidencia funcional y queda documentada la idempotencia, cuyo cambio de persistencia está fuera de esta tarea.
+
+
+## SEC-05 ? Idempotencia de movimientos manuales (03/11/2026)
+
+**Actualización 04/11/2026:** los 12 escenarios de idempotencia de la tercera campaña están aprobados; ver [cierre SQL](#cierre-sql-sec-01020508--04112026). Los resultados y pendientes siguientes conservan el estado histórico del 03/11; no implican que los escenarios ahora acreditados sigan sin ejecutar.
+
+Implementaci?n en `StockService.Idempotencia.cs`, `StockService.Lotes.cs`, `StockController` y `Stock/Detalle`: cada formulario tiene una clave GUID; los rechazos conservan la clave enviada y una nueva carga tras ?xito genera claves nuevas. La clave no sustituye permisos ni antiforgery. Clave ausente/inv?lida se rechaza, no se reemplaza en el POST. Dos formularios nuevos con claves distintas representan operaciones distintas aunque sus datos coincidan.
+
+`OperacionesStockIdempotentes` registra s?lo resultados exitosos, asociados al usuario, operaci?n, huella SHA-256 determinista de los par?metros efectivos y movimiento ?nico. La consulta protegida de clave ocurre dentro de `EjecutarStockAsync`, despu?s del bloqueo global de integridad y antes de OT/inventario. Un reintento coincidente devuelve el mensaje original sin repetir movimiento, lote, auditor?a o notificaci?n; otra identidad/operaci?n/huella se rechaza. Se revalida permiso vigente incluso para recuperar resultados. Un rollback elimina conjuntamente el movimiento y el registro t?cnico; no se almacena un estado pendiente ni se borran claves autom?ticamente. No se modific? el consumo incremental de presupuestos.
+
+Migraci?n generada `20261103234453_AgregarIdempotenciaMovimientosStock`: crea una tabla vac?a con PK de clave, ?ndice ?nico de movimiento, ?ndice de usuario y FKs sin cascada; no modifica datos hist?ricos. **No aplicada.** No iniciar la aplicaci?n para aplicarla: el arranque normal puede migrar/ejecutar seed. Su aplicaci?n futura requiere autorizaci?n y procedimiento controlado.
+
+La tabla t?cnica queda fuera de DVH/DVV conforme a la cobertura expl?cita de doce tablas en `integridad-dvh-dvv.md` y al alcance de `PLAN-CIERRE.md`. No se cambia el registro ni la l?nea base. Movimientos, lotes, repuestos y auditor?as conservan su protecci?n transaccional. Una alteraci?n directa de la nueva tabla no se detecta mediante DVH/DVV; la huella de solicitud no es un verificador de integridad de dicha tabla.
+
+Pruebas sin SQL: `StockIdempotenciaTests` ejercita huellas (culturas, importes, par?metros y null), comparaci?n de actor/operaci?n/solicitud, rechazo de clave vac?a antes de transacci?n, conservaci?n y renovaci?n de claves de formulario y metadatos de modelo/migraci?n. No simulan una demostraci?n de bloqueo ni de rollback SQL.
+
+Pendiente en SQL aislado autorizado: repetici?n secuencial y simult?nea de ingreso/salida/ajuste; una sola fila de movimiento, saldo/FIFO/lote correcto y ausencia de auditor?as/avisos duplicados; rollback antes de commit y reintento; respuesta perdida/reinicio; revocaci?n de permiso; dos claves con datos iguales; integridad antes/despu?s y regresi?n de aprobaci?n incremental. Pendiente navegador: doble clic/reenv?o, conservaci?n de clave tras errores y PRG. SEC-05 no tiene todav?a validaci?n transaccional real.
+
+Validaci?n ejecutada SEC-05: build CierreB sin errores (26 advertencias CS8618 preexistentes al recompilar; build incremental final sin advertencias). Suite .NET no SQL: **414 aprobadas, 0 fallidas, 0 omitidas**, excluyendo `OnboardingSqlIntegrationTests` y con opt-in deshabilitado. Incluye 19 casos nuevos de `StockIdempotenciaTests`. `git diff --check` sin errores. No se ejecutaron SQL, migraciones, seeds ni navegador.
+
+
+## SEC-07 ? Dependencias NuGet (03/11/2026)
+
+Se mantiene `net8.0`, los cuatro paquetes EF Core `8.0.2`, SqlClient `5.1.4`, Google `8.0.30`, BCrypt `4.0.3` y PDFsharp `6.2.4`. No se modificaron servicios, modelo ni migraciones. Se agregaron seis referencias expl?citas en el proyecto principal para elevar exclusivamente las ra?ces transitivas necesarias; los proyectos dependientes las reciben por ProjectReference.
+
+| Paquete/grupo | Resuelto anterior | Resuelto nuevo | Motivo |
+|---|---|---|---|
+| Azure.Identity | 1.10.3 | 1.17.1 | Primera versi?n estable no marcada obsoleta encontrada en los metadatos consultados; corrige los avisos Azure |
+| Azure.Core | 1.35.0 | 1.50.0 | Dependencia de Azure.Identity |
+| Microsoft.Identity.Client / Extensions.Msal | 4.56.0 | 4.78.0 | Se elevan por Azure.Identity, sin referencias directas redundantes |
+| IdentityModel.Protocols.OpenIdConnect / Protocols / JsonWebTokens / Tokens / Logging y System.IdentityModel.Tokens.Jwt | 6.24.0 | 7.7.3 | Una referencia a OpenIdConnect eleva la cadena; evita la rama 6 marcada obsoleta |
+| Microsoft.IdentityModel.Abstractions | Transitiva anterior de IdentityModel | 8.14.0 | M?nimo requerido por MSAL actualizado, aceptado por los rangos del resto de IdentityModel |
+| Microsoft.Extensions.Caching.Memory | 8.0.0 | 8.0.1 | Correcci?n de DoS |
+| System.Formats.Asn1 | 5.0.0 | 8.0.1 | Correcci?n de DoS en certificados |
+| System.Security.Cryptography.Pkcs | 8.0.1 | 8.0.2 | Correcciones de DoS en CMS |
+| System.Text.Json (aplicaci?n) | 8.0.0 | 8.0.5 | Correcciones de DoS; la referencia sigue siendo necesaria tras elevar Azure/IdentityModel |
+
+La selecci?n se contrast? con los metadatos p?blicos de NuGet (deprecaciones y rangos de dependencia). IdentityModel cambia de versi?n mayor de biblioteca, no de framework: no se modific? la configuraci?n de autenticaci?n. La compatibilidad observada es compilaci?n y pruebas no SQL; las conexiones SQL y los flujos externos reales no fueron ejecutados.
+
+Validaciones ejecutadas:
+
+- Restore con `NuGetAuditMode=all`: aplicaci?n, suite principal, ConcurrencyTests, ConcurrencySetup y herramienta Integridad; sin NU1605, NU1608 ni advertencias de vulnerabilidad en los assets finales.
+- `dotnet list ... package --vulnerable --include-transitive --format json` sobre la soluci?n y los tres proyectos auxiliares: ning?n paquete vulnerable informado por las fuentes consultadas.
+- Build CierreB de aplicaci?n y los tres auxiliares: sin errores. La compilaci?n de la aplicaci?n conserva 26 CS8618 preexistentes; auxiliares sin advertencias.
+- Suite principal excluyendo OnboardingSqlIntegrationTests y opt-in deshabilitado: **415 aprobadas, 0 fallidas, 0 omitidas**. Incluye modelo/snapshot y regresiones SEC-01/02/03/04/05.
+- `Huella_ConservaContratoJsonVersionUno`: aprobada antes y despu?s de actualizar; compara la huella con JSON fijo que incluye Unicode escapado, decimal, orden de propiedades y null. No se cambi? la implementaci?n de SEC-05.
+- JavaScript (`forms.test.cjs`, `navigation.test.cjs`): **20 aprobadas, 0 fallidas**.
+- `git diff --check`: sin errores.
+
+Aviso no relacionado con vulnerabilidades: `dotnet list ... --deprecated --include-transitive` informa System.Collections.Immutable 6.0.0, dependencia preexistente de Microsoft.CodeAnalysis.Common 4.5.0 / System.Reflection.Metadata 6.0.1 en las herramientas de dise?o EF. Se conserva para no ampliar SEC-07 a una actualizaci?n de tooling; no fue introducida por las seis referencias nuevas. No se suprimieron avisos ni se alter? NuGet.Config.
+
+No se ejecut? la aplicaci?n, SQL, seeds, migraciones, herramientas operativas ni la campa?a de concurrencia. Siguen pendientes SQL aislado (transacciones/bloqueos/interceptores), OAuth real y comprobaci?n visual de PDF. La ausencia de avisos NuGet corresponde al cat?logo consultado, no garantiza ausencia absoluta de vulnerabilidades.
+
+
+## SEC-08 ? Reenv?os de credenciales e invitaciones (03/11/2026)
+
+**Actualización 04/11/2026:** los ocho escenarios de correos de cuenta de la tercera campaña están aprobados con transporte simulado; ver [cierre SQL](#cierre-sql-sec-01020508--04112026). Los resultados y pendientes siguientes describen la implementación del 03/11; conservar los pendientes no cubiertos.
+
+`EmisionCorreoCuenta.ConfigurarLimiteHttp` registra `CorreosCuentaPorIp`: ventana fija de un minuto, cinco solicitudes por IP normalizada, sin cola. Se comparte entre POST Recuperar/SolicitarEnlace de SeguridadCliente, Index de RegistroCliente y Emitir de InvitacionCliente. Es independiente de LoginPorIp; las acciones de validaci?n/consumo conservan su pol?tica previa. Reutiliza el manejo 429/Retry-After de Program. No se conf?a en X-Forwarded-For ni se modific? la configuraci?n de proxies. La ventana fija puede admitir r?fagas a ambos lados de un l?mite de ventana; no equivale a cinco solicitudes en cualquier intervalo m?vil de 60 segundos.
+
+`SeguridadClienteService.EmitirEnlaceAsync` comprueba 60 segundos desde EnlacesPasswordCliente.FechaCreacion dentro de Serializable, despu?s del bloqueo de Persona y Reload del enlace. Recuperaci?n y solicitud autenticada comparten esa fila. Una solicitud suprimida retorna antes de generar token/hash, reemplazar la fila o llamar a SMTP; mantiene la respuesta p?blica neutra. InvitacionClienteService aplica el mismo intervalo sobre la m?xima FechaCreacion de las invitaciones de la Persona bajo el bloqueo existente, antes de generar token o invalidar invitaciones. No se filtraron los intentos fallidos/consumidos/invalidados: SMTP fallido tambi?n consume el intervalo, que vence sin intervenci?n a los 60 segundos. Se conserva la invalidaci?n espec?fica del token afectado por un fallo SMTP.
+
+Orientaci?n: reserva at?mica por UsuarioId antes del env?o, en una instancia local al proceso de LimiteOrientacionCorreo. Incluye fallos de transporte, permite otro intento a los 60 segundos y limita la memoria a 10000 identidades; al llenarse s?lo libera reservas vencidas, sin expulsar restricciones vigentes. No almacena correos ni tokens. **Limitaciones:** se reinicia con el proceso, no coordina instancias y no comparte cupo con los enlaces de contrase?a. La pol?tica HTTP tambi?n tiene contadores locales. No constituye una defensa global contra m?ltiples IP/procesos ni elimina el posible canal temporal por espera SMTP.
+
+No se agregaron tablas, migraciones, dependencias ni campos. DVH/DVV y EmailService permanecen intactos. El resultado p?blico no distingue supresi?n, inexistencia o env?o. La pantalla interna autorizada de invitaci?n puede informar que debe esperar; no afirma que se haya enviado otro correo.
+
+Validaci?n ejecutada: build CierreB sin errores (26 CS8618 preexistentes en recompilaci?n; incremental final sin advertencias). **431 pruebas .NET no SQL aprobadas, 0 fallidas, 0 omitidas**; incluye 16 casos nuevos en EmisionCorreoCuentaTests. **20 pruebas JavaScript aprobadas, 0 fallidas**. `git diff --check` sin errores.
+
+Alcance de la evidencia: host HTTP m?nimo con pol?tica de producci?n, antiforgery real, cupo compartido, IPv4/mapeada IPv6, otra IP, 429/Retry-After y pol?tica de login independiente. Metadatos de los cuatro POST verifican pol?tica y antiforgery. Reglas temporales ejercitadas con fechas controladas; reserva de orientaci?n bajo llamadas paralelas y capacidad completa; env?o de orientaci?n mediante override de EmailService.EnviarMensajeAsync sin SMTP, incluyendo excepci?n. Respuesta neutra del controlador comprobada con entrada no elegible. El orden bloqueo/recarga/espera/generaci?n/invalidaci?n se verifica estructuralmente; **no es una prueba de conservaci?n persistida ni de carreras SQL**.
+
+Pendiente SQL aislado autorizado: emitir, repetir desde recuperaci?n y sesi?n autenticada, comprobar que hash/fechas/estado no cambian y que no se env?a durante el intervalo; reemisi?n admitida al vencer; concurrencia de solicitudes; fallo SMTP y reintento; invitaciones p?blicas/internas y reinicio. Los escenarios SQL anteriores que reemiten inmediatamente deben considerar ahora el intervalo expl?cito antes de esperar un token nuevo, sin desactivar el control. Pendiente navegador: mensajes, antiforgery, recuperaci?n despu?s de 429 y comportamiento con IP real detr?s del proxy. No se ejecutaron SQL, migraciones, seeds, correos reales ni la aplicaci?n de aceptaci?n.
+
+## Cierre SQL SEC-01/02/05/08 — 04/11/2026
+
+Campaña `b6693ea9b36f469eb13d130aee029d56`: **24 ejecutadas, 24 aprobadas, 0 fallidas, 0 omitidas**. Distribución: SEC-01 (2), SEC-02 (2), SEC-05 (12), SEC-08 (8). Duración medida en TRX: **49,822 segundos**; código de salida **0 informado por el operador**. Se revisaron 24 resultados y definiciones únicos, sin errores, timeouts ni abortos. No se repitieron pruebas durante este cierre documental.
+
+El [registro del harness](../tests/MecaniCar360.ConcurrencyTests/README.md#cierre-de-la-tercera-campaña--04112026) contiene el inventario de casos, la ruta exacta del TRX, SHA-256 `41107FBF1AD4A1C7F5C50F87D89982EC9BC68E7168254F95D03DD340902FE80C`, trazabilidad del paquete y antecedentes. Primera campaña: fallo de vigencia de invitaciones; segunda: 6 PASS/18 FAIL por SnapshotAsync; tercera: 24 PASS tras corregir exclusivamente el harness. Se conservan los resultados históricos.
+
+Cobertura SQL ahora acreditada:
+
+- SEC-01: inicio de diagnóstico concurrente y rechazo desde entidad precargada obsoleta.
+- SEC-02: iniciar reparación/finalizar sin repetir transición desde un contexto precargado.
+- SEC-05: ingreso, salida, ajustes positivo/negativo; primera ejecución, reintento idéntico, conflicto de parámetros, misma clave concurrente y rollback precommit con reintento. Aserciones de saldos, lotes/FIFO, idempotencia, auditoría/notificaciones e integridad según cada caso.
+- SEC-08: supresión y conservación de enlaces, consumo, reemisión, concurrencia y fallos simulados de transporte, invitaciones y respuesta neutra; persistencia comprobada con contextos independientes.
+
+Pendientes no convertidos en PASS: reinicio/respuesta perdida real, revocación de permisos durante el circuito, dos claves intencionales distintas con contenido igual y regresión de aprobación incremental de presupuestos; aceptación de formularios/PRG, navegador y SMTP real. No se certifica OAuth ni el pipeline HTTP mediante acciones MVC directas. Los contadores en memoria y el transporte simulado conservan sus límites.
+
+**No cierra D3/AC14 ni los 28 escenarios originales. B1 permanece:** sin observación directa de espera por bloqueos SQL ni garantía universal frente a deadlocks. Tampoco constituye aceptación integral de los 65 CU. Se inspeccionaron TRX, 56 manifiestos y hashes del paquete de la tercera campaña; no se verificaron backups ni toda la evidencia de la primera campaña. No se consultaron bases ni claims en esta revisión.

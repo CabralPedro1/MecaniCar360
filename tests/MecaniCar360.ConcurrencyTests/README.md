@@ -2,7 +2,7 @@
 
 ## Estado y límites
 
-Infraestructura escrita para SQL Server real. **No se ha preparado ninguna base ni ejecutado esta suite.**
+Infraestructura para SQL Server real. **La campaña SEC-01/02/05/08 de 24 casos fue aprobada el 04/11/2026**, según el registro de cierre al final. Los 28 escenarios originales mantienen su estado separado: no quedan acreditados por esta campaña.
 Objetivo: pruebas funcionales con ejecuciones concurrentes coordinadas. **B1 permanece abierto**:
 no se acredita mediante observación del servidor la contención efectiva por un bloqueo SQL.
 Compilar no ejecuta el preparador ni los tests. No hay pruebas estructurales sustituyendo estos escenarios.
@@ -165,3 +165,103 @@ git diff --check
 No ejecutar `dotnet test` sobre el proyecto nuevo durante la fase de preparación de código.
 Pendiente: validación real de permisos, backups, seed, fixtures, barreras y todos los resultados SQL;
 observación DMV/XEvents de esperas; pruebas de carga prolongada. No sustituirlas por el resultado del build.
+
+## SEC-05: idempotencia manual (12 casos SQL aprobados el 04/11/2026)
+
+`SqlConcurrencyTests.StockIdempotencia.cs` agrega 12 casos opt-in: ingreso, salida,
+ajuste positivo y negativo, por tres recorridos (primera operación/reintento/conflicto,
+carrera de clave idéntica y rollback precommit con reintento). Filtro específico para
+una futura ejecución autorizada: `Security=SEC05`. No ejecutar toda la campaña por defecto.
+
+Reutiliza guard, claim, Race, drenaje, snapshots, WriteEvidence/FailBeforeCommit y
+verificación DVH/DVV/FK. Los fixtures exclusivos agregan STOCK, proveedor, oferta,
+repuesto y dos lotes; la salida exige OT aprobada, sin cierre ni factura. La restitución
+positiva identifica el lote y respeta su cantidad ingresada. Los saldos iniciales
+se preparan mediante EF, no representan movimientos históricos ejecutados por el test.
+
+Se verifican FIFO, saldo, desglose, una fila de idempotencia/movimiento/auditoría,
+destinatarios de stock bajo y ausencia de notificaciones en ingresos/restituciones.
+Snapshots independientes exigen cero cambios por reintento, conflicto o rollback,
+incluyendo verificadores. No se recalcula la línea base. La excepción inyectada sólo
+es válida en rollback; errores/timeouts en operaciones normales o carreras fallan.
+La limitación B1 permanece: coordinación no equivale a observar espera en SQL.
+
+Pendiente: base aislada preparada con las 21 migraciones e identidad ejecutora
+restringida, autorización y ejecución real. No hay limpieza automática ni cambios
+a MecaniCar360; conservar los fixtures para diagnóstico hasta autorizar su retiro.
+
+## Campaña conjunta SEC-01/02/05/08 — 24 casos (SQL aprobado el 04/11/2026)
+
+SEC-01: 2 casos de diagnóstico. SEC-02: 2 casos de reparación/finalización.
+SEC-05: 12 casos de movimientos manuales. SEC-08: 8 casos nuevos en
+`SqlConcurrencyTests.CorreosCuenta.cs`, etiquetados `Security=SEC08`:
+
+1. Contraseña: emisión, supresión pública/autenticada, token intacto y reemisión.
+2. Contraseña consumida: espera conservada, auditoría de consumo y nueva emisión.
+3. Carrera entre emisión autenticada y recuperación pública: un envío/fila.
+4. Fallo de transporte: invalidación, supresión y recuperación tras el intervalo.
+5. Invitación: supresión, conservación, reemisión e invalidación del enlace anterior.
+6. Carrera de invitaciones: un envío/fila y auditoría de emisión única.
+7. Fallo de invitación: invalidación/auditoría, supresión y posterior reemisión.
+8. Recuperación elegible/inactiva/inexistente: misma vista pública; cero efectos
+   adicionales para las solicitudes inactivas/inexistentes (acción MVC directa,
+   no prueba del pipeline HTTP ni de tiempos de respuesta).
+
+Cada caso instancia su propio ConcurrencyEnvironment, capturador de correo y
+Data Protection efímero. El transporte sobrescribe EnviarMensajeAsync: no abre SMTP.
+Tokens y contraseñas sólo en memoria; no se incluyen en mensajes de aserción,
+logs o manifiestos. Se cuentan advertencias/errores sin conservar su contenido,
+para detectar fallos SQL que el contrato público pudiera convertir en respuesta neutra.
+
+Los intervalos vencidos se preparan mediante FechaCreacion y EF sobre registros
+identificados por el fixture; no se altera el reloj ni la política productiva.
+Los snapshots se toman después de terminar envío e invalidación, con contextos
+independientes. Se verifican DVH/DVV/FK sin inicializar la línea base. No se migra
+el test monolítico de onboarding ni se cambia su opt-in/destino.
+
+Para una futura ejecución AUTORIZADA, usar una sola invocación/ensamblado/proceso:
+
+```powershell
+$filtro = 'Category=SqlConcurrency&(Security=SEC05|Security=SEC08|FullyQualifiedName~Diagnostico_InicioUnico|FullyQualifiedName~Reparacion_EntidadPrecargadaNoRepiteTransicion)'
+dotnet vstest $dll "/TestCaseFilter:$filtro" "/ResultsDirectory:$resultados" '/Logger:trx;LogFileName=SEC01-SEC02-SEC05-SEC08.trx'
+```
+
+Requiere variables MC360_CONCURRENCY_* correctas, identidad restringida validada,
+binarios actualizados, claim vacío y autorización explícita. El resultado esperado
+es 24 aprobadas, ninguna fallida ni omitida. No se garantiza orden de métodos;
+los fixtures son independientes y el paralelismo entre casos permanece deshabilitado.
+No iniciar otra invocación contra la misma base. Conservar TRX, TEMP/base/manifests,
+marcas de aborto si existen, base y backup. No hay limpieza automática.
+
+Límites: SMTP real, navegador, antiforgery/rate limiting HTTP y latencias no quedan
+acreditados por estos casos SQL. Las pruebas no SQL de EmisionCorreoCuentaTests
+conservan esa cobertura HTTP simulada. B1 (sin observación directa de espera SQL)
+permanece explícito. Una base preparada puede utilizarse si sigue sin claim y
+con el esquema vigente; esta adaptación no añade tablas, permisos ni migraciones.
+
+## Cierre de la tercera campaña — 04/11/2026
+
+Campaña `b6693ea9b36f469eb13d130aee029d56`, base aislada `MecaniCar360_Concurrency_b6693ea9b36f469eb13d130aee029d56` en `BOOK-JKTL5UI49E\CABRALPEDRO`. TRX inspeccionado: **24 ejecutadas, 24 aprobadas, 0 fallidas, 0 omitidas**; 24 nombres, IDs de prueba e IDs de ejecución únicos, sin inconsistencias entre definiciones y resultados, errores, timeouts ni abortos. Duración inicio/fin: **49,822 segundos**. Código de salida **0 informado por el operador**, no acreditado independientemente por el TRX.
+
+| Hallazgo | Casos aprobados |
+|---|---|
+| SEC-01 (2) | `Diagnostico_InicioUnico`, precargado false/true |
+| SEC-02 (2) | `Reparacion_EntidadPrecargadaNoRepiteTransicion`, finalizar false/true |
+| SEC-05 (12) | `StockIdempotencia_PrimeraReintentoYConflicto`, `StockIdempotencia_Concurrente` y `StockIdempotencia_RollbackAntesCommit`, cada uno con Ingreso/Salida/Positivo/Negativo |
+| SEC-08 (8) | `CorreosCuenta_IntervaloPersistido`: PasswordSupresion, PasswordConsumido, PasswordConcurrente, PasswordFallo, InvitacionSupresion, InvitacionConcurrente, InvitacionFallo y RespuestaNeutra |
+
+TRX local (no versionar datos ni artefactos):
+`C:\ProgramData\MecaniCar360-Pruebas\b6693ea9b36f469eb13d130aee029d56\resultados\SEC01-SEC02-SEC05-SEC08-b6693ea9b36f469eb13d130aee029d56.trx`
+
+SHA-256: `41107FBF1AD4A1C7F5C50F87D89982EC9BC68E7168254F95D03DD340902FE80C`.
+
+Evidencia revisada: TRX de 35.505 bytes, 56 manifiestos JSON sin marca de aborto en el directorio inspeccionado, 152 archivos de binarios coincidentes con inventario/tamaños/SHA-256, y registros de preparación en `preparacion` junto a `resultados`. La versión ejecutada incluye cambios locales sin commit: el HEAD por sí solo no identifica el paquete; conservar `head.txt`, `git-status.txt`, `source-sha256.csv` y `package-sha256.csv`.
+
+Antecedentes conservados, no sustituidos por este PASS:
+
+- Primera campaña `1ed16434fba445a4b88acf61e9cba946`: fallo del fixture por `CK_InvitacionesCliente_Vigencia`; corregida la duración exacta de 48 horas y su preparación temporal. No se pudo inspeccionar íntegramente su carpeta de resultados durante este cierre.
+- Segunda campaña `7351835e0e8f480daf41b597a10252a8`: TRX con 6 aprobadas y 18 fallidas por interpretación vacía de JSON en `SnapshotAsync`; TRX anterior presente. Se corrigió el helper de pruebas, sin alterar producción. Sus resultados parciales siguen siendo antecedentes, no PASS global.
+
+No se verificaron los respaldos ni se consultaron bases durante la revisión documental. Conservar bases, claims, backups y evidencias; ninguna campaña ejecutada puede reutilizarse.
+
+Este cierre acredita únicamente los 24 escenarios seleccionados y sus aserciones persistidas/integridad. **No cierra D3/AC14 ni los 28 escenarios originales. B1 continúa abierto:** coordinación no demuestra observación de espera por bloqueo SQL ni ausencia universal de deadlocks. No acredita navegador, SMTP real, OAuth, carga prolongada ni aceptación integral. SEC-08 usa transporte simulado; sus acciones MVC no sustituyen el pipeline HTTP. Los pendientes descritos antes de este registro son antecedentes de implementación en lo cubierto por estos casos; los demás permanecen pendientes.

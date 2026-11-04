@@ -2,6 +2,14 @@
 
 ## Estado vigente
 
+### Actualización acotada de concurrencia — 04/11/2026
+
+Tercera campaña `b6693ea9b36f469eb13d130aee029d56`: **24 ejecutadas, 24 aprobadas, 0 fallidas, 0 omitidas**; SEC-01 (2), SEC-02 (2), SEC-05 (12), SEC-08 (8). Duración TRX: **49,822 segundos**; código 0 informado por el operador. Registro, ruta, SHA-256 y antecedentes de las dos campañas fallidas en el [cierre del harness](../tests/MecaniCar360.ConcurrencyTests/README.md#cierre-de-la-tercera-campaña--04112026); alcance funcional y pendientes en [testing](testing.md#cierre-sql-sec-01020508--04112026).
+
+Esta evidencia sustituye el estado «no ejecutado» sólo de esos 24 casos. **D3/AC14 y los 28 escenarios originales no quedan cerrados.** B1 y aceptación funcional/visual por perfiles permanecen pendientes; no se acreditan SMTP real, OAuth, navegador ni ausencia general de condiciones de carrera. No se verificaron backups ni la totalidad de las evidencias de la primera campaña en este cierre. No se ejecutaron pruebas ni SQL durante esta actualización documental.
+
+### Antecedente del estado del 27/10/2026
+
 Actualización documental: **27/10/2026**, código de referencia `master`, **`8e17456`**. El repositorio estaba limpio al comenzar esta tarea. Las correcciones de autorización P1 y el modo de aceptación ya están versionados; no son archivos locales pendientes. No se consultó el remoto ni se certifica su sincronización.
 
 - Última ejecución registrada: build CierreB sin errores, 26 CS8618 existentes; **248 pruebas no SQL aprobadas**, 0 fallos, incluyendo 27 regresiones P1. Es evidencia de la sesión de corrección, no una ejecución del 27/10 ni una certificación E2E del commit actual.
