@@ -399,3 +399,16 @@ Cobertura SQL ahora acreditada:
 Pendientes no convertidos en PASS: reinicio/respuesta perdida real, revocación de permisos durante el circuito, dos claves intencionales distintas con contenido igual y regresión de aprobación incremental de presupuestos; aceptación de formularios/PRG, navegador y SMTP real. No se certifica OAuth ni el pipeline HTTP mediante acciones MVC directas. Los contadores en memoria y el transporte simulado conservan sus límites.
 
 **No cierra D3/AC14 ni los 28 escenarios originales. B1 permanece:** sin observación directa de espera por bloqueos SQL ni garantía universal frente a deadlocks. Tampoco constituye aceptación integral de los 65 CU. Se inspeccionaron TRX, 56 manifiestos y hashes del paquete de la tercera campaña; no se verificaron backups ni toda la evidencia de la primera campaña. No se consultaron bases ni claims en esta revisión.
+
+## Cierre SQL ADMINACT — 10/11/2026
+
+Campaña `ebb89c23f9114c978d3e6b6030c6cd72`: **11 ejecutadas, 11 aprobadas,
+0 fallidas, 0 omitidas; salida 0**. Alcance, casos, SHA-256 del TRX y conservación
+de evidencias en el [cierre ADMINACT del harness](../tests/MecaniCar360.ConcurrencyTests/README.md#cierre-adminact-20261110).
+Reutiliza el esquema existente; no agrega migraciones.
+
+Pendientes: emisión/reemisión local privilegiada, rollback del bootstrap inicial,
+preservación de administradores por el seed, SMTP real y navegador.
+B1 permanece abierta (sin observación directa de espera por bloqueos SQL).
+Se conserva el cierre SEC anterior; este resultado no cierra D3/AC14, los 28
+escenarios originales ni la aceptación integral.

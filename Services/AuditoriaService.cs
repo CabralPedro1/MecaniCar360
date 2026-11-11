@@ -45,6 +45,14 @@ namespace MecaniCar360.Services
         }
 
         public Task RegistrarLoginExitosoAsync() => RegistrarSesionAsync("LOGIN_EXITOSO", ObtenerActor());
+
+        // Bootstrap local o prueba de titularidad por token: no atribuir una sesión web inexistente.
+        internal static void RegistrarBootstrapAdmin(MecaniCarContext db, string accion, int usuarioId)
+        {
+            if (accion is not ("ADMIN_ACTIVACION_PENDIENTE" or "ADMIN_ENLACE_EMITIDO" or
+                "ADMIN_ENVIO_FALLIDO" or "ADMIN_ACTIVADO")) throw new ArgumentException("Evento no permitido.");
+            db.Auditorias.Add(Crear(accion, "Usuario", usuarioId, null, "Activación inicial administrativa."));
+        }
         public Task RegistrarLoginFallidoAsync() => RegistrarSesionAsync("LOGIN_FALLIDO", null);
         public Task RegistrarLoginGoogleFallidoAsync() => RegistrarSesionAsync("LOGIN_GOOGLE_FALLIDO", null);
         public Task RegistrarVinculacionGoogleRechazadaAsync() => RegistrarSesionAsync("GOOGLE_VINCULACION_RECHAZADA", ObtenerActor());

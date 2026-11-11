@@ -55,7 +55,7 @@ dotnet run --project tests/MecaniCar360.ConcurrencySetup/MecaniCar360.Concurrenc
 
 Secuencia: verificar destino/ausencia → CREATE de esa base → migraciones existentes → FULL COPY_ONLY
 CHECKSUM y VERIFYONLY → InicializarAsync con backup propio → ArranqueIntegridad/seed/bootstrap
-ficticio con password aleatorio en memoria → integridad/migraciones/modelo → marca de preparación.
+ficticio pendiente, sin contraseña, con BootstrapAdmin:Email exclusivo example.invalid → verificación persistida del bootstrap/integridad/migraciones/modelo → marca de preparación.
 Nunca se imprime contraseña, hash o stamp. `sin-escrituras` expresa una ventana exclusiva,
 **no** un dry run: inicializar DVH/DVV escribe. No se recalcula baseline entre pruebas.
 Los archivos de incidentes van a TEMP/base/integrity, nunca a los directorios productivos.
@@ -265,3 +265,102 @@ Antecedentes conservados, no sustituidos por este PASS:
 No se verificaron los respaldos ni se consultaron bases durante la revisión documental. Conservar bases, claims, backups y evidencias; ninguna campaña ejecutada puede reutilizarse.
 
 Este cierre acredita únicamente los 24 escenarios seleccionados y sus aserciones persistidas/integridad. **No cierra D3/AC14 ni los 28 escenarios originales. B1 continúa abierto:** coordinación no demuestra observación de espera por bloqueo SQL ni ausencia universal de deadlocks. No acredita navegador, SMTP real, OAuth, carga prolongada ni aceptación integral. SEC-08 usa transporte simulado; sus acciones MVC no sustituyen el pipeline HTTP. Los pendientes descritos antes de este registro son antecedentes de implementación en lo cubierto por estos casos; los demás permanecen pendientes.
+
+
+## Activación ADMIN — antecedentes de implementación
+
+Estado vigente: ver el [cierre ADMINACT](#cierre-adminact-20261110). Los antecedentes siguientes conservan el alcance y los límites de la implementación.
+
+El preparador usa `bootstrap-<RUN_ID>@example.invalid`, nunca SMTP ni User Secrets.
+Antes de marcar PREPARED, un contexto independiente comprueba usuario único inactivo,
+PasswordHash nulo, PrimerLogin, persona/rol ADMIN, enlace invalidado de 10 minutos,
+auditoría de creación y DVH/DVV. Es comprobación de creación exitosa persistida;
+**no acredita rollback de la creación del bootstrap**.
+
+`SqlConcurrencyTests.ActivacionAdmin.cs` agrega 11 variantes `Security=ADMINACT`:
+
+- Activar y repetir: contraseña BCrypt, cuenta activa, PrimerLogin completado,
+  SecurityStamp distinto, token consumido, auditoría única; repetición sin cambios.
+- Dos consumos coordinados: un éxito y un rechazo exacto, conexiones independientes.
+- Rollback tras DML y antes de commit: excepción inyectada específica, escritura
+  comprobada, snapshots persistidos iguales después; DVH/DVV en precommit.
+- Vencimiento exacto a 10 minutos mediante TimeProvider fijo, sin dormir ni cambiar Windows.
+- Contraseña de 73 bytes rechazada sin cambios.
+- Token CLIENTE generado por el servicio real con transporte simulado rechazado por ADMIN.
+- Token ADMIN rechazado por validación/restablecimiento CLIENTE.
+- Token sustituido en el fixture: el anterior no se consume.
+- ADMIN existente activo o suspendido con credencial: activación rechazada sin cambios.
+
+Cada caso crea una identidad única y verifica integridad/FK; no usa el ADMIN del seed.
+Los tokens sólo existen en memoria y filas hash, nunca en TRX/manifiestos/logs.
+La preparación de enlaces es un fixture con los helpers puros de hash/marca productivos:
+**no es emisión ni reemisión real**. No se fabrica la capacidad `Autorizacion`, no se
+invoca `EmitirLocalAsync` mediante bypass y no se eleva al ejecutor restringido.
+
+### Validación privilegiada separada pendiente
+
+El comando local exige SID autorizado y Windows elevado; el runner prohíbe privilegios
+administrativos. No pueden fusionarse bajo la misma identidad. Quedan pendientes pruebas
+separadas del comando/servicio de emisión autorizado con correo simulado: primera emisión,
+espera de 60 segundos, reemisión, fallo SMTP y su invalidación. También quedan pendientes
+rollback de la creación inicial y preservación por el seed de un ADMIN legado como única
+cuenta. Los 11 casos no deben presentarse como cobertura de esas operaciones.
+No ejecutar el comando actual para ensayarlo: utiliza el transporte SMTP configurado.
+La integración privilegiada simulada necesita una preparación específica revisada; no
+se sustituye por pruebas de fixtures ni se desactiva la autorización de producción.
+
+### Ejecución futura, únicamente tras autorización y preflight
+
+Requiere base NUEVA y GUID nuevos, preparada con estos binarios; no reutilizar campañas
+anteriores ni claims. Conceder permisos mínimos por separado y verificar desde la sesión
+real de MC360Runner identidad, destino, falta de acceso a MecaniCar360 y claim 0.
+No se han creado bases, concedido permisos ni desplegado binarios en esta implementación.
+Desde esa sesión, con las tres variables MC360_CONCURRENCY_* explícitas y verificadas:
+
+```powershell
+# Comando futuro; NO ejecutado. Un proceso, sin paralelismo externo ni reintentos.
+dotnet test tests/MecaniCar360.ConcurrencyTests/MecaniCar360.ConcurrencyTests.csproj --configuration CierreB --no-build --filter 'Category=SqlConcurrency&Security=ADMINACT' --logger 'trx;LogFileName=ADMINACT-<GUID_N>.trx' --results-directory '<carpeta privada de resultados nueva>'
+```
+
+Usar las rutas de binarios efectivamente desplegados si MC360Runner no accede al repositorio.
+Conservar TRX, inventario/hash de binarios y evidencia sanitizada de preflight. B1 permanece:
+coordinación de participantes no demuestra observación de espera SQL en el servidor.
+
+<a id="cierre-adminact-20261110"></a>
+## Cierre SQL ADMINACT — 10/11/2026
+
+Campaña `ebb89c23f9114c978d3e6b6030c6cd72`, ejecutada una única vez desde MC360Runner
+sobre la base aislada `MecaniCar360_Concurrency_ebb89c23f9114c978d3e6b6030c6cd72`.
+
+**11 ejecutadas, 11 aprobadas, 0 fallidas, 0 omitidas; código de salida 0**, confirmado
+en el archivo de salida y en `estado.json`. TRX con 11 nombres, identificadores de
+prueba y de ejecución únicos, 11 definiciones y entradas concordantes; sin errores,
+timeouts ni abortos. Duración de consola: 28 segundos; intervalo inicio/fin del TRX:
+29,086 segundos. Claim final consultado en modo de solo lectura: 1, con el GUID esperado.
+Esta campaña no se reutiliza.
+
+Casos aprobados de `ActivacionAdmin_PersistenciaAislada`:
+`ActivarYRepetir`, `Concurrente`, `RollbackDml`, `RollbackCommit`, `Vencido`,
+`PasswordInvalida`, `TokenClienteEnAdmin`, `TokenAdminEnCliente`, `TokenSustituido`,
+`AdminExistenteActivo` y `AdminExistenteSuspendido`. Acreditan las aserciones
+implementadas de consumo único, rollback, contraseña, SecurityStamp, auditoría,
+rechazos sin cambios y mantenimiento de DVH/DVV y relaciones.
+
+Evidencia local, no incorporada al repositorio:
+`C:\ProgramData\MecaniCar360-Pruebas\ebb89c23f9114c978d3e6b6030c6cd72\resultados\ADMINACT-ebb89c23f9114c978d3e6b6030c6cd72.trx`
+
+SHA-256 del TRX:
+`107936F31774BCAF4BD1D3B999A7B30B944EFEAA6779F02E8742F77C4993DF8F`.
+
+`estado.json` informa `ErrorEjecucion=null` y `ErroresEvidencias=[]`.
+Los 8 archivos inventariados conservan tamaño y SHA-256; los 152 binarios coinciden
+con su inventario. No se encontraron marcas de aborto en las evidencias copiadas.
+No se verificaron nuevamente el backup ni el TEMP original de MC360Runner.
+
+**Pendientes:** emisión y reemisión local privilegiada con transporte simulado,
+rollback del bootstrap inicial, preservación de administradores por el seed,
+SMTP real y navegador. La sustitución de token del fixture no prueba reemisión
+privilegiada; los casos de ADMIN existente prueban rechazo de activación, no el seed.
+**B1 sigue abierta:** no se observó directamente la espera por bloqueos SQL.
+Este cierre no amplía el cierre SEC previo, no cierra D3/AC14 ni los 28 escenarios
+originales y no acredita la aceptación funcional integral.

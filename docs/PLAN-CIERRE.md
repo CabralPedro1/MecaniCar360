@@ -262,3 +262,16 @@ La próxima acción es completar D1/D2 con la matriz de ACEPTACION-1.0.md. D0 ya
 - **D5 cierre local** depende de los resultados anteriores. Commit/push no son requisitos para funcionamiento local y necesitan autorización específica.
 
 Clasificación final: P0 nuevos confirmados = ninguno; P1 nuevos demostrados = ninguno; P2 obligatorio = documentación operativa y aceptación pendiente (esta última no es defecto funcional); P3 = warnings, precisión implícita y detalles visuales no bloqueantes sujetos a reproducción. No se demostró una funcionalidad obligatoria ausente ni una ruta esencial sin acción. La ausencia de prueba no certifica que el recorrido falle ni que funcione.
+
+## Cierre SQL ADMINACT — 10/11/2026
+
+Campaña `ebb89c23f9114c978d3e6b6030c6cd72`: **11 ejecutadas, 11 aprobadas,
+0 fallidas, 0 omitidas; salida 0**. Alcance, casos, SHA-256 del TRX y conservación
+de evidencias en el [cierre ADMINACT del harness](../tests/MecaniCar360.ConcurrencyTests/README.md#cierre-adminact-20261110).
+Reutiliza el esquema existente; no agrega migraciones.
+
+Pendientes: emisión/reemisión local privilegiada, rollback del bootstrap inicial,
+preservación de administradores por el seed, SMTP real y navegador.
+B1 permanece abierta (sin observación directa de espera por bloqueos SQL).
+Se conserva el cierre SEC anterior; este resultado no cierra D3/AC14, los 28
+escenarios originales ni la aceptación integral.

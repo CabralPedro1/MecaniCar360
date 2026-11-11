@@ -10,7 +10,8 @@ Requiere SDK capaz de compilar .NET 8, runtime ASP.NET Core 8 y SQL Server acces
 |---|---|
 | `ConnectionStrings:DefaultConnection` | Confirmar servidor/base efectivos antes de arrancar; no imprimir la cadena. Destino local esperado: BOOK-JKTL5UI49E\CABRALPEDRO / MecaniCar360 |
 | `Arranque:ModoAceptacion` | `true` evita migraciones/seed/bootstrap/catálogo; por defecto false. No impide escrituras de negocio |
-| `BootstrapAdmin:Password` | Sólo para instalación normal que necesite ADMIN inicial; no cambiar cuentas existentes ni publicar el valor |
+| `BootstrapAdmin:Email` | Destinatario explícito de la activación inicial ADMIN; no se deduce de Smtp:User ni modifica cuentas existentes |
+| `BootstrapAdmin:OperadorSid` | SID Windows del operador autorizado para emitir/reemitir localmente; además requiere consola elevada |
 | `Smtp:Host`, `Port`, `User`, `Password`, `EnableSsl` | EmailService usa User como remitente y autenticación; TLS por defecto true. No enviar correo real sin autorización |
 | `Invitaciones:UrlBase` | Origen público del enlace; para esta sesión local, http://localhost:5190. No cambiar puerto sin revisar coherencia del enlace |
 | `Authentication:Google:ClientId`, `ClientSecret` | Google disponible cuando ambos están configurados; no inventar valores ni modificar consentimiento/redirects para una prueba |
@@ -125,3 +126,75 @@ No se ejecutó preparación, backup, migraciones ni ninguno de esos casos en est
 Una instalación nueva es una operación de base autorizada aparte: confirmar destino y versión → aplicar migraciones existentes → backup verificado y baseline según [integridad](integridad-dvh-dvv.md) → bootstrap normal → verificación. No usar este procedimiento para reinicializar desarrollo. `--sin-escrituras` confirma ventana exclusiva, no dry run.
 
 Seguir [backup-restore.md](backup-restore.md) para scripts y permisos. Custodiar por separado SQL, evidencias físicas, código/versiones, configuración externa, claves Data Protection y certificados. SQL solo no recupera los archivos. Ante incidente conservar logs sanitizados y backups; no restaurar encima de MecaniCar360 sin autorización. Validar una recuperación en destino aislado cuando se autorice; no se declara ensayada por leer la guía.
+
+### Activación inicial ADMIN por correo (implementación 04/11/2026)
+
+Sólo una instalación nueva crea `admin` sin contraseña, inactivo y con `PrimerLogin=true`.
+Persona, usuario, rol y marca de activación se confirman conjuntamente. Una cuenta ADMIN
+existente, incluso suspendida, no se reemplaza ni se habilita: el bootstrap no es recuperación
+administrativa. `BootstrapAdmin:Password` dejó de utilizarse; no se generan contraseñas temporales.
+
+Antes del bootstrap autorizado configurar externamente `BootstrapAdmin:Email`,
+`BootstrapAdmin:OperadorSid`, SMTP e `Invitaciones:UrlBase` (HTTPS, sin query, fragmento ni
+credenciales). El destinatario puede coincidir con `Smtp:User`, pero ambos son independientes.
+Ejemplo de configuración **manual, no ejecutada por esta implementación**, desde la raíz:
+
+```powershell
+whoami /user
+dotnet user-secrets set 'BootstrapAdmin:Email' '<correo administrativo real>' --project MecaniCar360.csproj
+dotnet user-secrets set 'BootstrapAdmin:OperadorSid' '<SID del operador Windows>' --project MecaniCar360.csproj
+```
+
+La consola de emisión debe ejecutarse como ese mismo usuario Windows, **elevada**.
+No es un rol nuevo de la aplicación ni una cuenta secreta. El permiso protege contra
+una invocación web o un operador Windows distinto; quien controla la configuración,
+el código o SQL con privilegios ya pertenece a la frontera técnica de confianza.
+No cambiar ACL ni conceder permisos SQL automáticamente para hacerlo funcionar.
+
+El seed no envía correos y los reinicios normales no reemplazan enlaces. Después de
+crear la instalación mediante el procedimiento anterior y comprobar su integridad,
+iniciar el host HTTPS con `--Arranque:ModoAceptacion=true`. Para **enviar el primer enlace**
+o **reemitir uno vencido/fallido**, usar otra consola elevada y confirmar el destino real:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Development' # permite leer User Secrets del mismo operador
+dotnet run --no-build --project MecaniCar360.csproj --configuration CierreB --no-launch-profile -- --bootstrap-admin-enviar --confirmar-servidor '<instancia exacta>' --confirmar-base '<base exacta>'
+```
+
+Este comando requiere autorización operativa para escribir la fila técnica/auditoría y
+enviar SMTP. **No ejecutarlo contra la base actual para probarlo.** Sólo usa autenticación
+SQL integrada, comprueba instancia/base reales e integridad antes de emitir; no inicia el
+servidor web, no migra, no hace seed ni inicializa DVH/DVV. No imprime destinatario, token,
+enlace, contraseña ni cadena. Retorna 0 si SMTP aceptó el mensaje e integridad sigue válida;
+1 ante rechazo/fallo y 2 ante argumentos inválidos. No hay reintentos automáticos.
+
+Abrir el correo en el equipo de la instalación (`localhost` se refiere al equipo donde se
+abre el navegador), preferentemente sin otra sesión web. La URL contiene el token en el
+fragmento, que el script elimina de la barra y entrega por header. No guardar HAR, headers,
+cuerpos de petición, enlaces o correos en logs/evidencias. No habilitar logging HTTP sensible.
+El formulario exige antiforgery, contraseña/confirmación y teléfono opcional con las reglas
+de primer ingreso. Se valida el máximo de 72 bytes UTF-8 sin truncar. Al confirmar se activan
+la cuenta y su credencial, se completa PrimerLogin, rota SecurityStamp y consume el enlace
+en una misma transacción con auditoría y mantenimiento DVH/DVV. No inicia sesión: acceder
+después al login normal como `admin` con la contraseña elegida.
+
+El enlace dura 10 minutos. Lectura o contraseña inválida no lo consumen. Sólo puede
+reemitarse desde el comando local para la marca pendiente original, con el mismo correo
+configurado; nunca para un ADMIN legado o activado. Los reenvíos comparten una espera
+persistente de 60 segundos y reemplazan el enlace anterior. No existe solicitud pública.
+Si SMTP falla, se intenta invalidar únicamente el token afectado; si falla también esa
+escritura, conserva su vencimiento. SMTP se ejecuta fuera de la transacción: su aceptación
+no prueba entrega. Si el proceso termina después del commit y antes/durante SMTP, esperar
+el intervalo y reemitir localmente. Si la activación se confirmó pero se perdió la respuesta,
+usar login; no repetir bootstrap. Cambiar el destinatario en configuración no transfiere
+la cuenta: requeriría revisión explícita, no hay mecanismo web para hacerlo.
+
+Se reutiliza `EnlacesPasswordCliente`, `Finalidad=Agregar` y sus columnas existentes, con
+hashes separados por propósito `MecaniCar360.BootstrapAdmin.Activacion.v1` para token,
+stamp y correo. La marca inicial está invalidada y no contiene un token utilizable.
+No se amplía el flujo CLIENTE ni sus permisos. No se agrega migración: la tabla técnica
+continúa fuera de DVH/DVV; las entidades protegidas conservan la cobertura vigente.
+Un atacante con escritura directa en SQL/configuración no queda contenido por este mecanismo.
+
+Los 11 escenarios SQL ADMINACT están aprobados; ver el [cierre del harness](../tests/MecaniCar360.ConcurrencyTests/README.md#cierre-adminact-20261110). Pendientes: emisión/reemisión local privilegiada, rollback del bootstrap inicial, preservación de administradores por el seed, SMTP real, navegador y login administrativo posterior. No usar este procedimiento
+como permiso para borrar o reinicializar la base de la defensa.

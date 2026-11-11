@@ -54,7 +54,7 @@ try
     await using (var db = new MecaniCarContext(options))
         await new IntegridadService(db).InicializarAsync(backup, true, true);
     var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string,string?> {
-        ["BootstrapAdmin:Password"] = "Isolated!9a" + Guid.NewGuid().ToString("N")
+        ["BootstrapAdmin:Email"] = "bootstrap-" + guard.RunId + "@example.invalid"
     }).Build();
     await using (var db = new MecaniCarContext(options))
     {
@@ -64,6 +64,24 @@ try
         if (!state.Resultado.EsValida || !(await new IntegridadService(db).VerificarAsync()).EsValida ||
             !await db.Usuarios.AnyAsync() || (await db.Database.GetPendingMigrationsAsync()).Any() || db.Database.HasPendingModelChanges())
             throw new InvalidOperationException("Seed/integrity/migrations verification failed.");
+    }
+    // Independent persisted read: never emit mail or activate the seeded account.
+    await using (var verify = new MecaniCarContext(options))
+    {
+        await verify.Database.OpenConnectionAsync();
+        await guard.CheckEffectiveAsync((SqlConnection)verify.Database.GetDbConnection());
+        var admin = await verify.Usuarios.AsNoTracking().Include(u => u.Persona)
+            .ThenInclude(p => p.Roles).ThenInclude(r => r.Rol).SingleAsync();
+        var link = await verify.EnlacesPasswordCliente.AsNoTracking().SingleAsync();
+        if (admin.Activo || admin.PasswordHash != null || !admin.PrimerLogin || !admin.Persona.Activo ||
+            admin.EmailLogin != config["BootstrapAdmin:Email"] || link.UsuarioId != admin.Id ||
+            link.FechaInvalidacion == null || link.FechaConsumida != null || link.TeniaPassword ||
+            link.Finalidad != MecaniCar360.Models.FinalidadPasswordCliente.Agregar ||
+            link.FechaExpiracion != link.FechaCreacion.AddMinutes(10) ||
+            admin.Persona.Roles.Count(r => r.FechaBaja == null && r.Rol.Activo && r.Rol.Nombre == "ADMIN") != 1 ||
+            await verify.Auditorias.CountAsync(a => a.Accion == "ADMIN_ACTIVACION_PENDIENTE" && a.EntidadId == admin.Id) != 1 ||
+            !(await new IntegridadService(verify).VerificarAsync()).EsValida)
+            throw new InvalidOperationException("Pending bootstrap persistence verification failed.");
     }
     await using (var sql = new SqlConnection(guard.ConnectionString))
     {

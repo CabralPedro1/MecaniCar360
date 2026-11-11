@@ -1,0 +1,17 @@
+@model MecaniCar360.Models.ViewModels.ActivarAdminViewModel
+@{ Layout = null; }
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Activar ADMIN</title>
+<partial name="_EnlaceSeguroHead" />
+</head><body><main class="enlace-seguro">
+<h1>Activación inicial de ADMIN</h1>
+<p>Establezca su contraseña. El enlace sólo puede utilizarse una vez y vence a los 10 minutos.</p>
+<form asp-controller="ActivacionAdmin" asp-action="Activar" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="All" role="alert"></div>
+    <input asp-for="Token" type="hidden" />
+    <label asp-for="Telefono">Teléfono (opcional)</label><input class="form-control" asp-for="Telefono" autocomplete="tel" /><span asp-validation-for="Telefono"></span>
+    <label asp-for="Password">Nueva contraseña</label><input class="form-control" asp-for="Password" autocomplete="new-password" required /><span asp-validation-for="Password"></span>
+    <label asp-for="ConfirmarPassword">Confirmar contraseña</label><input class="form-control" asp-for="ConfirmarPassword" autocomplete="new-password" required /><span asp-validation-for="ConfirmarPassword"></span>
+    <p>Al menos 8 caracteres: mayúscula, minúscula, número y símbolo. Máximo 72 bytes UTF-8; los caracteres acentuados y emojis pueden ocupar varios bytes.</p>
+    <button type="submit" class="btn btn-primary w-100">Activar cuenta</button>
+</form></main></body></html>

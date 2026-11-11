@@ -15,11 +15,11 @@ namespace MecaniCar360.Data
             // Exists/HasTables sólo inspeccionan la base: no crean esquema ni datos.
             var databaseCreator = context.GetService<IRelationalDatabaseCreator>();
             var tieneTablas = databaseCreator.Exists() && databaseCreator.HasTables();
-            var bootstrapPassword = tieneTablas
+            var bootstrapEmail = tieneTablas
                 ? ValidarBootstrap(context, configuration)
-                : ValidarPasswordBootstrap(configuration);
+                : ActivacionAdminInicial.EmailConfigurado(configuration);
 
-            // Sólo migrar después de validar la instalación y, si corresponde, el secreto.
+            // Sólo migrar después de validar la instalación y el destinatario explícito.
             context.Database.Migrate();
 
             InicializarSeguridad(context);
@@ -28,8 +28,8 @@ namespace MecaniCar360.Data
             // ADMINISTRADOR
             // =====================================
 
-            if (bootstrapPassword != null)
-                CrearAdministrador(context, bootstrapPassword);
+            if (bootstrapEmail != null)
+                CrearAdministrador(context, bootstrapEmail);
 
             CrearCatalogoVehicular(context);
 
@@ -1535,23 +1535,15 @@ namespace MecaniCar360.Data
                 throw new InvalidOperationException(
                     "Bootstrap ADMIN: la instalación contiene cuentas o personas sin un administrador identificable. Se requiere revisión explícita; no se crearon cuentas.");
 
-            return ValidarPasswordBootstrap(configuration);
+            return ActivacionAdminInicial.EmailConfigurado(configuration);
         }
 
-        private static string ValidarPasswordBootstrap(IConfiguration configuration)
+        private static void CrearAdministrador(MecaniCarContext context, string bootstrapEmail)
         {
-            var password = configuration["BootstrapAdmin:Password"];
-            if (string.IsNullOrWhiteSpace(password))
-                throw new InvalidOperationException(
-                    "Falta la configuración BootstrapAdmin:Password para crear el administrador inicial.");
-            if (!PasswordValidator.EsValida(password, out _))
-                throw new InvalidOperationException(
-                    "La configuración BootstrapAdmin:Password no cumple la política de contraseñas.");
-            return password;
-        }
-
-        private static void CrearAdministrador(MecaniCarContext context, string bootstrapPassword)
-        {
+            using var tx = context.Database.BeginTransaction(System.Data.IsolationLevel.Serializable);
+            // Revalidar tras el bloqueo global: otro inicializador no puede duplicar el bootstrap.
+            if (context.Usuarios.Any() || context.Personas.Any() || context.PersonaRoles.Any())
+                throw new InvalidOperationException("Bootstrap ADMIN: instalación no vacía; no se creó una cuenta.");
             var rolAdmin =
                 context.Roles
                     .First(
@@ -1575,7 +1567,7 @@ namespace MecaniCar360.Data
                         "1111111111",
 
                     Email =
-                        "360.mecanicar@gmail.com",
+                        bootstrapEmail,
 
                     Activo =
                         true
@@ -1600,17 +1592,16 @@ namespace MecaniCar360.Data
                         "admin",
 
                     EmailLogin =
-                        "360.mecanicar@gmail.com",
+                        bootstrapEmail,
 
                     PasswordHash =
-                        BCrypt.Net.BCrypt
-                            .HashPassword(bootstrapPassword),
+                        null,
 
                     PrimerLogin =
                         true,
 
                     Activo =
-                        true,
+                        false,
 
                     Persona =
                         persona,
@@ -1624,6 +1615,10 @@ namespace MecaniCar360.Data
                 usuario);
 
             context.SaveChanges();
+            context.EnlacesPasswordCliente.Add(ActivacionAdminInicial.CrearMarca(usuario, DateTime.UtcNow));
+            Services.AuditoriaService.RegistrarBootstrapAdmin(context, "ADMIN_ACTIVACION_PENDIENTE", usuario.Id);
+            context.SaveChanges();
+            tx.Commit();
         }
     }
 }

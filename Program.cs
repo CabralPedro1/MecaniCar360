@@ -20,6 +20,11 @@ namespace MecaniCar360
 
         public static void Main(string[] args)
         {
+            if (args.Contains(BootstrapAdminLocal.Comando, StringComparer.Ordinal))
+            {
+                Environment.ExitCode = BootstrapAdminLocal.EjecutarAsync(args).GetAwaiter().GetResult();
+                return;
+            }
             var builder = WebApplication.CreateBuilder(args);
             builder.Services.AddSingleton(sp => new EstadoIntegridad(
                 Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath,
@@ -192,6 +197,7 @@ namespace MecaniCar360
             builder.Services.AddScoped<RegistroCompletoClienteService>();
             builder.Services.AddScoped<PresentacionCuentaService>();
             builder.Services.AddScoped<SeguridadClienteService>();
+            builder.Services.AddScoped<ActivacionAdminService>();
             builder.Services.AddScoped<ClienteHabilitadoService>();
             builder.Services.AddScoped<InvitacionClienteService>();
             builder.Services.AddScoped<AgendaService>();
